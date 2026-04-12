@@ -30,11 +30,6 @@ const QUESTIONS = [
       "**What are the Fight Rules?**\n> e.g. *No items, No cheap spots, 1v1 only*",
   },
   {
-    key: "arena",
-    label: "Arena / Map",
-    prompt: "**Which Arena or Map?**\n> e.g. *Default, Volcanic, Training Area*",
-  },
-  {
     key: "format",
     label: "Best Of / Format",
     prompt:
