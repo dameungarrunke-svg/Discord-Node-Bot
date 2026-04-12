@@ -30,12 +30,6 @@ const QUESTIONS = [
       "**What are the Fight Rules?**\n> e.g. *No items, No cheap spots, 1v1 only*",
   },
   {
-    key: "format",
-    label: "Best Of / Format",
-    prompt:
-      "**What is the Format?**\n> e.g. *Bo1, Bo3, Bo5, First to 10 kills*",
-  },
-  {
     key: "notes",
     label: "Additional Notes",
     prompt:
@@ -233,8 +227,6 @@ async function sendChallengeSummary(
       { name: "🆚  Opponent", value: answers["opponent"] ?? "—", inline: true },
       { name: "\u200b", value: "\u200b", inline: false },
       { name: "📜  Fight Rules", value: answers["rules"] ?? "—", inline: false },
-      { name: "🗺️  Arena / Map", value: answers["arena"] ?? "—", inline: true },
-      { name: "🏆  Format", value: answers["format"] ?? "—", inline: true },
       { name: "📝  Notes", value: answers["notes"] ?? "—", inline: false }
     )
     .setFooter({ text: "The Strongest Battlegrounds  •  Challenge System" })
