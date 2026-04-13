@@ -3,6 +3,7 @@ import {
   PermissionFlagsBits,
   ChatInputCommandInteraction,
   EmbedBuilder,
+  Client,
 } from "discord.js";
 import {
   STAGE_RANKS,
@@ -14,6 +15,7 @@ import {
   STAGE_RANK_EMOJI,
   STAGE_RANK_COLORS,
 } from "./store.js";
+import { refreshPinnedLeaderboard } from "./display.js";
 
 const ADMIN_PERMS = PermissionFlagsBits.ManageGuild;
 
@@ -21,9 +23,10 @@ function stageRankChoices() {
   return STAGE_RANKS.map((r) => ({ name: `${STAGE_RANK_EMOJI[r]}  ${r}`, value: r }));
 }
 
-export const leaderboardData = new SlashCommandBuilder()
-  .setName("leaderboard")
-  .setDescription("View the TSB ranked leaderboard.");
+export const setupLeaderboardData = new SlashCommandBuilder()
+  .setName("setupleaderboard")
+  .setDescription("Deploy the permanent TSB leaderboard in this channel. (Admin only)")
+  .setDefaultMemberPermissions(ADMIN_PERMS);
 
 export const addPlayerData = new SlashCommandBuilder()
   .setName("addleaderboardplayer")
@@ -97,7 +100,8 @@ export const editPlayerData = new SlashCommandBuilder()
   );
 
 export async function executeAddPlayer(
-  interaction: ChatInputCommandInteraction
+  interaction: ChatInputCommandInteraction,
+  client: Client
 ): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
@@ -110,7 +114,9 @@ export async function executeAddPlayer(
         new EmbedBuilder()
           .setColor(0xe74c3c)
           .setTitle("❌  Position Taken")
-          .setDescription(`There is already a player at position **#${position}**. Use \`/editleaderboardplayer\` to update them, or choose a different position.`),
+          .setDescription(
+            `There is already a player at position **#${position}**.\nUse \`/editleaderboardplayer\` to update them, or choose a different position.`
+          ),
       ],
     });
     return;
@@ -127,12 +133,13 @@ export async function executeAddPlayer(
   };
 
   addPlayer(player);
+  await refreshPinnedLeaderboard(client);
 
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
         .setColor(STAGE_RANK_COLORS[stageRank])
-        .setTitle("✅  Player Added")
+        .setTitle("✅  Player Added  —  Leaderboard Updated")
         .setThumbnail(player.avatarUrl)
         .addFields(
           { name: "Position", value: `#${player.position}`, inline: true },
@@ -148,7 +155,8 @@ export async function executeAddPlayer(
 }
 
 export async function executeRemovePlayer(
-  interaction: ChatInputCommandInteraction
+  interaction: ChatInputCommandInteraction,
+  client: Client
 ): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
@@ -167,11 +175,13 @@ export async function executeRemovePlayer(
     return;
   }
 
+  await refreshPinnedLeaderboard(client);
+
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
         .setColor(0x2ecc71)
-        .setTitle("🗑️  Player Removed")
+        .setTitle("🗑️  Player Removed  —  Leaderboard Updated")
         .setDescription(`Player at position **#${position}** has been removed from the leaderboard.`)
         .setFooter({ text: "The Strongest Battlegrounds  •  Leaderboard" }),
     ],
@@ -179,7 +189,8 @@ export async function executeRemovePlayer(
 }
 
 export async function executeEditPlayer(
-  interaction: ChatInputCommandInteraction
+  interaction: ChatInputCommandInteraction,
+  client: Client
 ): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
@@ -215,23 +226,25 @@ export async function executeEditPlayer(
   if (stageRank) updates["stageRank"] = stageRank;
 
   if (Object.keys(updates).length === 0) {
-    await interaction.editReply({ content: "⚠️ No changes provided. Please fill in at least one field to update." });
+    await interaction.editReply({
+      content: "⚠️ No changes provided. Please fill in at least one field to update.",
+    });
     return;
   }
 
   editPlayer(position, updates as never);
+  await refreshPinnedLeaderboard(client);
 
-  const updatedRank = stageRank ?? "High Strong";
   await interaction.editReply({
     embeds: [
       new EmbedBuilder()
         .setColor(0x2ecc71)
-        .setTitle("✏️  Player Updated")
+        .setTitle("✏️  Player Updated  —  Leaderboard Updated")
         .setDescription(
           `Player at position **#${position}** has been updated.\n\n` +
-          Object.entries(updates)
-            .map(([k, v]) => `**${k}:** ${v}`)
-            .join("\n")
+            Object.entries(updates)
+              .map(([k, v]) => `**${k}:** ${v}`)
+              .join("\n")
         )
         .setFooter({ text: "The Strongest Battlegrounds  •  Leaderboard" }),
     ],

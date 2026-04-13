@@ -14,7 +14,7 @@ import { data as setupPanelData, execute as setupPanelExecute } from "./commands
 import { handleCreateTicket } from "./tickets/ticketFlow.js";
 import { handleCloseTicket, handleDeleteTicket } from "./tickets/ticketControls.js";
 import {
-  leaderboardData,
+  setupLeaderboardData,
   addPlayerData,
   removePlayerData,
   editPlayerData,
@@ -22,7 +22,7 @@ import {
   executeRemovePlayer,
   executeEditPlayer,
 } from "./leaderboard/commands.js";
-import { executeLeaderboard, handleLeaderboardButton } from "./leaderboard/display.js";
+import { executeSetupLeaderboard } from "./leaderboard/display.js";
 
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
@@ -41,7 +41,7 @@ const client = new Client({
 
 const commands = [
   setupPanelData.toJSON(),
-  leaderboardData.toJSON(),
+  setupLeaderboardData.toJSON(),
   addPlayerData.toJSON(),
   removePlayerData.toJSON(),
   editPlayerData.toJSON(),
@@ -87,7 +87,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
       "`!help` — Show this help message\n\n" +
       "**Slash Commands:**\n" +
       "`/setupchallengepanel` — *(Admin)* Deploy the TSB challenge ticket panel\n" +
-      "`/leaderboard` — View the TSB ranked leaderboard\n" +
+      "`/setupleaderboard` — *(Admin)* Deploy the permanent TSB leaderboard\n" +
       "`/addleaderboardplayer` — *(Admin)* Add a player to the leaderboard\n" +
       "`/removeleaderboardplayer` — *(Admin)* Remove a player from the leaderboard\n" +
       "`/editleaderboardplayer` — *(Admin)* Edit a leaderboard player"
@@ -101,10 +101,10 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
     const handlers: Record<string, (i: ChatInputCommandInteraction) => Promise<void>> = {
       setupchallengepanel: setupPanelExecute,
-      leaderboard: executeLeaderboard,
-      addleaderboardplayer: executeAddPlayer,
-      removeleaderboardplayer: executeRemovePlayer,
-      editleaderboardplayer: executeEditPlayer,
+      setupleaderboard: (i) => executeSetupLeaderboard(i, client),
+      addleaderboardplayer: (i) => executeAddPlayer(i, client),
+      removeleaderboardplayer: (i) => executeRemovePlayer(i, client),
+      editleaderboardplayer: (i) => executeEditPlayer(i, client),
     };
 
     const handler = handlers[cmd.commandName];
@@ -118,13 +118,6 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
   if (interaction.isButton()) {
     const btn = interaction as ButtonInteraction;
-
-    if (btn.customId.startsWith("lb_goto_")) {
-      await handleLeaderboardButton(btn).catch((err) => {
-        console.error("Error handling leaderboard pagination:", err);
-      });
-      return;
-    }
 
     switch (btn.customId) {
       case "create_challenge_ticket":

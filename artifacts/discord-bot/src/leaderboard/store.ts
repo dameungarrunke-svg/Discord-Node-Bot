@@ -47,8 +47,15 @@ export interface LeaderboardPlayer {
   stageRank: StageRank;
 }
 
+export interface PinnedMessage {
+  guildId: string;
+  channelId: string;
+  messageId: string;
+}
+
 interface LeaderboardData {
   players: LeaderboardPlayer[];
+  pinnedMessage?: PinnedMessage;
 }
 
 function load(): LeaderboardData {
@@ -103,4 +110,20 @@ export function editPlayer(
 
 export function playerExistsAtPosition(position: number): boolean {
   return load().players.some((p) => p.position === position);
+}
+
+export function getPinnedMessage(): PinnedMessage | undefined {
+  return load().pinnedMessage;
+}
+
+export function setPinnedMessage(pinned: PinnedMessage): void {
+  const data = load();
+  data.pinnedMessage = pinned;
+  save(data);
+}
+
+export function clearPinnedMessage(): void {
+  const data = load();
+  delete data.pinnedMessage;
+  save(data);
 }

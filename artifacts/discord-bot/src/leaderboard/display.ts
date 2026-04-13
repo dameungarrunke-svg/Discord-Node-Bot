@@ -1,20 +1,21 @@
 import {
   EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ButtonInteraction,
   ChatInputCommandInteraction,
-  InteractionEditReplyOptions,
+  Client,
+  TextChannel,
+  PermissionFlagsBits,
 } from "discord.js";
 import {
   getPlayers,
   LeaderboardPlayer,
   STAGE_RANK_COLORS,
   STAGE_RANK_EMOJI,
+  getPinnedMessage,
+  setPinnedMessage,
+  PinnedMessage,
 } from "./store.js";
 
-const PAGE_SIZE = 5;
+const MAX_CARDS = 10;
 
 const POSITION_MEDALS: Record<number, string> = {
   1: "🥇",
@@ -38,21 +39,9 @@ function buildPlayerEmbed(player: LeaderboardPlayer): EmbedBuilder {
     })
     .setThumbnail(player.avatarUrl || null)
     .addFields(
-      {
-        name: "🎮  Roblox",
-        value: `\`${player.robloxUsername}\``,
-        inline: true,
-      },
-      {
-        name: "💬  Discord",
-        value: `\`${player.discordUsername}\``,
-        inline: true,
-      },
-      {
-        name: "🌍  Country",
-        value: player.country,
-        inline: true,
-      },
+      { name: "🎮  Roblox", value: `\`${player.robloxUsername}\``, inline: true },
+      { name: "💬  Discord", value: `\`${player.discordUsername}\``, inline: true },
+      { name: "🌍  Country", value: player.country, inline: true },
       {
         name: `${rankEmoji}  Stage Rank`,
         value: `**${player.stageRank}**`,
@@ -61,115 +50,106 @@ function buildPlayerEmbed(player: LeaderboardPlayer): EmbedBuilder {
     );
 }
 
-function buildNavEmbed(
-  page: number,
-  totalPages: number,
-  totalPlayers: number
-): EmbedBuilder {
-  const start = page * PAGE_SIZE + 1;
-  const end = Math.min((page + 1) * PAGE_SIZE, totalPlayers);
+export function buildPermanentPayload(): {
+  content: string;
+  embeds: EmbedBuilder[];
+} {
+  const allPlayers = getPlayers();
+  const displayPlayers = allPlayers.slice(0, MAX_CARDS);
+  const extra = allPlayers.length - displayPlayers.length;
 
-  return new EmbedBuilder()
-    .setColor(0xc0392b)
-    .setTitle("⚔️  THE STRONGEST BATTLEGROUNDS — LEADERBOARD")
-    .setDescription(
-      `**Top Ranked Players**\n` +
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-        `Showing positions **#${start}–#${end}** of **${totalPlayers}** players\n` +
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
-        "**Stage Ranks:**  🏆 High Strong  ·  🥇 High Stable  ·  🥈 Mid Strong  ·  🥉 Mid Stable  ·  ⚔️ Weak Stable"
-    )
-    .setFooter({
-      text: `The Strongest Battlegrounds  •  Page ${page + 1} / ${totalPages}`,
-    })
-    .setTimestamp();
-}
+  const now = Math.floor(Date.now() / 1000);
 
-function buildComponents(
-  page: number,
-  totalPages: number
-): ActionRowBuilder<ButtonBuilder>[] {
-  if (totalPages <= 1) return [];
+  const headerLines = [
+    "⚔️  **THE STRONGEST BATTLEGROUNDS  —  OFFICIAL LEADERBOARD**",
+    "",
+    "🏆 High Strong  ·  🥇 High Stable  ·  🥈 Mid Strong  ·  🥉 Mid Stable  ·  ⚔️ Weak Stable",
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  Last updated: <t:${now}:R>`,
+  ];
 
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`lb_goto_${page - 1}`)
-      .setLabel("◀  Previous")
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(page === 0),
-    new ButtonBuilder()
-      .setCustomId(`lb_goto_${page + 1}`)
-      .setLabel("Next  ▶")
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(page >= totalPages - 1)
-  );
-
-  return [row];
-}
-
-export function buildLeaderboardPayload(
-  page: number
-): InteractionEditReplyOptions & { page: number; totalPages: number } {
-  const players = getPlayers();
-
-  if (players.length === 0) {
-    return {
-      page: 0,
-      totalPages: 0,
-      embeds: [
-        new EmbedBuilder()
-          .setColor(0xc0392b)
-          .setTitle("⚔️  TSB Leaderboard")
-          .setDescription(
-            "No players have been added yet.\n\nAdmins can use `/addleaderboardplayer` to add players."
-          )
-          .setTimestamp(),
-      ],
-      components: [],
-    };
+  if (extra > 0) {
+    headerLines.push(`*...and ${extra} more player${extra > 1 ? "s" : ""} not shown.*`);
   }
 
-  const totalPages = Math.ceil(players.length / PAGE_SIZE);
-  const safePage = Math.max(0, Math.min(page, totalPages - 1));
-  const pagePlayers = players.slice(
-    safePage * PAGE_SIZE,
-    safePage * PAGE_SIZE + PAGE_SIZE
-  );
-
-  const navEmbed = buildNavEmbed(safePage, totalPages, players.length);
-  const playerEmbeds = pagePlayers.map(buildPlayerEmbed);
+  if (displayPlayers.length === 0) {
+    headerLines.push("\n*No players have been added yet.*");
+  }
 
   return {
-    page: safePage,
-    totalPages,
-    embeds: [navEmbed, ...playerEmbeds],
-    components: buildComponents(safePage, totalPages),
+    content: headerLines.join("\n"),
+    embeds: displayPlayers.map(buildPlayerEmbed),
   };
 }
 
-export async function handleLeaderboardButton(
-  interaction: ButtonInteraction
-): Promise<void> {
-  const match = interaction.customId.match(/^lb_goto_(\d+)$/);
-  if (!match) return;
+export async function refreshPinnedLeaderboard(client: Client): Promise<void> {
+  const pinned = getPinnedMessage();
+  if (!pinned) return;
 
-  const targetPage = parseInt(match[1], 10);
-  await interaction.deferUpdate();
+  try {
+    const guild = await client.guilds.fetch(pinned.guildId).catch(() => null);
+    if (!guild) return;
 
-  const payload = buildLeaderboardPayload(targetPage);
-  await interaction.editReply({
-    embeds: payload.embeds,
-    components: payload.components,
-  });
+    const channel = (await guild.channels.fetch(pinned.channelId).catch(() => null)) as TextChannel | null;
+    if (!channel || !channel.isTextBased()) return;
+
+    const message = await channel.messages.fetch(pinned.messageId).catch(() => null);
+    if (!message) return;
+
+    const payload = buildPermanentPayload();
+    await message.edit({ content: payload.content, embeds: payload.embeds });
+  } catch (err) {
+    console.error("Failed to refresh pinned leaderboard:", err);
+  }
 }
 
-export async function executeLeaderboard(
-  interaction: ChatInputCommandInteraction
+export async function executeSetupLeaderboard(
+  interaction: ChatInputCommandInteraction,
+  client: Client
 ): Promise<void> {
-  await interaction.deferReply();
-  const payload = buildLeaderboardPayload(0);
+  await interaction.deferReply({ ephemeral: true });
+
+  const channel = interaction.channel as TextChannel | null;
+  if (!channel) {
+    await interaction.editReply({ content: "❌ Could not find the channel." });
+    return;
+  }
+
+  const me = interaction.guild?.members.me;
+  if (!me?.permissionsIn(channel).has(PermissionFlagsBits.SendMessages)) {
+    await interaction.editReply({
+      content: "❌ I don't have permission to send messages in this channel.",
+    });
+    return;
+  }
+
+  const existing = getPinnedMessage();
+  if (existing && existing.channelId === channel.id) {
+    try {
+      const old = await channel.messages.fetch(existing.messageId).catch(() => null);
+      if (old) {
+        await interaction.editReply({
+          content: `✅ A leaderboard is already pinned in this channel: https://discord.com/channels/${existing.guildId}/${existing.channelId}/${existing.messageId}\n\nUse \`/addleaderboardplayer\`, \`/editleaderboardplayer\`, or \`/removeleaderboardplayer\` to update it automatically.`,
+        });
+        return;
+      }
+    } catch {
+      // message no longer exists, proceed to create a new one
+    }
+  }
+
+  const payload = buildPermanentPayload();
+  const msg = await channel.send({ content: payload.content, embeds: payload.embeds });
+
+  await msg.pin().catch(() => {});
+
+  const pinned: PinnedMessage = {
+    guildId: interaction.guildId!,
+    channelId: channel.id,
+    messageId: msg.id,
+  };
+  setPinnedMessage(pinned);
+
   await interaction.editReply({
-    embeds: payload.embeds,
-    components: payload.components,
+    content: `✅ Leaderboard deployed and pinned: ${msg.url}\n\nIt will auto-update whenever you add, edit, or remove players.`,
   });
 }
