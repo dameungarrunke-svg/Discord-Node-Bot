@@ -218,9 +218,6 @@ importers:
       discord.js:
         specifier: ^14.19.3
         version: 14.26.2
-      gif-encoder-2:
-        specifier: ^1.0.5
-        version: 1.0.5
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -2130,9 +2127,6 @@ packages:
 
   get-tsconfig@4.13.6:
     resolution: {integrity: sha512-shZT/QMiSHc/YBLxxOkMtgSid5HFoauqCE3/exfsEcwg1WkeqjG+V40yBbBrsD+jW2HDXcs28xOfcbm2jI8Ddw==}
-
-  gif-encoder-2@1.0.5:
-    resolution: {integrity: sha512-fsRAKbZuUoZ7FYGjpFElmflTkKwsn/CzAmL/xDl4558aTAgysIDCUF6AXWO8dmai/ApfZACbPVAM+vPezJXlFg==}
 
   glob-parent@5.1.2:
     resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}
@@ -4817,8 +4811,6 @@ snapshots:
   get-tsconfig@4.13.6:
     dependencies:
       resolve-pkg-maps: 1.0.0
-
-  gif-encoder-2@1.0.5: {}
 
   glob-parent@5.1.2:
     dependencies:

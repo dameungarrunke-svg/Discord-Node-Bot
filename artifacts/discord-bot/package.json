@@ -9,8 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "discord.js": "^14.19.3",
-    "gif-encoder-2": "^1.0.5"
+    "discord.js": "^14.19.3"
   },
   "devDependencies": {
     "@types/node": "catalog:",
