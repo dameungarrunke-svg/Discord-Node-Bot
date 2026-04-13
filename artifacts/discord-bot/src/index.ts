@@ -71,7 +71,7 @@ client.once(Events.ClientReady, async (readyClient) => {
     } catch {
       // Ignore keep-alive errors
     }
-  }, 8_000);
+  }, 3_000);
 });
 
 client.on(Events.GuildCreate, async (guild) => {

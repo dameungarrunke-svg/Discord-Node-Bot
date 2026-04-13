@@ -1,8 +1,18 @@
 {
-  "players": [],
+  "players": [
+    {
+      "position": 10,
+      "displayName": "gando",
+      "robloxUsername": "gabgun",
+      "discordUsername": "wheueu",
+      "country": "eheuehe",
+      "avatarUrl": "eheheheuh",
+      "stageRank": "Mid Stable"
+    }
+  ],
   "pinnedMessage": {
     "guildId": "1479910330669990025",
-    "channelId": "1479912024434806948",
-    "messageId": "1493162289904357406"
+    "channelId": "1479912023239164016",
+    "messageId": "1493166658125041784"
   }
 }

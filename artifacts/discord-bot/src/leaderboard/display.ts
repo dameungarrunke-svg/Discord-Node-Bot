@@ -16,6 +16,16 @@ import {
 
 const MAX_CARDS = 10;
 
+function isValidUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function buildPlayerEmbed(player: LeaderboardPlayer): EmbedBuilder {
   const description = [
     `| ${player.robloxUsername} |`,
@@ -24,11 +34,16 @@ function buildPlayerEmbed(player: LeaderboardPlayer): EmbedBuilder {
     `Stage : ${player.stageRank}`,
   ].join("\n");
 
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(0x2b2d31)
     .setTitle(`${player.position} - ${player.displayName}`)
-    .setDescription(description)
-    .setThumbnail(player.avatarUrl || null);
+    .setDescription(description);
+
+  if (isValidUrl(player.avatarUrl)) {
+    embed.setThumbnail(player.avatarUrl);
+  }
+
+  return embed;
 }
 
 export function buildPermanentPayload(): {
@@ -117,22 +132,29 @@ export async function executeSetupLeaderboard(
     }
   }
 
-  const payload = buildPermanentPayload();
-  const msg = await channel.send({
-    content: payload.content,
-    embeds: payload.embeds,
-  });
+  try {
+    const payload = buildPermanentPayload();
+    const msg = await channel.send({
+      content: payload.content,
+      embeds: payload.embeds,
+    });
 
-  await msg.pin().catch(() => {});
+    await msg.pin().catch(() => {});
 
-  const pinned: PinnedMessage = {
-    guildId: interaction.guildId!,
-    channelId: channel.id,
-    messageId: msg.id,
-  };
-  setPinnedMessage(pinned);
+    const pinned: PinnedMessage = {
+      guildId: interaction.guildId!,
+      channelId: channel.id,
+      messageId: msg.id,
+    };
+    setPinnedMessage(pinned);
 
-  await interaction.editReply({
-    content: `✅ Leaderboard deployed: ${msg.url}\n\nIt will auto-update whenever you add, edit, or remove players.`,
-  });
+    await interaction.editReply({
+      content: `✅ Leaderboard deployed: ${msg.url}\n\nIt will auto-update whenever you add, edit, or remove players.`,
+    });
+  } catch (err) {
+    console.error("Error setting up leaderboard:", err);
+    await interaction.editReply({
+      content: "❌ Something went wrong while setting up the leaderboard. Check that any stored avatar URLs are valid image links.",
+    }).catch(() => {});
+  }
 }

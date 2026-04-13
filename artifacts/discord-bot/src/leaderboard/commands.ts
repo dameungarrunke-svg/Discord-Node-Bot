@@ -18,6 +18,16 @@ import {
 } from "./store.js";
 import { refreshPinnedLeaderboard } from "./display.js";
 
+function isValidAvatarUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const ADMIN_PERMS = PermissionFlagsBits.ManageGuild;
 
 function stageRankChoices() {
@@ -136,23 +146,24 @@ export async function executeAddPlayer(
   addPlayer(player);
   await refreshPinnedLeaderboard(client);
 
-  await interaction.editReply({
-    embeds: [
-      new EmbedBuilder()
-        .setColor(STAGE_RANK_COLORS[stageRank])
-        .setTitle("✅  Player Added  —  Leaderboard Updated")
-        .setThumbnail(player.avatarUrl)
-        .addFields(
-          { name: "Position", value: `#${player.position}`, inline: true },
-          { name: "Display Name", value: player.displayName, inline: true },
-          { name: "Stage Rank", value: `${STAGE_RANK_EMOJI[stageRank]}  ${stageRank}`, inline: true },
-          { name: "Roblox", value: player.robloxUsername, inline: true },
-          { name: "Discord", value: player.discordUsername, inline: true },
-          { name: "Country", value: player.country, inline: true }
-        )
-        .setFooter({ text: "The Strongest Battlegrounds  •  Leaderboard" }),
-    ],
-  });
+  const addEmbed = new EmbedBuilder()
+    .setColor(STAGE_RANK_COLORS[stageRank])
+    .setTitle("✅  Player Added  —  Leaderboard Updated")
+    .addFields(
+      { name: "Position", value: `#${player.position}`, inline: true },
+      { name: "Display Name", value: player.displayName, inline: true },
+      { name: "Stage Rank", value: `${STAGE_RANK_EMOJI[stageRank]}  ${stageRank}`, inline: true },
+      { name: "Roblox", value: player.robloxUsername, inline: true },
+      { name: "Discord", value: player.discordUsername, inline: true },
+      { name: "Country", value: player.country, inline: true }
+    )
+    .setFooter({ text: "The Strongest Battlegrounds  •  Leaderboard" });
+
+  if (isValidAvatarUrl(player.avatarUrl)) {
+    addEmbed.setThumbnail(player.avatarUrl);
+  }
+
+  await interaction.editReply({ embeds: [addEmbed] });
 }
 
 export async function executeRemovePlayer(
