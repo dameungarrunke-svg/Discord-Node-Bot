@@ -13,6 +13,16 @@ import {
 import { data as setupPanelData, execute as setupPanelExecute } from "./commands/setupChallengePanel.js";
 import { handleCreateTicket } from "./tickets/ticketFlow.js";
 import { handleCloseTicket, handleDeleteTicket } from "./tickets/ticketControls.js";
+import {
+  leaderboardData,
+  addPlayerData,
+  removePlayerData,
+  editPlayerData,
+  executeAddPlayer,
+  executeRemovePlayer,
+  executeEditPlayer,
+} from "./leaderboard/commands.js";
+import { executeLeaderboard, handleLeaderboardButton } from "./leaderboard/display.js";
 
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
@@ -29,7 +39,13 @@ const client = new Client({
   ],
 });
 
-const commands = [setupPanelData.toJSON()];
+const commands = [
+  setupPanelData.toJSON(),
+  leaderboardData.toJSON(),
+  addPlayerData.toJSON(),
+  removePlayerData.toJSON(),
+  editPlayerData.toJSON(),
+];
 
 async function registerCommandsForGuild(guildId: string): Promise<void> {
   const rest = new REST().setToken(token!);
@@ -68,8 +84,13 @@ client.on(Events.MessageCreate, async (message: Message) => {
       "**Available commands:**\n" +
       "`!ping` — Check if the bot is alive\n" +
       "`!hello` — Say hello\n" +
-      "`!help` — Show this help message\n" +
-      "`/setupchallengepanel` — *(Admin)* Deploy the TSB challenge ticket panel"
+      "`!help` — Show this help message\n\n" +
+      "**Slash Commands:**\n" +
+      "`/setupchallengepanel` — *(Admin)* Deploy the TSB challenge ticket panel\n" +
+      "`/leaderboard` — View the TSB ranked leaderboard\n" +
+      "`/addleaderboardplayer` — *(Admin)* Add a player to the leaderboard\n" +
+      "`/removeleaderboardplayer` — *(Admin)* Remove a player from the leaderboard\n" +
+      "`/editleaderboardplayer` — *(Admin)* Edit a leaderboard player"
     );
   }
 });
@@ -77,9 +98,19 @@ client.on(Events.MessageCreate, async (message: Message) => {
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isChatInputCommand()) {
     const cmd = interaction as ChatInputCommandInteraction;
-    if (cmd.commandName === "setupchallengepanel") {
-      await setupPanelExecute(cmd).catch((err) => {
-        console.error("Error in /setupchallengepanel:", err);
+
+    const handlers: Record<string, (i: ChatInputCommandInteraction) => Promise<void>> = {
+      setupchallengepanel: setupPanelExecute,
+      leaderboard: executeLeaderboard,
+      addleaderboardplayer: executeAddPlayer,
+      removeleaderboardplayer: executeRemovePlayer,
+      editleaderboardplayer: executeEditPlayer,
+    };
+
+    const handler = handlers[cmd.commandName];
+    if (handler) {
+      await handler(cmd).catch((err) => {
+        console.error(`Error in /${cmd.commandName}:`, err);
       });
     }
     return;
@@ -87,6 +118,14 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
   if (interaction.isButton()) {
     const btn = interaction as ButtonInteraction;
+
+    if (btn.customId.startsWith("lb_goto_")) {
+      await handleLeaderboardButton(btn).catch((err) => {
+        console.error("Error handling leaderboard pagination:", err);
+      });
+      return;
+    }
+
     switch (btn.customId) {
       case "create_challenge_ticket":
         await handleCreateTicket(btn).catch((err) => {
@@ -102,8 +141,6 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         await handleDeleteTicket(btn).catch((err) => {
           console.error("Error deleting ticket:", err);
         });
-        break;
-      default:
         break;
     }
     return;
