@@ -3,6 +3,7 @@ import {
   EmbedBuilder,
   PermissionFlagsBits,
   TextChannel,
+  MessageFlags,
 } from "discord.js";
 import { removeActiveTicketByChannelId } from "./ticketManager.js";
 
@@ -20,7 +21,7 @@ export async function handleCloseTicket(interaction: ButtonInteraction): Promise
 
   if (!isOwner && !hasStaffPerms) {
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       content: "❌ Only the ticket owner or staff can close this ticket.",
     });
     return;
@@ -74,7 +75,7 @@ export async function handleDeleteTicket(interaction: ButtonInteraction): Promis
 
   if (!isOwner && !hasStaffPerms) {
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       content: "❌ Only the ticket owner or staff can delete this ticket.",
     });
     return;

@@ -6,6 +6,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  MessageFlags,
 } from "discord.js";
 
 export const data = new SlashCommandBuilder()
@@ -14,7 +15,7 @@ export const data = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const embed = new EmbedBuilder()
     .setColor(0xc0392b)

@@ -4,6 +4,7 @@ import {
   Client,
   TextChannel,
   PermissionFlagsBits,
+  MessageFlags,
 } from "discord.js";
 import {
   getPlayers,
@@ -85,7 +86,7 @@ export async function executeSetupLeaderboard(
   interaction: ChatInputCommandInteraction,
   client: Client
 ): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const channel = interaction.channel as TextChannel | null;
   if (!channel) {

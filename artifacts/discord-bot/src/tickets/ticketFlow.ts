@@ -11,6 +11,7 @@ import {
   Collection,
   Role,
   Message,
+  MessageFlags,
 } from "discord.js";
 import { addActiveTicket, hasActiveTicket, isOnCooldown } from "./ticketManager.js";
 
@@ -56,7 +57,7 @@ export async function handleCreateTicket(interaction: ButtonInteraction): Promis
   if (cooldownMs > 0) {
     const seconds = Math.ceil(cooldownMs / 1000);
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       embeds: [
         new EmbedBuilder()
           .setColor(0xe74c3c)
@@ -71,7 +72,7 @@ export async function handleCreateTicket(interaction: ButtonInteraction): Promis
 
   if (hasActiveTicket(userId)) {
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       embeds: [
         new EmbedBuilder()
           .setColor(0xe74c3c)
@@ -84,7 +85,7 @@ export async function handleCreateTicket(interaction: ButtonInteraction): Promis
     return;
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const staffRoles = getStaffRoles(guild);
 
