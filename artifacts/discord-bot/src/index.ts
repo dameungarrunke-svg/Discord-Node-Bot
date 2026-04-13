@@ -59,9 +59,14 @@ async function registerCommandsForGuild(guildId: string): Promise<void> {
 
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
+  console.log(`Guilds in cache: ${readyClient.guilds.cache.size}`);
 
   for (const [guildId] of readyClient.guilds.cache) {
     await registerCommandsForGuild(guildId);
+  }
+
+  if (readyClient.guilds.cache.size === 0) {
+    console.warn("No guilds in cache — bot may not be in any server.");
   }
 
   // Keep the REST HTTP connection warm so interaction responses never time out

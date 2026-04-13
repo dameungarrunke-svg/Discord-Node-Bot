@@ -1,18 +1,54 @@
 {
   "players": [
     {
+      "position": 1,
+      "displayName": "LS_pspspsp999",
+      "robloxUsername": "briyanilover963",
+      "discordUsername": "pspspspsp999",
+      "country": "🇮🇳",
+      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-F94A78E726A230478B87921A5020351D-Png/150/150/AvatarHeadshot/Webp/noFilter",
+      "stageRank": "High Strong"
+    },
+    {
+      "position": 2,
+      "displayName": "LS_LEO",
+      "robloxUsername": "Callme_Leo2709",
+      "discordUsername": "dino_0080",
+      "country": "🇮🇳",
+      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-6041CBEF10353E276A84FA39B3C9DAC3-Png/150/150/AvatarHeadshot/Webp/noFilter",
+      "stageRank": "High Strong"
+    },
+    {
+      "position": 3,
+      "displayName": "LS_ArceusSIM",
+      "robloxUsername": "ArceusSIM",
+      "discordUsername": "arceussim",
+      "country": "🇮🇳",
+      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-278C30526608013D6F5CB426837DE088-Png/150/150/AvatarHeadshot/Webp/noFilter",
+      "stageRank": "High Strong"
+    },
+    {
+      "position": 6,
+      "displayName": "Ls_Shion",
+      "robloxUsername": "ronakoptopp",
+      "discordUsername": "sinu_han2",
+      "country": "🇮🇳",
+      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-BAF152EA68B16C7E771DB2F61AC62188-Png/150/150/AvatarHeadshot/Webp/noFilter",
+      "stageRank": "Mid Strong"
+    },
+    {
       "position": 10,
-      "displayName": "gando",
-      "robloxUsername": "gabgun",
-      "discordUsername": "wheueu",
-      "country": "eheuehe",
-      "avatarUrl": "eheheheuh",
-      "stageRank": "Mid Stable"
+      "displayName": "eon",
+      "robloxUsername": "fightoid",
+      "discordUsername": "eon",
+      "country": "🇮🇳",
+      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-F94A78E726A230478B87921A5020351D-Png/150/150/AvatarHeadshot/Webp/noFilter",
+      "stageRank": "Mid Strong"
     }
   ],
   "pinnedMessage": {
     "guildId": "1479910330669990025",
     "channelId": "1479912023239164016",
-    "messageId": "1493166658125041784"
+    "messageId": "1493170059852517459"
   }
 }

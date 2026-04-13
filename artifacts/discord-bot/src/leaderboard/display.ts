@@ -26,12 +26,15 @@ function isValidUrl(url: string | null | undefined): url is string {
   }
 }
 
+const GRADIENT_BAR = "░░▒▒▓▓████████████▓▓▒▒░░";
+
 function buildPlayerEmbed(player: LeaderboardPlayer): EmbedBuilder {
   const description = [
     `| ${player.robloxUsername} |`,
     `<<<| • ${player.discordUsername} • |>>>`,
     `Country : ${player.country}`,
     `Stage : ${player.stageRank}`,
+    `\n${GRADIENT_BAR}`,
   ].join("\n");
 
   const embed = new EmbedBuilder()
