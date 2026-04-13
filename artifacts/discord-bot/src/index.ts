@@ -4,7 +4,6 @@ import {
   Events,
   Message,
   Interaction,
-  REST,
   Routes,
   ChatInputCommandInteraction,
   ButtonInteraction,
@@ -48,10 +47,8 @@ const commands = [
 ];
 
 async function registerCommandsForGuild(guildId: string): Promise<void> {
-  const rest = new REST().setToken(token!);
-  const clientId = client.user!.id;
   try {
-    await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+    await client.rest.put(Routes.applicationGuildCommands(client.user!.id, guildId), {
       body: commands,
     });
     console.log(`Commands registered for guild: ${guildId}`);
@@ -62,9 +59,19 @@ async function registerCommandsForGuild(guildId: string): Promise<void> {
 
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
+
   for (const [guildId] of readyClient.guilds.cache) {
     await registerCommandsForGuild(guildId);
   }
+
+  // Keep the REST HTTP connection warm so interaction responses never time out
+  setInterval(async () => {
+    try {
+      await client.rest.get(Routes.user("@me"));
+    } catch {
+      // Ignore keep-alive errors
+    }
+  }, 8_000);
 });
 
 client.on(Events.GuildCreate, async (guild) => {
@@ -109,7 +116,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
     const handler = handlers[cmd.commandName];
     if (handler) {
-      await handler(cmd).catch((err) => {
+      handler(cmd).catch((err) => {
         console.error(`Error in /${cmd.commandName}:`, err);
       });
     }
@@ -121,17 +128,17 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
     switch (btn.customId) {
       case "create_challenge_ticket":
-        await handleCreateTicket(btn).catch((err) => {
+        handleCreateTicket(btn).catch((err) => {
           console.error("Error creating challenge ticket:", err);
         });
         break;
       case "close_ticket":
-        await handleCloseTicket(btn).catch((err) => {
+        handleCloseTicket(btn).catch((err) => {
           console.error("Error closing ticket:", err);
         });
         break;
       case "delete_ticket":
-        await handleDeleteTicket(btn).catch((err) => {
+        handleDeleteTicket(btn).catch((err) => {
           console.error("Error deleting ticket:", err);
         });
         break;
