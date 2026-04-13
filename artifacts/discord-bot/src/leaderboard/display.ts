@@ -5,6 +5,7 @@ import {
   TextChannel,
   PermissionFlagsBits,
   MessageFlags,
+  AttachmentBuilder,
 } from "discord.js";
 import {
   getPlayers,
@@ -13,6 +14,7 @@ import {
   setPinnedMessage,
   PinnedMessage,
 } from "./store.js";
+import { getShimmerGif } from "./shimmer.js";
 
 const MAX_CARDS = 10;
 
@@ -26,21 +28,19 @@ function isValidUrl(url: string | null | undefined): url is string {
   }
 }
 
-const GRADIENT_BAR = "░░▒▒▓▓████████████▓▓▒▒░░";
-
 function buildPlayerEmbed(player: LeaderboardPlayer): EmbedBuilder {
   const description = [
     `| ${player.robloxUsername} |`,
     `<<<| • ${player.discordUsername} • |>>>`,
     `Country : ${player.country}`,
     `Stage : ${player.stageRank}`,
-    `\n${GRADIENT_BAR}`,
   ].join("\n");
 
   const embed = new EmbedBuilder()
     .setColor(0x2b2d31)
     .setTitle(`${player.position} - ${player.displayName}`)
-    .setDescription(description);
+    .setDescription(description)
+    .setImage("attachment://shimmer.gif");
 
   if (isValidUrl(player.avatarUrl)) {
     embed.setThumbnail(player.avatarUrl);
@@ -49,10 +49,11 @@ function buildPlayerEmbed(player: LeaderboardPlayer): EmbedBuilder {
   return embed;
 }
 
-export function buildPermanentPayload(): {
+export async function buildPermanentPayload(): Promise<{
   content: string;
   embeds: EmbedBuilder[];
-} {
+  files: AttachmentBuilder[];
+}> {
   const allPlayers = getPlayers();
   const displayPlayers = allPlayers.slice(0, MAX_CARDS);
   const extra = allPlayers.length - displayPlayers.length;
@@ -69,9 +70,13 @@ export function buildPermanentPayload(): {
     content += "\n*No players have been added yet.*";
   }
 
+  const gifBuffer = await getShimmerGif();
+  const shimmerFile = new AttachmentBuilder(gifBuffer, { name: "shimmer.gif" });
+
   return {
     content,
     embeds: displayPlayers.map(buildPlayerEmbed),
+    files: [shimmerFile],
   };
 }
 
@@ -93,8 +98,13 @@ export async function refreshPinnedLeaderboard(client: Client): Promise<void> {
       .catch(() => null);
     if (!message) return;
 
-    const payload = buildPermanentPayload();
-    await message.edit({ content: payload.content, embeds: payload.embeds });
+    const payload = await buildPermanentPayload();
+    await message.edit({
+      content: payload.content,
+      embeds: payload.embeds,
+      files: payload.files,
+      attachments: [],
+    });
   } catch (err) {
     console.error("Failed to refresh pinned leaderboard:", err);
   }
@@ -136,10 +146,11 @@ export async function executeSetupLeaderboard(
   }
 
   try {
-    const payload = buildPermanentPayload();
+    const payload = await buildPermanentPayload();
     const msg = await channel.send({
       content: payload.content,
       embeds: payload.embeds,
+      files: payload.files,
     });
 
     await msg.pin().catch(() => {});
@@ -157,7 +168,7 @@ export async function executeSetupLeaderboard(
   } catch (err) {
     console.error("Error setting up leaderboard:", err);
     await interaction.editReply({
-      content: "❌ Something went wrong while setting up the leaderboard. Check that any stored avatar URLs are valid image links.",
+      content: "❌ Something went wrong while setting up the leaderboard.",
     }).catch(() => {});
   }
 }
