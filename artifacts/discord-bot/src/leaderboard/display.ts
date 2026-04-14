@@ -5,7 +5,11 @@ import {
   TextChannel,
   PermissionFlagsBits,
   MessageFlags,
+  AttachmentBuilder,
 } from "discord.js";
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 import {
   getPlayers,
   LeaderboardPlayer,
@@ -13,6 +17,9 @@ import {
   setPinnedMessage,
   PinnedMessage,
 } from "./store.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SHIMMER_GIF = readFileSync(resolve(__dirname, "shimmer.gif"));
 
 const MAX_CARDS = 10;
 
@@ -37,7 +44,8 @@ function buildPlayerEmbed(player: LeaderboardPlayer): EmbedBuilder {
   const embed = new EmbedBuilder()
     .setColor(0x2b2d31)
     .setTitle(`${player.position} - ${player.displayName}`)
-    .setDescription(description);
+    .setDescription(description)
+    .setImage("attachment://shimmer.gif");
 
   if (isValidUrl(player.avatarUrl)) {
     embed.setThumbnail(player.avatarUrl);
@@ -46,9 +54,14 @@ function buildPlayerEmbed(player: LeaderboardPlayer): EmbedBuilder {
   return embed;
 }
 
+function makeShimmerAttachment(): AttachmentBuilder {
+  return new AttachmentBuilder(SHIMMER_GIF, { name: "shimmer.gif" });
+}
+
 export function buildPermanentPayload(): {
   content: string;
   embeds: EmbedBuilder[];
+  files: AttachmentBuilder[];
 } {
   const allPlayers = getPlayers();
   const displayPlayers = allPlayers.slice(0, MAX_CARDS);
@@ -69,6 +82,7 @@ export function buildPermanentPayload(): {
   return {
     content,
     embeds: displayPlayers.map(buildPlayerEmbed),
+    files: [makeShimmerAttachment()],
   };
 }
 
@@ -91,7 +105,12 @@ export async function refreshPinnedLeaderboard(client: Client): Promise<void> {
     if (!message) return;
 
     const payload = buildPermanentPayload();
-    await message.edit({ content: payload.content, embeds: payload.embeds });
+    await message.edit({
+      content: payload.content,
+      embeds: payload.embeds,
+      files: payload.files,
+      attachments: [],
+    });
   } catch (err) {
     console.error("Failed to refresh pinned leaderboard:", err);
   }
@@ -137,6 +156,7 @@ export async function executeSetupLeaderboard(
     const msg = await channel.send({
       content: payload.content,
       embeds: payload.embeds,
+      files: payload.files,
     });
 
     await msg.pin().catch(() => {});
