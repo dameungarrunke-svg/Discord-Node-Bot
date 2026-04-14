@@ -10,6 +10,19 @@
       "endedById": "1368619589692293203",
       "timestamp": "2026-04-14T12:04:29.085Z",
       "guildId": "1479910330669990025"
+    },
+    {
+      "id": "1776168726680",
+      "host": "gs",
+      "durationCompleted": "ge",
+      "mvp": "ge",
+      "notes": "ge",
+      "endedBy": "galaxyg7a",
+      "endedById": "1368619589692293203",
+      "timestamp": "2026-04-14T12:12:06.680Z",
+      "guildId": "1479910330669990025",
+      "sessionNumber": 2
     }
-  ]
+  ],
+  "counter": 2
 }

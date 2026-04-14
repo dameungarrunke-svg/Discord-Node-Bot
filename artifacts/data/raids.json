@@ -11,6 +11,20 @@
       "endedById": "1368619589692293203",
       "timestamp": "2026-04-14T12:02:17.678Z",
       "guildId": "1479910330669990025"
+    },
+    {
+      "id": "1776168682261",
+      "clanName": "h",
+      "opponentClan": "Lost",
+      "result": "victory",
+      "topPerformers": "me",
+      "notes": "bwoej",
+      "endedBy": "galaxyg7a",
+      "endedById": "1368619589692293203",
+      "timestamp": "2026-04-14T12:11:22.261Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 2
     }
-  ]
+  ],
+  "counter": 2
 }
