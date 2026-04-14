@@ -72,15 +72,6 @@ function rankMedal(rank: number): string {
   return "•";
 }
 
-function stageTier(stage: string): string {
-  if (stage.includes("High Strong")) return "S-TIER";
-  if (stage.includes("High Stable")) return "A-TIER";
-  if (stage.includes("High Weak")) return "B-TIER";
-  if (stage.includes("Mid Strong")) return "C-TIER";
-  if (stage.includes("Mid Stable")) return "D-TIER";
-  return "ENTRY";
-}
-
 function buildHeaderEmbed(totalPlayers: number): EmbedBuilder {
   const now = Math.floor(Date.now() / 1000);
   const visible = Math.min(totalPlayers, MAX_PLAYER_CARDS);
@@ -91,7 +82,7 @@ function buildHeaderEmbed(totalPlayers: number): EmbedBuilder {
     .setAuthor({ name: "LAST STAND  ·  TSB KILL LEADERBOARD" })
     .setTitle("Top-Kills")
     .setDescription(
-      `Clean competitive TSB player cards.\n` +
+      `Premium TSB player cards.\n` +
       `Showing **${visible}** player${visible === 1 ? "" : "s"}${hidden > 0 ? ` · **${hidden}** more saved` : ""}.`
     )
     .setImage("attachment://fixedbulletlines.gif")
@@ -115,18 +106,14 @@ function buildPlayerEmbed(player: KillPlayer): EmbedBuilder {
     .setAuthor({ name: `${rankMedal(player.rank)}  Rank #${paddedRank(player.rank)}  ·  ${rankBadge(player.rank)}` })
     .setTitle(player.displayName)
     .setDescription(
-      `**{user_LS_${player.robloxUsername}}**\n` +
-      `\`${player.discordUsername}\`\n\n` +
+      `**Roblox:** \`${player.robloxUsername}\`\n` +
+      `**Discord:** \`${player.discordUsername}\`\n\n` +
       `${SOFT_BAR}\n` +
+      `**Rank:** #${player.rank}\n` +
       `**Role:** ${player.rolePosition}\n` +
       `**Kills:** ${kills}\n` +
       `**Stage:** ${player.stage}\n` +
       `${SOFT_BAR}`
-    )
-    .addFields(
-      { name: "Rank", value: `#${player.rank}`, inline: true },
-      { name: "Kills", value: kills, inline: true },
-      { name: "Class", value: stageTier(player.stage), inline: true }
     )
     .setFooter({ text: "Last Stand  •  TSB Player Card" });
 
