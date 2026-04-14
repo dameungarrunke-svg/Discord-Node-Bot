@@ -7,7 +7,6 @@ import {
   Routes,
   ChatInputCommandInteraction,
   ButtonInteraction,
-  MessageFlags,
   REST,
 } from "discord.js";
 
@@ -118,24 +117,6 @@ async function registerCommandsForGuild(guildId: string): Promise<void> {
   }
 }
 
-// Acknowledge an interaction via the pre-warmed REST client.
-// Using discord.js REST (undici) avoids TLS cold-start on Node's native fetch.
-async function ackDeferred(id: string, token: string, ephemeral = true): Promise<boolean> {
-  const t0 = Date.now();
-  try {
-    await rest.post(`/interactions/${id}/${token}/callback` as `/${string}`, {
-      body: { type: 5, data: { flags: ephemeral ? 64 : 0 } },
-      auth: false, // interaction callbacks don't need the bot token
-    });
-    console.log(`[ACK] ok — ${Date.now() - t0}ms`);
-    return true;
-  } catch (err: unknown) {
-    const status = (err as { status?: number }).status;
-    console.error(`[ACK] FAILED (${status ?? "?"}) — ${Date.now() - t0}ms`, err);
-    return false;
-  }
-}
-
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`[READY] Logged in as ${readyClient.user.tag}`);
   console.log(`[READY] Guilds in cache: ${readyClient.guilds.cache.size}`);
@@ -222,17 +203,14 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     const t0 = Date.now();
     console.log(`[INTERACTION] /${cmd.commandName} received`);
 
-    const ok = await ackDeferred(cmd.id, cmd.token);
-    if (!ok) {
-      console.error(`[INTERACTION] /${cmd.commandName} — ack failed, cannot respond`);
+    try {
+      await cmd.deferReply({ ephemeral: true });
+    } catch (err) {
+      console.error(`[INTERACTION] /${cmd.commandName} — defer failed, cannot respond`, err);
       return;
     }
 
-    // Tell discord.js this interaction is already deferred so editReply works
-    (cmd as unknown as Record<string, unknown>).deferred = true;
-    (cmd as unknown as Record<string, unknown>).ephemeral = true;
-
-    console.log(`[INTERACTION] /${cmd.commandName} — ack+setup ${Date.now() - t0}ms, running handler`);
+    console.log(`[INTERACTION] /${cmd.commandName} — deferred in ${Date.now() - t0}ms, running handler`);
 
     const handler = slashHandlers[cmd.commandName];
     if (handler) {
@@ -256,16 +234,14 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     const t0 = Date.now();
     console.log(`[INTERACTION] button:${btn.customId} received`);
 
-    const ok = await ackDeferred(btn.id, btn.token);
-    if (!ok) {
-      console.error(`[INTERACTION] button:${btn.customId} — ack failed, cannot respond`);
+    try {
+      await btn.deferReply({ ephemeral: true });
+    } catch (err) {
+      console.error(`[INTERACTION] button:${btn.customId} — defer failed, cannot respond`, err);
       return;
     }
 
-    (btn as unknown as Record<string, unknown>).deferred = true;
-    (btn as unknown as Record<string, unknown>).ephemeral = true;
-
-    console.log(`[INTERACTION] button:${btn.customId} — ack+setup ${Date.now() - t0}ms, running handler`);
+    console.log(`[INTERACTION] button:${btn.customId} — deferred in ${Date.now() - t0}ms, running handler`);
 
     const handler = buttonHandlers[btn.customId];
     if (handler) {

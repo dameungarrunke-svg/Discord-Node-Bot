@@ -15,6 +15,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
+- **Discord bot**: discord.js 14, run from `artifacts/discord-bot`
 
 ## Key Commands
 
@@ -23,5 +24,11 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
+- `pnpm --filter @workspace/discord-bot run dev` — run Discord bot locally
+
+## Discord Bot Notes
+
+- Requires `DISCORD_BOT_TOKEN` in Replit Secrets.
+- Slash commands are acknowledged immediately with Discord.js `deferReply({ ephemeral: true })`, then command handlers update the deferred reply with `editReply`.
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
