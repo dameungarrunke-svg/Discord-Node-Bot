@@ -28,6 +28,15 @@
       "stageRank": "High Strong"
     },
     {
+      "position": 4,
+      "displayName": "14all",
+      "robloxUsername": "shableina",
+      "discordUsername": "lowkeygreenleaf",
+      "country": "🇧🇩",
+      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-C4A65B0B3DB2C5D259D8802C23748D49-Png/48/48/AvatarHeadshot/Webp/noFilter",
+      "stageRank": "High Strong"
+    },
+    {
       "position": 6,
       "displayName": "Ls_Shion",
       "robloxUsername": "ronakoptopp",
@@ -48,7 +57,7 @@
   ],
   "pinnedMessage": {
     "guildId": "1479910330669990025",
-    "channelId": "1479912023239164016",
-    "messageId": "1493465061723869214"
+    "channelId": "1479912035952230514",
+    "messageId": "1493485127580516353"
   }
 }
