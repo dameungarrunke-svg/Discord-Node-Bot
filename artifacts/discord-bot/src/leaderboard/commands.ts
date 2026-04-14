@@ -144,7 +144,9 @@ export async function executeAddPlayer(
   };
 
   addPlayer(player);
-  await refreshPinnedLeaderboard(client);
+  try { await refreshPinnedLeaderboard(client); } catch (err) {
+    console.error("refreshPinnedLeaderboard failed (addPlayer):", err);
+  }
 
   const addEmbed = new EmbedBuilder()
     .setColor(STAGE_RANK_COLORS[stageRank])
@@ -187,7 +189,9 @@ export async function executeRemovePlayer(
     return;
   }
 
-  await refreshPinnedLeaderboard(client);
+  try { await refreshPinnedLeaderboard(client); } catch (err) {
+    console.error("refreshPinnedLeaderboard failed (removePlayer):", err);
+  }
 
   await interaction.editReply({
     embeds: [
@@ -245,7 +249,9 @@ export async function executeEditPlayer(
   }
 
   editPlayer(position, updates as never);
-  await refreshPinnedLeaderboard(client);
+  try { await refreshPinnedLeaderboard(client); } catch (err) {
+    console.error("refreshPinnedLeaderboard failed (editPlayer):", err);
+  }
 
   await interaction.editReply({
     embeds: [

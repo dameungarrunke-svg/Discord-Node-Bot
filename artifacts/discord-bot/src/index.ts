@@ -121,9 +121,21 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
     const handler = handlers[cmd.commandName];
     if (handler) {
-      handler(cmd).catch((err) => {
+      handler(cmd).catch(async (err) => {
         console.error(`Error in /${cmd.commandName}:`, err);
+        try {
+          if (cmd.deferred || cmd.replied) {
+            await cmd.editReply({ content: "❌ Something went wrong. Please try again." });
+          } else {
+            await cmd.reply({ content: "❌ Something went wrong. Please try again.", flags: MessageFlags.Ephemeral });
+          }
+        } catch {
+          // Interaction already expired
+        }
       });
+    } else {
+      console.warn(`No handler for command: ${cmd.commandName}`);
+      cmd.reply({ content: "❌ Unknown command.", flags: MessageFlags.Ephemeral }).catch(() => {});
     }
     return;
   }

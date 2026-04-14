@@ -44,6 +44,11 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       .setStyle(ButtonStyle.Danger)
   );
 
-  await interaction.channel?.send({ embeds: [embed], components: [row] });
+  const channel = interaction.channel;
+  if (!channel || !("send" in channel)) {
+    await interaction.editReply({ content: "❌ Cannot send messages in this channel." });
+    return;
+  }
+  await channel.send({ embeds: [embed], components: [row] });
   await interaction.editReply({ content: "✅ Challenge panel deployed successfully." });
 }
