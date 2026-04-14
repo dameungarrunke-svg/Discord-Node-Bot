@@ -16,28 +16,41 @@ export interface TrainingLog {
   endedById: string;
   timestamp: string;
   guildId: string;
+  sessionNumber: number;
 }
 
 interface TrainingData {
   logs: TrainingLog[];
+  counter: number;
 }
 
 function load(): TrainingData {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
   if (!existsSync(FILE)) {
-    writeFileSync(FILE, JSON.stringify({ logs: [] }, null, 2));
-    return { logs: [] };
+    writeFileSync(FILE, JSON.stringify({ logs: [], counter: 0 }, null, 2));
+    return { logs: [], counter: 0 };
   }
   try {
-    return JSON.parse(readFileSync(FILE, "utf-8")) as TrainingData;
+    const parsed = JSON.parse(readFileSync(FILE, "utf-8")) as Partial<TrainingData>;
+    return {
+      logs: parsed.logs ?? [],
+      counter: parsed.counter ?? 0,
+    };
   } catch {
-    return { logs: [] };
+    return { logs: [], counter: 0 };
   }
 }
 
 function save(data: TrainingData): void {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
   writeFileSync(FILE, JSON.stringify(data, null, 2));
+}
+
+export function nextTrainingNumber(): number {
+  const data = load();
+  data.counter += 1;
+  save(data);
+  return data.counter;
 }
 
 export function saveTrainingLog(log: TrainingLog): void {

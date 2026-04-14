@@ -6,15 +6,34 @@ import {
   MessageFlags,
   TextChannel,
 } from "discord.js";
-import { saveRaidResult } from "./store.js";
+import { saveRaidResult, nextRaidNumber } from "./store.js";
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
 
-function ts(): number {
-  return Math.floor(Date.now() / 1000);
+function shortDate(): string {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
-function findChannel(interaction: ChatInputCommandInteraction, ...keywords: string[]): TextChannel | null {
+function formatPerformers(raw: string): string {
+  const list = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (list.length === 0) return raw;
+  return list
+    .map((name, i) => `${String(i + 1).padStart(2, "0")}  ${name}`)
+    .join("\n");
+}
+
+function findChannel(
+  interaction: ChatInputCommandInteraction,
+  ...keywords: string[]
+): TextChannel | null {
   const guild = interaction.guild;
   if (!guild) return null;
   for (const kw of keywords) {
@@ -26,33 +45,37 @@ function findChannel(interaction: ChatInputCommandInteraction, ...keywords: stri
   return null;
 }
 
+// ─── /startraid ──────────────────────────────────────────────────────────────
+
 export const startRaidData = new SlashCommandBuilder()
   .setName("startraid")
   .setDescription("Deploy a raid alert to the server.")
   .setDefaultMemberPermissions(ADMIN)
   .addStringOption((o) =>
-    o.setName("clan_name").setDescription("Your clan name").setRequired(true)
+    o.setName("clan_name").setDescription("Your clan name (LS)").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("target").setDescription("Target clan or server").setRequired(true)
+    o.setName("target").setDescription("Target clan name").setRequired(true)
   )
   .addStringOption((o) =>
     o.setName("game_link").setDescription("Roblox game link").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("people_count").setDescription("Members needed").setRequired(true)
+    o.setName("people_count").setDescription("Members needed (e.g. 15)").setRequired(true)
   )
   .addRoleOption((o) =>
     o.setName("ping_role").setDescription("Role to ping").setRequired(false)
   )
   .addStringOption((o) =>
-    o.setName("allies").setDescription("Allied clans joining the raid (optional)").setRequired(false)
+    o.setName("allies").setDescription("Allied clans joining (optional)").setRequired(false)
   )
   .addStringOption((o) =>
-    o.setName("notes").setDescription("Mission briefing / notes (optional)").setRequired(false)
+    o.setName("notes").setDescription("Mission briefing (optional)").setRequired(false)
   );
 
-export async function executeStartRaid(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function executeStartRaid(
+  interaction: ChatInputCommandInteraction
+): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const clanName    = interaction.options.getString("clan_name", true);
@@ -63,18 +86,18 @@ export async function executeStartRaid(interaction: ChatInputCommandInteraction)
   const allies      = interaction.options.getString("allies") || "None";
   const notes       = interaction.options.getString("notes");
 
-  const now = ts();
+  const raidNumber = nextRaidNumber();
 
   const fields: { name: string; value: string; inline?: boolean }[] = [
     {
-      name: "⚔  GAME LINK",
-      value: `**[▶  Click to Enter the Battlefield](${gameLink})**`,
+      name: "◈  GAME LINK",
+      value: `[▸ Enter the Battlefield](${gameLink})`,
     },
   ];
 
   if (notes) {
     fields.push({
-      name: "📋  MISSION BRIEFING",
+      name: "◈  MISSION BRIEFING",
       value: `*${notes}*`,
     });
   }
@@ -82,21 +105,18 @@ export async function executeStartRaid(interaction: ChatInputCommandInteraction)
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
     .setAuthor({
-      name: "◈  RAID STARTING  ·  LAST STAND (LS)",
+      name: "◇  RAID STARTING",
       iconURL: interaction.guild?.iconURL() ?? undefined,
     })
-    .setTitle(clanName)
+    .setTitle(`${clanName}  ——  ${target}`)
     .setDescription(
-      `◆ ─────────────────────────────── ◆\n` +
-      `> **Target** · ${target}\n` +
-      `> **Members Needed** · ${peopleCount}\n` +
-      `> **Allied Clans** · ${allies}\n` +
-      `> **Date** · <t:${now}:F>\n` +
-      `◆ ─────────────────────────────── ◆`
+      `> Members Needed · **${peopleCount}**\n` +
+      `> Allied Clans · ${allies}\n` +
+      `> Date · ${shortDate()}`
     )
     .addFields(fields)
     .setFooter({
-      text: `Raid called by ${interaction.user.username}`,
+      text: `Raid #${raidNumber}  ·  Called by ${interaction.user.username}`,
       iconURL: interaction.user.displayAvatarURL(),
     })
     .setTimestamp();
@@ -107,31 +127,53 @@ export async function executeStartRaid(interaction: ChatInputCommandInteraction)
     return;
   }
 
-  await channel.send({ content: pingRole ? `${pingRole}` : undefined, embeds: [embed] });
-  await interaction.editReply({ content: "✅ Raid alert deployed." });
+  await channel.send({
+    content: pingRole ? `${pingRole}` : undefined,
+    embeds: [embed],
+  });
+  await interaction.editReply({ content: `✅ Raid #${raidNumber} deployed.` });
 }
+
+// ─── /endraid ────────────────────────────────────────────────────────────────
 
 export const endRaidData = new SlashCommandBuilder()
   .setName("endraid")
   .setDescription("Close an active raid and post the match results.")
   .setDefaultMemberPermissions(ADMIN)
   .addStringOption((o) =>
-    o.setName("clan_name").setDescription("Your clan name").setRequired(true)
+    o.setName("clan_name").setDescription("Your clan name (LS)").setRequired(true)
   )
   .addStringOption((o) =>
     o.setName("opponent_clan").setDescription("Opponent clan name").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("result").setDescription("Raid outcome (e.g. Victory, Defeat, Draw)").setRequired(true)
+    o
+      .setName("result")
+      .setDescription("Raid outcome")
+      .setRequired(true)
+      .addChoices(
+        { name: "Victory — We won",          value: "victory" },
+        { name: "Defeat — We lost",           value: "defeat"  },
+        { name: "Draw — It was even",         value: "draw"    },
+        { name: "Contested — Unclear result", value: "contested" }
+      )
   )
   .addStringOption((o) =>
-    o.setName("top_performers").setDescription("Top performers in the raid").setRequired(true)
+    o
+      .setName("top_performers")
+      .setDescription("Top performers (comma-separated: user1, user2, user3)")
+      .setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("notes").setDescription("Post-raid notes (optional)").setRequired(false)
+    o
+      .setName("notes")
+      .setDescription("Commander's notes — format: username — note (optional)")
+      .setRequired(false)
   );
 
-export async function executeEndRaid(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function executeEndRaid(
+  interaction: ChatInputCommandInteraction
+): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const clanName      = interaction.options.getString("clan_name", true);
@@ -140,47 +182,51 @@ export async function executeEndRaid(interaction: ChatInputCommandInteraction): 
   const topPerformers = interaction.options.getString("top_performers", true);
   const notes         = interaction.options.getString("notes");
 
-  const now = ts();
+  const raidNumber = nextRaidNumber();
 
-  const lower = result.toLowerCase();
-  const color =
-    lower.includes("win") || lower.includes("victory") || lower.includes("won")
-      ? 0x16a34a
-      : lower.includes("loss") || lower.includes("defeat") || lower.includes("lost")
-      ? 0xb91c1c
-      : 0x5865f2;
+  type Outcome = {
+    authorLabel: string;
+    outcomeDisplay: string;
+    color: number;
+  };
+
+  const outcomeMap: Record<string, Outcome> = {
+    victory:   { authorLabel: "◇  VICTORY",   outcomeDisplay: "🟢 WIN",           color: 0x16a34a },
+    defeat:    { authorLabel: "◇  DEFEAT",     outcomeDisplay: "🔴 LOSS",           color: 0xb91c1c },
+    draw:      { authorLabel: "◇  DRAW",       outcomeDisplay: "🟡 DRAW",           color: 0xd97706 },
+    contested: { authorLabel: "◇  CONTESTED",  outcomeDisplay: "🟣 CONTESTED",      color: 0x7c3aed },
+  };
+
+  const outcome = outcomeMap[result] ?? outcomeMap.draw;
 
   const fields: { name: string; value: string; inline?: boolean }[] = [
     {
-      name: "⭐  TOP PERFORMERS",
-      value: topPerformers,
+      name: "TOP PERFORMERS",
+      value: formatPerformers(topPerformers),
     },
   ];
 
   if (notes) {
     fields.push({
-      name: "📋  POST-RAID NOTES",
+      name: "COMMANDER'S NOTES",
       value: `*${notes}*`,
     });
   }
 
   const embed = new EmbedBuilder()
-    .setColor(color)
+    .setColor(outcome.color)
     .setAuthor({
-      name: "◈  RAID ENDED  ·  LAST STAND (LS)",
+      name: outcome.authorLabel,
       iconURL: interaction.guild?.iconURL() ?? undefined,
     })
-    .setTitle(clanName)
+    .setTitle(`${clanName}  ——  ${opponentClan}`)
     .setDescription(
-      `◆ ─────────────────────────────── ◆\n` +
-      `> **Opponent** · ${opponentClan}\n` +
-      `> **Result** · **${result}**\n` +
-      `> **Date** · <t:${now}:F>\n` +
-      `◆ ─────────────────────────────── ◆`
+      `> Outcome · ${outcome.outcomeDisplay}\n` +
+      `> Date · ${shortDate()}`
     )
     .addFields(fields)
     .setFooter({
-      text: `Raid ended by ${interaction.user.username}`,
+      text: `Raid #${raidNumber}  ·  Logged by ${interaction.user.username}`,
       iconURL: interaction.user.displayAvatarURL(),
     })
     .setTimestamp();
@@ -196,16 +242,25 @@ export async function executeEndRaid(interaction: ChatInputCommandInteraction): 
     endedById: interaction.user.id,
     timestamp: new Date().toISOString(),
     guildId: interaction.guildId ?? "",
+    raidNumber,
   });
 
-  const resultsChannel = findChannel(interaction, "ʀᴀɪᴅ-ʀᴇsᴜʟᴛs", "raid-results");
+  const resultsChannel = findChannel(
+    interaction,
+    "raid-results",
+    "ʀᴀɪᴅ-ʀᴇsᴜʟᴛs"
+  );
 
   if (resultsChannel) {
     await resultsChannel.send({ embeds: [embed] });
-    await interaction.editReply({ content: `✅ Results posted to ${resultsChannel}.` });
+    await interaction.editReply({
+      content: `✅ Raid #${raidNumber} results posted to ${resultsChannel}.`,
+    });
   } else {
     const ch = interaction.channel as TextChannel | null;
     if (ch) await ch.send({ embeds: [embed] });
-    await interaction.editReply({ content: "✅ Raid concluded and results logged." });
+    await interaction.editReply({
+      content: `✅ Raid #${raidNumber} concluded and results logged.`,
+    });
   }
 }
