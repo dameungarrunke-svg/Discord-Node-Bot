@@ -33,6 +33,19 @@ function isValidAvatarUrl(url: string | null | undefined): url is string {
   }
 }
 
+function parseKillCountInput(input: string): number | null {
+  const cleaned = input.trim().replace(/,/g, "");
+  const match = cleaned.match(/^(\d+(?:\.\d+)?)([kKmM]?)$/);
+  if (!match) return null;
+
+  const value = Number(match[1]);
+  if (!Number.isFinite(value) || value < 0) return null;
+
+  const suffix = match[2].toLowerCase();
+  const multiplier = suffix === "m" ? 1_000_000 : suffix === "k" ? 1_000 : 1;
+  return Math.round(value * multiplier);
+}
+
 function successEmbed(title: string, description: string, color = 0x22c55e): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(color)
@@ -61,8 +74,8 @@ export const addKillPlayerData = new SlashCommandBuilder()
   .addStringOption((o) =>
     o.setName("role_position").setDescription("Role or position, e.g. Head Mod, Recruiter, Clan Member").setRequired(true)
   )
-  .addIntegerOption((o) =>
-    o.setName("kill_count").setDescription("Player kill count").setRequired(true).setMinValue(0)
+  .addStringOption((o) =>
+    o.setName("kill_count").setDescription("Player kill count, e.g. 20K, 70k, 80000").setRequired(true)
   )
   .addStringOption((o) =>
     o.setName("stage").setDescription("Player stage").setRequired(true).addChoices(...stageChoices())
@@ -93,8 +106,8 @@ export const editKillPlayerData = new SlashCommandBuilder()
   .addStringOption((o) =>
     o.setName("role_position").setDescription("New role or position").setRequired(false)
   )
-  .addIntegerOption((o) =>
-    o.setName("kill_count").setDescription("New kill count").setRequired(false).setMinValue(0)
+  .addStringOption((o) =>
+    o.setName("kill_count").setDescription("New kill count, e.g. 20K, 70k, 80000").setRequired(false)
   )
   .addStringOption((o) =>
     o.setName("stage").setDescription("New stage").setRequired(false).addChoices(...stageChoices())
@@ -135,13 +148,19 @@ export async function executeAddKillPlayer(
     return;
   }
 
+  const killCount = parseKillCountInput(interaction.options.getString("kill_count", true));
+  if (killCount === null) {
+    await interaction.editReply({ content: "❌ Please enter kills like `20K`, `70k`, `80k`, or `80000`." });
+    return;
+  }
+
   const player: KillPlayer = {
     rank,
     displayName: interaction.options.getString("display_name", true),
     robloxUsername: interaction.options.getString("roblox_username", true),
     discordUsername: interaction.options.getString("discord_username", true),
     rolePosition: interaction.options.getString("role_position", true),
-    killCount: interaction.options.getInteger("kill_count", true),
+    killCount,
     stage: interaction.options.getString("stage", true) as KillStage,
     avatarUrl,
   };
@@ -176,7 +195,7 @@ export async function executeEditKillPlayer(
   const robloxUsername = interaction.options.getString("roblox_username");
   const discordUsername = interaction.options.getString("discord_username");
   const rolePosition = interaction.options.getString("role_position");
-  const killCount = interaction.options.getInteger("kill_count");
+  const killCountInput = interaction.options.getString("kill_count");
   const stage = interaction.options.getString("stage") as KillStage | null;
   const avatarUrl = interaction.options.getString("avatar_url");
 
@@ -199,7 +218,14 @@ export async function executeEditKillPlayer(
   if (robloxUsername) updates.robloxUsername = robloxUsername;
   if (discordUsername) updates.discordUsername = discordUsername;
   if (rolePosition) updates.rolePosition = rolePosition;
-  if (killCount !== null) updates.killCount = killCount;
+  if (killCountInput) {
+    const killCount = parseKillCountInput(killCountInput);
+    if (killCount === null) {
+      await interaction.editReply({ content: "❌ Please enter kills like `20K`, `70k`, `80k`, or `80000`." });
+      return;
+    }
+    updates.killCount = killCount;
+  }
   if (stage) updates.stage = stage;
   if (avatarUrl) {
     if (!isValidAvatarUrl(avatarUrl)) {
