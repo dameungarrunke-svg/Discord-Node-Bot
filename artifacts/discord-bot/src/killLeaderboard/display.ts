@@ -56,6 +56,7 @@ function buildPlayerEmbed(player: KillPlayer): EmbedBuilder {
       `│  ${player.robloxUsername}  │\n` +
       `≪≪  |  ${player.discordUsername}  |  ≫≫\n` +
       `Country : ${player.country}\n` +
+      `Role Position : ${player.rolePosition}\n` +
       `Kill Count : ${kills}\n` +
       `Stage : ${player.stage}`
     );

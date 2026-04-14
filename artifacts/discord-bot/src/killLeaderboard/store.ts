@@ -14,6 +14,7 @@ export interface KillPlayer {
   robloxUsername: string;
   discordUsername: string;
   country: string;
+  rolePosition: string;
   killCount: number;
   stage: KillStage;
   avatarUrl: string;
@@ -43,6 +44,7 @@ function normalize(data: KillLeaderboardData): KillLeaderboardData {
         return {
           ...player,
           country: player.country ?? legacyPlayer.rolePosition ?? "Unknown",
+          rolePosition: legacyPlayer.rolePosition ?? "Unknown",
         };
       })
       .sort((a, b) => a.rank - b.rank || b.killCount - a.killCount),
