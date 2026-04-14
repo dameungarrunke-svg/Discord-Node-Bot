@@ -204,13 +204,16 @@ async function ackDeferred(id: string, token: string, ephemeral = true): Promise
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isChatInputCommand()) {
     const cmd = interaction as ChatInputCommandInteraction;
+    const t0 = Date.now();
 
     // Acknowledge immediately via raw fetch — no queue, no rate-limiter
     const ok = await ackDeferred(cmd.id, cmd.token);
-    if (!ok) {
-      console.error(`Failed to ack /${cmd.commandName}`);
-      return;
-    }
+    console.log(`[ACK] /${cmd.commandName} — ${Date.now() - t0}ms — ${ok ? "ok" : "FAILED"}`);
+    if (!ok) return;
+
+    // Tell discord.js the interaction is deferred so editReply works
+    (cmd as unknown as Record<string, unknown>).deferred = true;
+    (cmd as unknown as Record<string, unknown>).ephemeral = true;
 
     const handler = slashHandlers[cmd.commandName];
     if (handler) {
@@ -218,8 +221,8 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         console.error(`Error in /${cmd.commandName}:`, err);
         try {
           await cmd.editReply({ content: "❌ Something went wrong. Please try again." });
-        } catch {
-          // Interaction already expired
+        } catch (e2) {
+          console.error(`editReply also failed for /${cmd.commandName}:`, e2);
         }
       });
     } else {
@@ -231,13 +234,16 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
   if (interaction.isButton()) {
     const btn = interaction as ButtonInteraction;
+    const t0 = Date.now();
 
     // Acknowledge immediately via raw fetch — no queue, no rate-limiter
     const ok = await ackDeferred(btn.id, btn.token);
-    if (!ok) {
-      console.error(`Failed to ack button [${btn.customId}]`);
-      return;
-    }
+    console.log(`[ACK] button:${btn.customId} — ${Date.now() - t0}ms — ${ok ? "ok" : "FAILED"}`);
+    if (!ok) return;
+
+    // Tell discord.js the interaction is deferred so editReply works
+    (btn as unknown as Record<string, unknown>).deferred = true;
+    (btn as unknown as Record<string, unknown>).ephemeral = true;
 
     const handler = buttonHandlers[btn.customId];
     if (handler) {
@@ -245,8 +251,8 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         console.error(`Error in button [${btn.customId}]:`, err);
         try {
           await btn.editReply({ content: "❌ Something went wrong. Please try again." });
-        } catch {
-          // Interaction already expired
+        } catch (e2) {
+          console.error(`editReply also failed for button [${btn.customId}]:`, e2);
         }
       });
     }
