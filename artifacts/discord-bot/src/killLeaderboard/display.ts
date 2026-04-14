@@ -22,7 +22,9 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DIVIDER_GIF = readFileSync(resolve(__dirname, "fixedbulletlines.gif"));
 const MAX_PLAYER_CARDS = 9;
-const PREMIUM_LINE = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+const FULL_BAR = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+const SOFT_BAR = "─────  ◆  ─────";
+const CARD_BAR = "╾──────────────────────╼";
 const ADMIN_PERMS = PermissionFlagsBits.ManageGuild;
 
 export const setupKillLeaderboardData = new SlashCommandBuilder()
@@ -46,6 +48,10 @@ function compactKills(kills: number): string {
   return kills.toLocaleString();
 }
 
+function paddedRank(rank: number): string {
+  return rank.toString().padStart(2, "0");
+}
+
 function makeDividerAttachment(): AttachmentBuilder {
   return new AttachmentBuilder(DIVIDER_GIF, { name: "fixedbulletlines.gif" });
 }
@@ -58,10 +64,26 @@ function rankAccent(rank: number): number {
 }
 
 function rankBadge(rank: number): string {
-  if (rank === 1) return "Ⅰ";
-  if (rank === 2) return "Ⅱ";
-  if (rank === 3) return "Ⅲ";
-  return `#${rank}`;
+  if (rank === 1) return "CROWN SEED";
+  if (rank === 2) return "ELITE SEED";
+  if (rank === 3) return "VANGUARD SEED";
+  return "RANKED SEED";
+}
+
+function rankMedal(rank: number): string {
+  if (rank === 1) return "♛";
+  if (rank === 2) return "◆";
+  if (rank === 3) return "◇";
+  return "◈";
+}
+
+function stageTier(stage: string): string {
+  if (stage.includes("High Strong")) return "S-TIER";
+  if (stage.includes("High Stable")) return "A-TIER";
+  if (stage.includes("High Weak")) return "B-TIER";
+  if (stage.includes("Mid Strong")) return "C-TIER";
+  if (stage.includes("Mid Stable")) return "D-TIER";
+  return "ENTRY";
 }
 
 function buildHeaderEmbed(totalPlayers: number): EmbedBuilder {
@@ -70,45 +92,69 @@ function buildHeaderEmbed(totalPlayers: number): EmbedBuilder {
   const hidden = Math.max(totalPlayers - MAX_PLAYER_CARDS, 0);
 
   return new EmbedBuilder()
-    .setColor(0x111827)
-    .setAuthor({ name: "LAST STAND  ·  PREMIUM KILL LEADERBOARD" })
-    .setTitle("⚔  TOP-KILLS COMMAND CENTER")
+    .setColor(0x05070d)
+    .setAuthor({ name: "LAST STAND // ELITE KILL RANKINGS" })
+    .setTitle("♛  TOP-KILLS // OPERATOR INDEX")
     .setDescription(
-      `${PREMIUM_LINE}\n` +
-      `**Elite combat ranking board** built for clean, permanent kill tracking.\n` +
-      `Showing **${visible}** operator${visible === 1 ? "" : "s"}${hidden > 0 ? ` · **${hidden}** more saved` : ""}\n\n` +
-      `\`RANK\`  ·  \`IDENTITY\`  ·  \`ROLE\`  ·  \`KILLS\`  ·  \`STAGE\`\n` +
-      `${PREMIUM_LINE}`
+      `\`\`\`ansi\n` +
+      `╔════════════════════════════════════╗\n` +
+      `║        LAST STAND KILL BOARD       ║\n` +
+      `║      PRECISION • POWER • STATUS    ║\n` +
+      `╚════════════════════════════════════╝\n` +
+      `\`\`\`\n` +
+      `${FULL_BAR}\n` +
+      `**${visible} ACTIVE OPERATOR${visible === 1 ? "" : "S"} DISPLAYED**${hidden > 0 ? `  •  **${hidden} IN RESERVE**` : ""}\n` +
+      `\`RANK\`       \`IDENTITY\`       \`ROLE\`       \`KILLS\`       \`STAGE\`\n` +
+      `${FULL_BAR}`
     )
     .setImage("attachment://fixedbulletlines.gif")
-    .setFooter({ text: `Last Stand Esports Division  ·  Updated ${new Date(now * 1000).toLocaleString()}` });
+    .setFooter({ text: `Last Stand Competitive Division  •  Live board refreshed ${new Date(now * 1000).toLocaleString()}` });
 }
 
 function buildEmptyEmbed(): EmbedBuilder {
   return new EmbedBuilder()
-    .setColor(0x1f2937)
-    .setTitle("No Kill Operators Registered")
+    .setColor(0x111827)
+    .setTitle("◇  NO OPERATORS LOCKED IN")
     .setDescription(
-      `Use \`/addkillplayer\` to add your first player.\n\n` +
-      `Required card details: rank, display name, Roblox username, Discord username, role, kills, stage, and avatar.`
-    );
+      `${CARD_BAR}\n` +
+      `Use \`/addkillplayer\` to build the first premium stat card.\n\n` +
+      `Each card supports rank, display identity, Roblox username, Discord username, role, kills, stage, and right-side avatar art.\n` +
+      `${CARD_BAR}`
+    )
+    .setFooter({ text: "Awaiting first ranked combatant" });
 }
 
 function buildPlayerEmbed(player: KillPlayer): EmbedBuilder {
   const kills = compactKills(player.killCount);
   const embed = new EmbedBuilder()
     .setColor(rankAccent(player.rank))
-    .setTitle(`${rankBadge(player.rank)}  ${player.displayName}`)
+    .setAuthor({ name: `${rankMedal(player.rank)}  ${rankBadge(player.rank)}  //  RANK ${paddedRank(player.rank)}` })
+    .setTitle(`${player.displayName.toUpperCase()}  ⟡  ${kills} KILLS`)
     .setDescription(
-      `**{user_LS_${player.robloxUsername}}**\n` +
-      `┃ **${player.robloxUsername}**\n` +
-      `┃ **${player.discordUsername}**\n` +
-      `┗━━  **${player.rolePosition}**  ━━\n\n` +
-      `**Kills :** \`${kills}\`\n` +
-      `**Stage :** \`${player.stage}\`\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━`
+      `\`\`\`ansi\n` +
+      `╭─ ELITE COMBAT CARD ───────────────╮\n` +
+      `│  #${paddedRank(player.rank)}  ${player.displayName.slice(0, 24).padEnd(24, " ")} │\n` +
+      `╰───────────────────────────────────╯\n` +
+      `\`\`\`\n` +
+      `**IDENTITY**\n` +
+      `╭ ${SOFT_BAR}\n` +
+      `┃  **Roblox**  \`{user_LS_${player.robloxUsername}}\`\n` +
+      `┃  **Discord** \`${player.discordUsername}\`\n` +
+      `╰ ${SOFT_BAR}\n\n` +
+      `**PERFORMANCE MATRIX**\n` +
+      `╭ ${SOFT_BAR}\n` +
+      `┃  **Role**   \`${player.rolePosition}\`\n` +
+      `┃  **Kills**  \`${kills}\`  ▸  \`${player.killCount.toLocaleString()} total\`\n` +
+      `┃  **Stage**  \`${player.stage}\`  ▸  \`${stageTier(player.stage)}\`\n` +
+      `╰ ${SOFT_BAR}\n` +
+      `${CARD_BAR}`
     )
-    .setFooter({ text: player.rolePosition });
+    .addFields(
+      { name: "RANK", value: `\`#${paddedRank(player.rank)}\``, inline: true },
+      { name: "KILLS", value: `\`${kills}\``, inline: true },
+      { name: "CLASS", value: `\`${stageTier(player.stage)}\``, inline: true }
+    )
+    .setFooter({ text: `${player.rolePosition}  •  Last Stand Kill Division` });
 
   if (isValidUrl(player.avatarUrl)) {
     embed.setThumbnail(player.avatarUrl);

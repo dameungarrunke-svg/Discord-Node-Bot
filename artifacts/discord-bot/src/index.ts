@@ -24,7 +24,11 @@ import {
   executeEditPlayer,
 } from "./leaderboard/commands.js";
 import { executeSetupLeaderboard } from "./leaderboard/display.js";
-import { executeSetupKillLeaderboard, setupKillLeaderboardData } from "./killLeaderboard/display.js";
+import {
+  executeSetupKillLeaderboard,
+  refreshPinnedKillLeaderboard,
+  setupKillLeaderboardData,
+} from "./killLeaderboard/display.js";
 import {
   addKillPlayerData,
   editKillPlayerData,
@@ -156,6 +160,13 @@ client.once(Events.ClientReady, async (readyClient) => {
 
   for (const [guildId] of readyClient.guilds.cache) {
     await registerCommandsForGuild(guildId);
+  }
+
+  try {
+    await refreshPinnedKillLeaderboard(client);
+    console.log("[READY] Premium kill leaderboard refreshed.");
+  } catch (err) {
+    console.error("[ERROR] Failed to refresh premium kill leaderboard:", err);
   }
 
   if (readyClient.guilds.cache.size === 0) {
