@@ -96,7 +96,7 @@ export async function executeSetupRules(interaction: ChatInputCommandInteraction
 
   const existing = getRulesMessage(interaction.guildId!);
 
-  if (existing) {
+  if (existing && existing.channelId === channel.id) {
     try {
       const existingChannel = (await interaction.guild?.channels
         .fetch(existing.channelId)

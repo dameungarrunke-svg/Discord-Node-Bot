@@ -31,6 +31,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Requires `DISCORD_BOT_TOKEN` in Replit Secrets.
 - Slash commands are acknowledged immediately with Discord.js `deferReply({ flags: MessageFlags.Ephemeral })`, then command handlers update the deferred reply with `editReply`.
 - Kill leaderboard commands are separate from the original leaderboard: `/setupkillleaderboard`, `/addkillplayer`, `/editkillplayer`, `/removekillplayer`, and `/movek`.
+- `/setupkillleaderboard` and `/setuprules` post in the channel where the command is run, so they can be placed from any eligible text channel without a channel picker.
 - Kill leaderboard data is stored at `artifacts/discord-bot/data/kill-leaderboard.json`. Player cards use a clean Discord embed layout matching the reference image: rank/name title, Roblox username, Discord username, decorated unlabeled position text, kill count, stage, bottom divider GIF, and a right-side avatar thumbnail.
 - Kill leaderboard stage options are: Stage 2 High Strong, Stage 2 High Stable, Stage 2 High Weak, Stage 2 Mid Strong, Stage 2 Mid Stable, and Stage 2 Mid Weak.
 
