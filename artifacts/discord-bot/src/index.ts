@@ -7,6 +7,7 @@ import {
   Routes,
   ChatInputCommandInteraction,
   ButtonInteraction,
+  MessageFlags,
 } from "discord.js";
 
 import { data as setupPanelData, execute as setupPanelExecute } from "./commands/setupChallengePanel.js";
