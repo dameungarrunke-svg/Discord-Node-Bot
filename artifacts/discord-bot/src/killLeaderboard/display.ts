@@ -22,9 +22,7 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DIVIDER_GIF = readFileSync(resolve(__dirname, "fixedbulletlines.gif"));
 const MAX_PLAYER_CARDS = 9;
-const FULL_BAR = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
-const SOFT_BAR = "─────  ◆  ─────";
-const CARD_BAR = "╾──────────────────────╼";
+const SOFT_BAR = "━━━━━━━━━━━━━━━━━━━━";
 const ADMIN_PERMS = PermissionFlagsBits.ManageGuild;
 
 export const setupKillLeaderboardData = new SlashCommandBuilder()
@@ -57,24 +55,21 @@ function makeDividerAttachment(): AttachmentBuilder {
 }
 
 function rankAccent(rank: number): number {
-  if (rank === 1) return 0xfacc15;
-  if (rank === 2) return 0xcbd5e1;
-  if (rank === 3) return 0xf97316;
-  return 0x7c3aed;
+  return 0x000000;
 }
 
 function rankBadge(rank: number): string {
-  if (rank === 1) return "CROWN SEED";
-  if (rank === 2) return "ELITE SEED";
-  if (rank === 3) return "VANGUARD SEED";
-  return "RANKED SEED";
+  if (rank === 1) return "TOP PLAYER";
+  if (rank === 2) return "ELITE PLAYER";
+  if (rank === 3) return "PRO PLAYER";
+  return "TSB PLAYER";
 }
 
 function rankMedal(rank: number): string {
-  if (rank === 1) return "♛";
+  if (rank === 1) return "★";
   if (rank === 2) return "◆";
   if (rank === 3) return "◇";
-  return "◈";
+  return "•";
 }
 
 function stageTier(stage: string): string {
@@ -92,69 +87,48 @@ function buildHeaderEmbed(totalPlayers: number): EmbedBuilder {
   const hidden = Math.max(totalPlayers - MAX_PLAYER_CARDS, 0);
 
   return new EmbedBuilder()
-    .setColor(0x05070d)
-    .setAuthor({ name: "LAST STAND // ELITE KILL RANKINGS" })
-    .setTitle("♛  TOP-KILLS // OPERATOR INDEX")
+    .setColor(0x000000)
+    .setAuthor({ name: "LAST STAND  ·  TSB KILL LEADERBOARD" })
+    .setTitle("Top-Kills")
     .setDescription(
-      `\`\`\`ansi\n` +
-      `╔════════════════════════════════════╗\n` +
-      `║        LAST STAND KILL BOARD       ║\n` +
-      `║      PRECISION • POWER • STATUS    ║\n` +
-      `╚════════════════════════════════════╝\n` +
-      `\`\`\`\n` +
-      `${FULL_BAR}\n` +
-      `**${visible} ACTIVE OPERATOR${visible === 1 ? "" : "S"} DISPLAYED**${hidden > 0 ? `  •  **${hidden} IN RESERVE**` : ""}\n` +
-      `\`RANK\`       \`IDENTITY\`       \`ROLE\`       \`KILLS\`       \`STAGE\`\n` +
-      `${FULL_BAR}`
+      `Clean competitive TSB player cards.\n` +
+      `Showing **${visible}** player${visible === 1 ? "" : "s"}${hidden > 0 ? ` · **${hidden}** more saved` : ""}.`
     )
     .setImage("attachment://fixedbulletlines.gif")
-    .setFooter({ text: `Last Stand Competitive Division  •  Live board refreshed ${new Date(now * 1000).toLocaleString()}` });
+    .setFooter({ text: `Last Stand  •  Updated ${new Date(now * 1000).toLocaleString()}` });
 }
 
 function buildEmptyEmbed(): EmbedBuilder {
   return new EmbedBuilder()
-    .setColor(0x111827)
-    .setTitle("◇  NO OPERATORS LOCKED IN")
+    .setColor(0x000000)
+    .setTitle("No players added yet")
     .setDescription(
-      `${CARD_BAR}\n` +
-      `Use \`/addkillplayer\` to build the first premium stat card.\n\n` +
-      `Each card supports rank, display identity, Roblox username, Discord username, role, kills, stage, and right-side avatar art.\n` +
-      `${CARD_BAR}`
+      `Use \`/addkillplayer\` to add the first TSB player card.`
     )
-    .setFooter({ text: "Awaiting first ranked combatant" });
+    .setFooter({ text: "Last Stand  •  TSB Kill Leaderboard" });
 }
 
 function buildPlayerEmbed(player: KillPlayer): EmbedBuilder {
   const kills = compactKills(player.killCount);
   const embed = new EmbedBuilder()
     .setColor(rankAccent(player.rank))
-    .setAuthor({ name: `${rankMedal(player.rank)}  ${rankBadge(player.rank)}  //  RANK ${paddedRank(player.rank)}` })
-    .setTitle(`${player.displayName.toUpperCase()}  ⟡  ${kills} KILLS`)
+    .setAuthor({ name: `${rankMedal(player.rank)}  Rank #${paddedRank(player.rank)}  ·  ${rankBadge(player.rank)}` })
+    .setTitle(player.displayName)
     .setDescription(
-      `\`\`\`ansi\n` +
-      `╭─ ELITE COMBAT CARD ───────────────╮\n` +
-      `│  #${paddedRank(player.rank)}  ${player.displayName.slice(0, 24).padEnd(24, " ")} │\n` +
-      `╰───────────────────────────────────╯\n` +
-      `\`\`\`\n` +
-      `**IDENTITY**\n` +
-      `╭ ${SOFT_BAR}\n` +
-      `┃  **Roblox**  \`{user_LS_${player.robloxUsername}}\`\n` +
-      `┃  **Discord** \`${player.discordUsername}\`\n` +
-      `╰ ${SOFT_BAR}\n\n` +
-      `**PERFORMANCE MATRIX**\n` +
-      `╭ ${SOFT_BAR}\n` +
-      `┃  **Role**   \`${player.rolePosition}\`\n` +
-      `┃  **Kills**  \`${kills}\`  ▸  \`${player.killCount.toLocaleString()} total\`\n` +
-      `┃  **Stage**  \`${player.stage}\`  ▸  \`${stageTier(player.stage)}\`\n` +
-      `╰ ${SOFT_BAR}\n` +
-      `${CARD_BAR}`
+      `**{user_LS_${player.robloxUsername}}**\n` +
+      `\`${player.discordUsername}\`\n\n` +
+      `${SOFT_BAR}\n` +
+      `**Role:** ${player.rolePosition}\n` +
+      `**Kills:** ${kills}\n` +
+      `**Stage:** ${player.stage}\n` +
+      `${SOFT_BAR}`
     )
     .addFields(
-      { name: "RANK", value: `\`#${paddedRank(player.rank)}\``, inline: true },
-      { name: "KILLS", value: `\`${kills}\``, inline: true },
-      { name: "CLASS", value: `\`${stageTier(player.stage)}\``, inline: true }
+      { name: "Rank", value: `#${player.rank}`, inline: true },
+      { name: "Kills", value: kills, inline: true },
+      { name: "Class", value: stageTier(player.stage), inline: true }
     )
-    .setFooter({ text: `${player.rolePosition}  •  Last Stand Kill Division` });
+    .setFooter({ text: "Last Stand  •  TSB Player Card" });
 
   if (isValidUrl(player.avatarUrl)) {
     embed.setThumbnail(player.avatarUrl);
