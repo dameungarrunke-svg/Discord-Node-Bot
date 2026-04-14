@@ -91,8 +91,6 @@ export const startTrainingData = new SlashCommandBuilder()
 export async function executeStartTraining(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const trainingType = interaction.options.getString("training_type", true);
   const gameLink     = interaction.options.getString("game_link", true);
   const host         = interaction.options.getString("host", true);
@@ -192,8 +190,6 @@ export const endTrainingData = new SlashCommandBuilder()
 export async function executeEndTraining(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const trainingType      = interaction.options.getString("training_type", true);
   const host              = interaction.options.getString("host", true);
   const durationCompleted = interaction.options.getString("duration_completed", true);

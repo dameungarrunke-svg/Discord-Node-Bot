@@ -75,6 +75,34 @@ const commands = [
   setupRulesData.toJSON(),
 ];
 
+// Defined once at startup — not recreated on every interaction
+const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<void>> = {
+  setupchallengepanel: setupPanelExecute,
+  setupleaderboard: (i) => executeSetupLeaderboard(i, client),
+  addleaderboardplayer: (i) => executeAddPlayer(i, client),
+  removeleaderboardplayer: (i) => executeRemovePlayer(i, client),
+  editleaderboardplayer: (i) => executeEditPlayer(i, client),
+  startraid: executeStartRaid,
+  endraid: executeEndRaid,
+  starttraining: executeStartTraining,
+  endtraining: executeEndTraining,
+  announce: executeAnnounce,
+  warn: executeWarn,
+  promote: executePromote,
+  demote: executeDemote,
+  attendance: executeAttendance,
+  poll: executePoll,
+  mvp: executeMvp,
+  suggestion: executeSuggestion,
+  setuprules: executeSetupRules,
+};
+
+const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
+  create_challenge_ticket: handleCreateTicket,
+  close_ticket: handleCloseTicket,
+  delete_ticket: handleDeleteTicket,
+};
+
 async function registerCommandsForGuild(guildId: string): Promise<void> {
   try {
     await client.rest.put(Routes.applicationGuildCommands(client.user!.id, guildId), {
@@ -90,7 +118,6 @@ client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   console.log(`Guilds in cache: ${readyClient.guilds.cache.size}`);
 
-  // Clear any stale global (application-level) commands
   try {
     await client.rest.put(Routes.applicationCommands(readyClient.user.id), { body: [] });
     console.log("Cleared global application commands.");
@@ -105,7 +132,6 @@ client.once(Events.ClientReady, async (readyClient) => {
   if (readyClient.guilds.cache.size === 0) {
     console.warn("No guilds in cache — bot may not be in any server.");
   }
-
 });
 
 client.on(Events.GuildCreate, async (guild) => {
@@ -153,44 +179,27 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isChatInputCommand()) {
     const cmd = interaction as ChatInputCommandInteraction;
 
-    const handlers: Record<string, (i: ChatInputCommandInteraction) => Promise<void>> = {
-      setupchallengepanel: setupPanelExecute,
-      setupleaderboard: (i) => executeSetupLeaderboard(i, client),
-      addleaderboardplayer: (i) => executeAddPlayer(i, client),
-      removeleaderboardplayer: (i) => executeRemovePlayer(i, client),
-      editleaderboardplayer: (i) => executeEditPlayer(i, client),
-      startraid: executeStartRaid,
-      endraid: executeEndRaid,
-      starttraining: executeStartTraining,
-      endtraining: executeEndTraining,
-      announce: executeAnnounce,
-      warn: executeWarn,
-      promote: executePromote,
-      demote: executeDemote,
-      attendance: executeAttendance,
-      poll: executePoll,
-      mvp: executeMvp,
-      suggestion: executeSuggestion,
-      setuprules: executeSetupRules,
-    };
+    // Acknowledge immediately — this MUST happen within 3 seconds
+    try {
+      await cmd.deferReply({ flags: MessageFlags.Ephemeral });
+    } catch (err) {
+      console.error(`Failed to defer /${cmd.commandName}:`, err);
+      return;
+    }
 
-    const handler = handlers[cmd.commandName];
+    const handler = slashHandlers[cmd.commandName];
     if (handler) {
       handler(cmd).catch(async (err) => {
         console.error(`Error in /${cmd.commandName}:`, err);
         try {
-          if (cmd.deferred || cmd.replied) {
-            await cmd.editReply({ content: "❌ Something went wrong. Please try again." });
-          } else {
-            await cmd.reply({ content: "❌ Something went wrong. Please try again.", flags: MessageFlags.Ephemeral });
-          }
+          await cmd.editReply({ content: "❌ Something went wrong. Please try again." });
         } catch {
           // Interaction already expired
         }
       });
     } else {
       console.warn(`No handler for command: ${cmd.commandName}`);
-      cmd.reply({ content: "❌ Unknown command.", flags: MessageFlags.Ephemeral }).catch(() => {});
+      await cmd.editReply({ content: "❌ Unknown command." });
     }
     return;
   }
@@ -198,22 +207,20 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isButton()) {
     const btn = interaction as ButtonInteraction;
 
-    const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
-      create_challenge_ticket: handleCreateTicket,
-      close_ticket: handleCloseTicket,
-      delete_ticket: handleDeleteTicket,
-    };
+    // Acknowledge immediately
+    try {
+      await btn.deferReply({ flags: MessageFlags.Ephemeral });
+    } catch (err) {
+      console.error(`Failed to defer button [${btn.customId}]:`, err);
+      return;
+    }
 
-    const btnHandler = buttonHandlers[btn.customId];
-    if (btnHandler) {
-      btnHandler(btn).catch(async (err) => {
+    const handler = buttonHandlers[btn.customId];
+    if (handler) {
+      handler(btn).catch(async (err) => {
         console.error(`Error in button [${btn.customId}]:`, err);
         try {
-          if (btn.deferred || btn.replied) {
-            await btn.editReply({ content: "❌ Something went wrong. Please try again." });
-          } else {
-            await btn.reply({ content: "❌ Something went wrong. Please try again.", flags: MessageFlags.Ephemeral });
-          }
+          await btn.editReply({ content: "❌ Something went wrong. Please try again." });
         } catch {
           // Interaction already expired
         }

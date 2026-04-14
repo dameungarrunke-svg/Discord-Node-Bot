@@ -64,8 +64,6 @@ export const setupRulesData = new SlashCommandBuilder()
   .setDefaultMemberPermissions(ADMIN);
 
 export async function executeSetupRules(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const channel = interaction.channel as TextChannel | null;
   if (!channel || !channel.isTextBased()) {
     await interaction.editReply({ content: "❌ Cannot post in this channel." });

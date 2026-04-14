@@ -45,8 +45,6 @@ export const announceData = new SlashCommandBuilder()
   );
 
 export async function executeAnnounce(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const title    = interaction.options.getString("title", true);
   const message  = interaction.options.getString("message", true);
   const target   = interaction.options.getChannel("channel") as TextChannel | null;
@@ -90,8 +88,6 @@ export const warnData = new SlashCommandBuilder()
   );
 
 export async function executeWarn(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const target = interaction.options.getUser("user", true);
   const reason = interaction.options.getString("reason", true);
 
@@ -145,8 +141,6 @@ export const promoteData = new SlashCommandBuilder()
   );
 
 export async function executePromote(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const target = interaction.options.getUser("user", true);
   const rank   = interaction.options.getString("rank", true);
 
@@ -197,8 +191,6 @@ export const demoteData = new SlashCommandBuilder()
   );
 
 export async function executeDemote(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const target = interaction.options.getUser("user", true);
   const rank   = interaction.options.getString("rank", true);
 
@@ -249,8 +241,6 @@ export const attendanceData = new SlashCommandBuilder()
   );
 
 export async function executeAttendance(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const event  = interaction.options.getString("event", true);
   const target = interaction.options.getUser("user", true);
 
@@ -306,8 +296,6 @@ export const pollData = new SlashCommandBuilder()
   );
 
 export async function executePoll(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const question = interaction.options.getString("question", true);
   const rawOptions = [
     interaction.options.getString("option1", true),
@@ -368,8 +356,6 @@ export const mvpData = new SlashCommandBuilder()
   );
 
 export async function executeMvp(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const target = interaction.options.getUser("user", true);
   const event  = interaction.options.getString("event", true);
   const reason = interaction.options.getString("reason", true);
@@ -419,8 +405,6 @@ export const suggestionData = new SlashCommandBuilder()
   );
 
 export async function executeSuggestion(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const suggestion = interaction.options.getString("suggestion", true);
 
   const embed = new EmbedBuilder()

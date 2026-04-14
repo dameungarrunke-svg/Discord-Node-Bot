@@ -76,8 +76,6 @@ export const startRaidData = new SlashCommandBuilder()
 export async function executeStartRaid(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const clanName    = interaction.options.getString("clan_name", true);
   const target      = interaction.options.getString("target", true);
   const gameLink    = interaction.options.getString("game_link", true);
@@ -174,8 +172,6 @@ export const endRaidData = new SlashCommandBuilder()
 export async function executeEndRaid(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const clanName      = interaction.options.getString("clan_name", true);
   const opponentClan  = interaction.options.getString("opponent_clan", true);
   const result        = interaction.options.getString("result", true);

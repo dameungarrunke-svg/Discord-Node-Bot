@@ -120,8 +120,6 @@ export async function executeSetupLeaderboard(
   interaction: ChatInputCommandInteraction,
   client: Client
 ): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const channel = interaction.channel as TextChannel | null;
   if (!channel) {
     await interaction.editReply({ content: "❌ Could not find the channel." });

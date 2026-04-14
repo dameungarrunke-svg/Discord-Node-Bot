@@ -114,8 +114,6 @@ export async function executeAddPlayer(
   interaction: ChatInputCommandInteraction,
   client: Client
 ): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const position = interaction.options.getInteger("position", true);
   const stageRank = interaction.options.getString("stage_rank", true) as StageRank;
 
@@ -172,8 +170,6 @@ export async function executeRemovePlayer(
   interaction: ChatInputCommandInteraction,
   client: Client
 ): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const position = interaction.options.getInteger("position", true);
   const removed = removePlayerByPosition(position);
 
@@ -208,8 +204,6 @@ export async function executeEditPlayer(
   interaction: ChatInputCommandInteraction,
   client: Client
 ): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const position = interaction.options.getInteger("position", true);
 
   if (!playerExistsAtPosition(position)) {

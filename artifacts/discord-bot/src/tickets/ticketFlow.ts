@@ -11,7 +11,6 @@ import {
   Collection,
   Role,
   Message,
-  MessageFlags,
 } from "discord.js";
 import { addActiveTicket, hasActiveTicket, isOnCooldown } from "./ticketManager.js";
 
@@ -47,8 +46,6 @@ function getStaffRoles(guild: Guild): Collection<string, Role> {
 }
 
 export async function handleCreateTicket(interaction: ButtonInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const guild = interaction.guild;
   if (!guild) {
     await interaction.editReply({ content: "❌ Could not find server." });

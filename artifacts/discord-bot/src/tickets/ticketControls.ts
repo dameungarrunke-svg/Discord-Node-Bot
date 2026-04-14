@@ -3,15 +3,12 @@ import {
   EmbedBuilder,
   PermissionFlagsBits,
   TextChannel,
-  MessageFlags,
 } from "discord.js";
 import { removeActiveTicketByChannelId } from "./ticketManager.js";
 
 const HR = "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯";
 
 export async function handleCloseTicket(interaction: ButtonInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const channel = interaction.channel as TextChannel;
   if (!channel) {
     await interaction.editReply({ content: "❌ Could not find channel." });
@@ -69,8 +66,6 @@ export async function handleCloseTicket(interaction: ButtonInteraction): Promise
 }
 
 export async function handleDeleteTicket(interaction: ButtonInteraction): Promise<void> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const channel = interaction.channel as TextChannel;
   if (!channel) {
     await interaction.editReply({ content: "❌ Could not find channel." });
