@@ -80,7 +80,7 @@ export const addKillPlayerData = new SlashCommandBuilder()
     o.setName("stage").setDescription("Player stage").setRequired(true).addChoices(...stageChoices())
   )
   .addStringOption((o) =>
-    o.setName("avatar_url").setDescription("Direct image URL for the right-side avatar").setRequired(true)
+    o.setName("avatar_url").setDescription("Optional direct image URL for the right-side avatar").setRequired(false)
   );
 
 export const editKillPlayerData = new SlashCommandBuilder()
@@ -152,8 +152,8 @@ export async function executeAddKillPlayer(
     return;
   }
 
-  const avatarUrl = interaction.options.getString("avatar_url", true);
-  if (!isValidAvatarUrl(avatarUrl)) {
+  const avatarUrl = interaction.options.getString("avatar_url") ?? "";
+  if (avatarUrl && !isValidAvatarUrl(avatarUrl)) {
     await interaction.editReply({ content: "❌ Please provide a valid direct avatar/image URL." });
     return;
   }
@@ -181,7 +181,11 @@ export async function executeAddKillPlayer(
   const embed = successEmbed(
     "✅ Kill Player Added",
     `**${player.displayName}** was added to rank **#${player.rank}**.\nThe kill leaderboard has been updated.`
-  ).setThumbnail(player.avatarUrl);
+  );
+
+  if (player.avatarUrl) {
+    embed.setThumbnail(player.avatarUrl);
+  }
 
   await interaction.editReply({ embeds: [embed] });
 }
