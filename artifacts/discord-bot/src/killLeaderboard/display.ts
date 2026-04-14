@@ -7,6 +7,9 @@ import {
   SlashCommandBuilder,
   TextChannel,
 } from "discord.js";
+import { readFileSync } from "fs";
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
 import {
   clearKillPinnedMessage,
   getKillPinnedMessage,
@@ -16,6 +19,8 @@ import {
   setKillPinnedMessage,
 } from "./store.js";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DIVIDER_GIF = readFileSync(resolve(__dirname, "fixedbulletlines.gif"));
 const MAX_PLAYER_CARDS = 10;
 const ADMIN_PERMS = PermissionFlagsBits.ManageGuild;
 
@@ -40,6 +45,10 @@ function compactKills(kills: number): string {
   return kills.toLocaleString();
 }
 
+function makeDividerAttachment(): AttachmentBuilder {
+  return new AttachmentBuilder(DIVIDER_GIF, { name: "fixedbulletlines.gif" });
+}
+
 function buildEmptyEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(0x252530)
@@ -55,11 +64,11 @@ function buildPlayerEmbed(player: KillPlayer): EmbedBuilder {
     .setDescription(
       `│  ${player.robloxUsername}  │\n` +
       `≪≪  |  ${player.discordUsername}  |  ≫≫\n` +
-      `Country : ${player.country}\n` +
-      `Role Position : ${player.rolePosition}\n` +
+      `Position : ${player.position}\n` +
       `Kill Count : ${kills}\n` +
       `Stage : ${player.stage}`
-    );
+    )
+    .setImage("attachment://fixedbulletlines.gif");
 
   if (isValidUrl(player.avatarUrl)) {
     embed.setThumbnail(player.avatarUrl);
@@ -83,7 +92,7 @@ export function buildKillLeaderboardPayload(): {
 
   return {
     embeds,
-    files: [],
+    files: players.length > 0 ? [makeDividerAttachment()] : [],
   };
 }
 

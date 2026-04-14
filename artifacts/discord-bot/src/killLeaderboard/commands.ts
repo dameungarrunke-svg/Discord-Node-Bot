@@ -66,10 +66,7 @@ export const addKillPlayerData = new SlashCommandBuilder()
     o.setName("discord_username").setDescription("Discord username/tag").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("country").setDescription("Country text or flag emoji").setRequired(true)
-  )
-  .addStringOption((o) =>
-    o.setName("role_position").setDescription("Role or position").setRequired(true)
+    o.setName("position").setDescription("Position, e.g. Head Moderator or Clan Member").setRequired(true)
   )
   .addStringOption((o) =>
     o.setName("kill_count").setDescription("Player kill count, e.g. 20K, 70k, 80000").setRequired(true)
@@ -101,10 +98,7 @@ export const editKillPlayerData = new SlashCommandBuilder()
     o.setName("discord_username").setDescription("New Discord username/tag").setRequired(false)
   )
   .addStringOption((o) =>
-    o.setName("country").setDescription("New country text or flag emoji").setRequired(false)
-  )
-  .addStringOption((o) =>
-    o.setName("role_position").setDescription("New role or position").setRequired(false)
+    o.setName("position").setDescription("New position, e.g. Head Moderator or Clan Member").setRequired(false)
   )
   .addStringOption((o) =>
     o.setName("kill_count").setDescription("New kill count, e.g. 20K, 70k, 80000").setRequired(false)
@@ -170,8 +164,7 @@ export async function executeAddKillPlayer(
     displayName: interaction.options.getString("display_name", true),
     robloxUsername: interaction.options.getString("roblox_username", true),
     discordUsername: interaction.options.getString("discord_username", true),
-    country: interaction.options.getString("country", true),
-    rolePosition: interaction.options.getString("role_position", true),
+    position: interaction.options.getString("position", true),
     killCount,
     stage: interaction.options.getString("stage", true) as KillStage,
     avatarUrl,
@@ -205,8 +198,7 @@ export async function executeEditKillPlayer(
   const displayName = interaction.options.getString("display_name");
   const robloxUsername = interaction.options.getString("roblox_username");
   const discordUsername = interaction.options.getString("discord_username");
-  const country = interaction.options.getString("country");
-  const rolePosition = interaction.options.getString("role_position");
+  const position = interaction.options.getString("position");
   const killCountInput = interaction.options.getString("kill_count");
   const stage = interaction.options.getString("stage") as KillStage | null;
   const avatarUrl = interaction.options.getString("avatar_url");
@@ -229,8 +221,7 @@ export async function executeEditKillPlayer(
   if (displayName) updates.displayName = displayName;
   if (robloxUsername) updates.robloxUsername = robloxUsername;
   if (discordUsername) updates.discordUsername = discordUsername;
-  if (country) updates.country = country;
-  if (rolePosition) updates.rolePosition = rolePosition;
+  if (position) updates.position = position;
   if (killCountInput) {
     const killCount = parseKillCountInput(killCountInput);
     if (killCount === null) {

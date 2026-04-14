@@ -13,8 +13,7 @@ export interface KillPlayer {
   displayName: string;
   robloxUsername: string;
   discordUsername: string;
-  country: string;
-  rolePosition: string;
+  position: string;
   killCount: number;
   stage: KillStage;
   avatarUrl: string;
@@ -40,11 +39,10 @@ function normalize(data: KillLeaderboardData): KillLeaderboardData {
     ...data,
     players: [...(data.players ?? [])]
       .map((player) => {
-        const legacyPlayer = player as KillPlayer & { rolePosition?: string };
+        const legacyPlayer = player as KillPlayer & { country?: string; rolePosition?: string; position?: string };
         return {
           ...player,
-          country: player.country ?? legacyPlayer.rolePosition ?? "Unknown",
-          rolePosition: legacyPlayer.rolePosition ?? "Unknown",
+          position: legacyPlayer.position ?? legacyPlayer.rolePosition ?? legacyPlayer.country ?? "Clan Member",
         };
       })
       .sort((a, b) => a.rank - b.rank || b.killCount - a.killCount),
