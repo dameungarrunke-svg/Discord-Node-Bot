@@ -12,16 +12,11 @@ import {
   killPlayerExistsAtRank,
   KillPlayer,
   KillStage,
-  KILL_STAGE_COLORS,
-  KILL_STAGES,
+  moveKillPlayerRank,
   removeKillPlayerByRank,
 } from "./store.js";
 
 const ADMIN_PERMS = PermissionFlagsBits.ManageGuild;
-
-function stageChoices() {
-  return KILL_STAGES.map((stage) => ({ name: stage, value: stage }));
-}
 
 function isValidAvatarUrl(url: string | null | undefined): url is string {
   if (!url) return false;
@@ -51,13 +46,12 @@ function successEmbed(title: string, description: string, color = 0x22c55e): Emb
     .setColor(color)
     .setTitle(title)
     .setDescription(description)
-    .setFooter({ text: "Last Stand  ·  Premium Kill Leaderboard" })
     .setTimestamp();
 }
 
 export const addKillPlayerData = new SlashCommandBuilder()
   .setName("addkillplayer")
-  .setDescription("Add a player to the premium kill leaderboard. (Admin only)")
+  .setDescription("Add a player to the kill leaderboard. (Admin only)")
   .setDefaultMemberPermissions(ADMIN_PERMS)
   .addIntegerOption((o) =>
     o.setName("rank").setDescription("Leaderboard rank number").setRequired(true).setMinValue(1)
@@ -72,13 +66,13 @@ export const addKillPlayerData = new SlashCommandBuilder()
     o.setName("discord_username").setDescription("Discord username/tag").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("role_position").setDescription("Role or position, e.g. Head Mod, Recruiter, Clan Member").setRequired(true)
+    o.setName("country").setDescription("Country text or flag emoji").setRequired(true)
   )
   .addStringOption((o) =>
     o.setName("kill_count").setDescription("Player kill count, e.g. 20K, 70k, 80000").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("stage").setDescription("Player stage").setRequired(true).addChoices(...stageChoices())
+    o.setName("stage").setDescription("Stage, e.g. Stage 1 - High").setRequired(true)
   )
   .addStringOption((o) =>
     o.setName("avatar_url").setDescription("Direct image URL for the right-side avatar").setRequired(true)
@@ -86,7 +80,7 @@ export const addKillPlayerData = new SlashCommandBuilder()
 
 export const editKillPlayerData = new SlashCommandBuilder()
   .setName("editkillplayer")
-  .setDescription("Edit a premium kill leaderboard player. (Admin only)")
+  .setDescription("Edit a kill leaderboard player. (Admin only)")
   .setDefaultMemberPermissions(ADMIN_PERMS)
   .addIntegerOption((o) =>
     o.setName("rank").setDescription("Current rank number to edit").setRequired(true).setMinValue(1)
@@ -104,13 +98,13 @@ export const editKillPlayerData = new SlashCommandBuilder()
     o.setName("discord_username").setDescription("New Discord username/tag").setRequired(false)
   )
   .addStringOption((o) =>
-    o.setName("role_position").setDescription("New role or position").setRequired(false)
+    o.setName("country").setDescription("New country text or flag emoji").setRequired(false)
   )
   .addStringOption((o) =>
     o.setName("kill_count").setDescription("New kill count, e.g. 20K, 70k, 80000").setRequired(false)
   )
   .addStringOption((o) =>
-    o.setName("stage").setDescription("New stage").setRequired(false).addChoices(...stageChoices())
+    o.setName("stage").setDescription("New stage, e.g. Stage 1 - High").setRequired(false)
   )
   .addStringOption((o) =>
     o.setName("avatar_url").setDescription("New direct avatar/image URL").setRequired(false)
@@ -118,10 +112,21 @@ export const editKillPlayerData = new SlashCommandBuilder()
 
 export const removeKillPlayerData = new SlashCommandBuilder()
   .setName("removekillplayer")
-  .setDescription("Remove a player from the premium kill leaderboard. (Admin only)")
+  .setDescription("Remove a player from the kill leaderboard. (Admin only)")
   .setDefaultMemberPermissions(ADMIN_PERMS)
   .addIntegerOption((o) =>
     o.setName("rank").setDescription("Rank number to remove").setRequired(true).setMinValue(1)
+  );
+
+export const moveKillPlayerData = new SlashCommandBuilder()
+  .setName("movek")
+  .setDescription("Move a kill leaderboard player to a new rank. (Admin only)")
+  .setDefaultMemberPermissions(ADMIN_PERMS)
+  .addIntegerOption((o) =>
+    o.setName("rank").setDescription("Current rank number").setRequired(true).setMinValue(1)
+  )
+  .addIntegerOption((o) =>
+    o.setName("new_rank").setDescription("New rank number").setRequired(true).setMinValue(1)
   );
 
 export async function executeAddKillPlayer(
@@ -159,7 +164,7 @@ export async function executeAddKillPlayer(
     displayName: interaction.options.getString("display_name", true),
     robloxUsername: interaction.options.getString("roblox_username", true),
     discordUsername: interaction.options.getString("discord_username", true),
-    rolePosition: interaction.options.getString("role_position", true),
+    country: interaction.options.getString("country", true),
     killCount,
     stage: interaction.options.getString("stage", true) as KillStage,
     avatarUrl,
@@ -170,8 +175,7 @@ export async function executeAddKillPlayer(
 
   const embed = successEmbed(
     "✅ Kill Player Added",
-    `**${player.displayName}** was added to rank **#${player.rank}** with **${player.killCount.toLocaleString()} kills**.\nThe permanent kill leaderboard has been updated.`,
-    KILL_STAGE_COLORS[player.stage]
+    `**${player.displayName}** was added to rank **#${player.rank}**.\nThe kill leaderboard has been updated.`
   ).setThumbnail(player.avatarUrl);
 
   await interaction.editReply({ embeds: [embed] });
@@ -194,7 +198,7 @@ export async function executeEditKillPlayer(
   const displayName = interaction.options.getString("display_name");
   const robloxUsername = interaction.options.getString("roblox_username");
   const discordUsername = interaction.options.getString("discord_username");
-  const rolePosition = interaction.options.getString("role_position");
+  const country = interaction.options.getString("country");
   const killCountInput = interaction.options.getString("kill_count");
   const stage = interaction.options.getString("stage") as KillStage | null;
   const avatarUrl = interaction.options.getString("avatar_url");
@@ -217,7 +221,7 @@ export async function executeEditKillPlayer(
   if (displayName) updates.displayName = displayName;
   if (robloxUsername) updates.robloxUsername = robloxUsername;
   if (discordUsername) updates.discordUsername = discordUsername;
-  if (rolePosition) updates.rolePosition = rolePosition;
+  if (country) updates.country = country;
   if (killCountInput) {
     const killCount = parseKillCountInput(killCountInput);
     if (killCount === null) {
@@ -247,7 +251,7 @@ export async function executeEditKillPlayer(
     embeds: [
       successEmbed(
         "✅ Kill Player Updated",
-        `Rank **#${rank}** was updated and the permanent kill leaderboard has been refreshed.\n\n` +
+        `Rank **#${rank}** was updated and the kill leaderboard has been refreshed.\n\n` +
           Object.entries(updates)
             .map(([key, value]) => `**${key}:** ${value}`)
             .join("\n")
@@ -276,8 +280,37 @@ export async function executeRemoveKillPlayer(
     embeds: [
       successEmbed(
         "🗑️ Kill Player Removed",
-        `Rank **#${rank}** was removed and the permanent kill leaderboard has been updated.`
+        `Rank **#${rank}** was removed and the kill leaderboard has been updated.`
       ),
     ],
+  });
+}
+
+export async function executeMoveKillPlayer(
+  interaction: ChatInputCommandInteraction,
+  client: Client
+): Promise<void> {
+  const rank = interaction.options.getInteger("rank", true);
+  const newRank = interaction.options.getInteger("new_rank", true);
+
+  if (!killPlayerExistsAtRank(rank)) {
+    await interaction.editReply({
+      embeds: [successEmbed("❌ Player Not Found", `No kill leaderboard player exists at rank **#${rank}**.`, 0xef4444)],
+    });
+    return;
+  }
+
+  if (newRank !== rank && killPlayerExistsAtRank(newRank)) {
+    await interaction.editReply({
+      embeds: [successEmbed("❌ Rank Already Filled", `Rank **#${newRank}** already belongs to another player.`, 0xef4444)],
+    });
+    return;
+  }
+
+  moveKillPlayerRank(rank, newRank);
+  await refreshPinnedKillLeaderboard(client);
+
+  await interaction.editReply({
+    embeds: [successEmbed("✅ Kill Player Moved", `Rank **#${rank}** was moved to **#${newRank}**.`)],
   });
 }

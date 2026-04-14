@@ -6,38 +6,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = resolve(__dirname, "../../../data");
 const DATA_FILE = resolve(DATA_DIR, "kill-leaderboard.json");
 
-export type KillStage =
-  | "Stage 2 High Strong"
-  | "Stage 2 High Stable"
-  | "Stage 2 High Weak"
-  | "Stage 2 Mid Strong"
-  | "Stage 2 Mid Stable"
-  | "Stage 2 Low Stable";
-
-export const KILL_STAGES: KillStage[] = [
-  "Stage 2 High Strong",
-  "Stage 2 High Stable",
-  "Stage 2 High Weak",
-  "Stage 2 Mid Strong",
-  "Stage 2 Mid Stable",
-  "Stage 2 Low Stable",
-];
-
-export const KILL_STAGE_COLORS: Record<KillStage, number> = {
-  "Stage 2 High Strong": 0xfbbf24,
-  "Stage 2 High Stable": 0xf59e0b,
-  "Stage 2 High Weak": 0xef4444,
-  "Stage 2 Mid Strong": 0x8b5cf6,
-  "Stage 2 Mid Stable": 0x3b82f6,
-  "Stage 2 Low Stable": 0x64748b,
-};
+export type KillStage = string;
 
 export interface KillPlayer {
   rank: number;
   displayName: string;
   robloxUsername: string;
   discordUsername: string;
-  rolePosition: string;
+  country: string;
   killCount: number;
   stage: KillStage;
   avatarUrl: string;
@@ -61,7 +37,15 @@ function emptyData(): KillLeaderboardData {
 function normalize(data: KillLeaderboardData): KillLeaderboardData {
   return {
     ...data,
-    players: [...(data.players ?? [])].sort((a, b) => a.rank - b.rank || b.killCount - a.killCount),
+    players: [...(data.players ?? [])]
+      .map((player) => {
+        const legacyPlayer = player as KillPlayer & { rolePosition?: string };
+        return {
+          ...player,
+          country: player.country ?? legacyPlayer.rolePosition ?? "Unknown",
+        };
+      })
+      .sort((a, b) => a.rank - b.rank || b.killCount - a.killCount),
   };
 }
 
@@ -114,6 +98,16 @@ export function removeKillPlayerByRank(rank: number): boolean {
   data.players = data.players.filter((p) => p.rank !== rank);
   save(data);
   return data.players.length < before;
+}
+
+export function moveKillPlayerRank(rank: number, newRank: number): boolean {
+  const data = load();
+  const index = data.players.findIndex((p) => p.rank === rank);
+  if (index === -1) return false;
+
+  data.players[index].rank = newRank;
+  save(data);
+  return true;
 }
 
 export function getKillPinnedMessage(): KillPinnedMessage | undefined {

@@ -32,9 +32,11 @@ import {
 import {
   addKillPlayerData,
   editKillPlayerData,
+  moveKillPlayerData,
   removeKillPlayerData,
   executeAddKillPlayer,
   executeEditKillPlayer,
+  executeMoveKillPlayer,
   executeRemoveKillPlayer,
 } from "./killLeaderboard/commands.js";
 
@@ -81,6 +83,7 @@ const commands = [
   addKillPlayerData.toJSON(),
   editKillPlayerData.toJSON(),
   removeKillPlayerData.toJSON(),
+  moveKillPlayerData.toJSON(),
   startRaidData.toJSON(),
   endRaidData.toJSON(),
   startTrainingData.toJSON(),
@@ -107,6 +110,7 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   addkillplayer: (i) => executeAddKillPlayer(i, client),
   editkillplayer: (i) => executeEditKillPlayer(i, client),
   removekillplayer: (i) => executeRemoveKillPlayer(i, client),
+  movek: (i) => executeMoveKillPlayer(i, client),
   startraid: executeStartRaid,
   endraid: executeEndRaid,
   starttraining: executeStartTraining,
@@ -164,9 +168,9 @@ client.once(Events.ClientReady, async (readyClient) => {
 
   try {
     await refreshPinnedKillLeaderboard(client);
-    console.log("[READY] Premium kill leaderboard refreshed.");
+    console.log("[READY] Kill leaderboard refreshed.");
   } catch (err) {
-    console.error("[ERROR] Failed to refresh premium kill leaderboard:", err);
+    console.error("[ERROR] Failed to refresh kill leaderboard:", err);
   }
 
   if (readyClient.guilds.cache.size === 0) {
