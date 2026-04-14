@@ -10,8 +10,14 @@ import { saveTrainingLog } from "./store.js";
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
 
-const HR  = "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯";
-const DOT = " · · · · · · · · · · · · · · · ";
+function shortDate(): string {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 function findChannel(interaction: ChatInputCommandInteraction, ...keywords: string[]): TextChannel | null {
   const guild = interaction.guild;
@@ -30,66 +36,50 @@ export const startTrainingData = new SlashCommandBuilder()
   .setDescription("Deploy a training session alert to the server.")
   .setDefaultMemberPermissions(ADMIN)
   .addStringOption((o) =>
+    o.setName("training_type").setDescription("Type of training (e.g. Combat Training, PvP Drills)").setRequired(true)
+  )
+  .addStringOption((o) =>
     o.setName("game_link").setDescription("Roblox game link").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("host").setDescription("Session host name / tag").setRequired(true)
+    o.setName("host").setDescription("Session host username or @mention").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("training_type").setDescription("Type of training (e.g. PvP, Ranked, Defence drills)").setRequired(true)
-  )
-  .addStringOption((o) =>
-    o.setName("duration").setDescription("Expected duration (e.g. 1 hour, 45 minutes)").setRequired(true)
-  )
-  .addStringOption((o) =>
-    o.setName("start_time").setDescription("When it starts (e.g. NOW, In 5 minutes, 4:00 PM EST)").setRequired(true)
-  )
-  .addStringOption((o) =>
-    o.setName("attendance_requirement").setDescription("Attendance status (e.g. Mandatory, Optional, Core members only)").setRequired(true)
+    o.setName("duration").setDescription("Expected duration (e.g. 1h, 45 minutes)").setRequired(true)
   )
   .addRoleOption((o) =>
     o.setName("ping_role").setDescription("Role to ping").setRequired(false)
   )
   .addStringOption((o) =>
-    o.setName("notes").setDescription("Session notes / additional details").setRequired(false)
+    o.setName("notes").setDescription("Session overview / notes (optional)").setRequired(false)
   );
 
 export async function executeStartTraining(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const gameLink      = interaction.options.getString("game_link", true);
-  const host          = interaction.options.getString("host", true);
-  const trainingType  = interaction.options.getString("training_type", true);
-  const duration      = interaction.options.getString("duration", true);
-  const startTime     = interaction.options.getString("start_time", true);
-  const attendanceReq = interaction.options.getString("attendance_requirement", true);
-  const pingRole      = interaction.options.getRole("ping_role");
-  const notes         = interaction.options.getString("notes") || "—";
+  const trainingType = interaction.options.getString("training_type", true);
+  const gameLink     = interaction.options.getString("game_link", true);
+  const host         = interaction.options.getString("host", true);
+  const duration     = interaction.options.getString("duration", true);
+  const pingRole     = interaction.options.getRole("ping_role");
+  const notes        = interaction.options.getString("notes");
+
+  const fields: { name: string; value: string }[] = [
+    { name: "GAME LINK", value: gameLink },
+  ];
+  if (notes) {
+    fields.push({ name: "SESSION OVERVIEW", value: notes });
+  }
 
   const embed = new EmbedBuilder()
-    .setColor(0xd97706)
-    .setAuthor({
-      name: "LAST STAND  ·  TRAINING DIVISION",
-      iconURL: interaction.guild?.iconURL() ?? undefined,
-    })
-    .setTitle("🎯  TRAINING SESSION — REPORT FOR DUTY")
+    .setColor(0xf97316)
+    .setAuthor({ name: "◈  TRAINING STARTED" })
+    .setTitle(trainingType)
     .setDescription(
-      `${HR}\n` +
-      `▸  **HOST** ${DOT} \`${host}\`\n` +
-      `▸  **SESSION TYPE** ${DOT} \`${trainingType}\`\n` +
-      `▸  **DURATION** ${DOT} \`${duration}\`\n` +
-      `▸  **START TIME** ${DOT} \`${startTime}\`\n` +
-      `▸  **ATTENDANCE** ${DOT} \`${attendanceReq}\`\n` +
-      `${HR}\n` +
-      `🔗  [**CLICK TO JOIN THE SESSION**](${gameLink})\n` +
-      `${HR}\n` +
-      `**SESSION BRIEFING**\n` +
-      `> ${notes}`
+      `>>> Host  ·  ${host}\nDuration  ·  ${duration}\nDate  ·  ${shortDate()}`
     )
-    .setFooter({
-      text: `Announced by ${interaction.user.tag}  ·  Last Stand (LS)`,
-      iconURL: interaction.user.displayAvatarURL(),
-    })
+    .addFields(fields)
+    .setFooter({ text: `Training called by ${interaction.user.username}` })
     .setTimestamp();
 
   const channel = interaction.channel as TextChannel | null;
@@ -107,7 +97,10 @@ export const endTrainingData = new SlashCommandBuilder()
   .setDescription("Close a training session and log the results.")
   .setDefaultMemberPermissions(ADMIN)
   .addStringOption((o) =>
-    o.setName("host").setDescription("Session host name / tag").setRequired(true)
+    o.setName("training_type").setDescription("Training type / session name").setRequired(true)
+  )
+  .addStringOption((o) =>
+    o.setName("host").setDescription("Session host username or @mention").setRequired(true)
   )
   .addStringOption((o) =>
     o.setName("duration_completed").setDescription("Actual duration completed").setRequired(true)
@@ -122,31 +115,28 @@ export const endTrainingData = new SlashCommandBuilder()
 export async function executeEndTraining(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
+  const trainingType      = interaction.options.getString("training_type", true);
   const host              = interaction.options.getString("host", true);
   const durationCompleted = interaction.options.getString("duration_completed", true);
   const mvp               = interaction.options.getString("mvp", true);
-  const notes             = interaction.options.getString("notes") || "—";
+  const notes             = interaction.options.getString("notes");
+
+  const fields: { name: string; value: string }[] = [
+    { name: "SESSION MVP", value: mvp },
+  ];
+  if (notes) {
+    fields.push({ name: "SESSION NOTES", value: notes });
+  }
 
   const embed = new EmbedBuilder()
-    .setColor(0x059669)
-    .setAuthor({
-      name: "LAST STAND  ·  TRAINING DIVISION",
-      iconURL: interaction.guild?.iconURL() ?? undefined,
-    })
-    .setTitle("✅  TRAINING CONCLUDED — RESULTS LOGGED")
+    .setColor(0xf97316)
+    .setAuthor({ name: "◈  TRAINING ENDED" })
+    .setTitle(trainingType)
     .setDescription(
-      `${HR}\n` +
-      `▸  **HOST** ${DOT} \`${host}\`\n` +
-      `▸  **DURATION** ${DOT} \`${durationCompleted}\`\n` +
-      `▸  **SESSION MVP** ${DOT} \`${mvp}\`\n` +
-      `${HR}\n` +
-      `**POST-SESSION NOTES**\n` +
-      `> ${notes}`
+      `>>> Host  ·  ${host}\nDuration  ·  ${durationCompleted}\nDate  ·  ${shortDate()}`
     )
-    .setFooter({
-      text: `Closed by ${interaction.user.tag}  ·  Last Stand (LS)`,
-      iconURL: interaction.user.displayAvatarURL(),
-    })
+    .addFields(fields)
+    .setFooter({ text: `Training ended by ${interaction.user.username}` })
     .setTimestamp();
 
   saveTrainingLog({
@@ -154,7 +144,7 @@ export async function executeEndTraining(interaction: ChatInputCommandInteractio
     host,
     durationCompleted,
     mvp,
-    notes,
+    notes: notes ?? "—",
     endedBy: interaction.user.tag,
     endedById: interaction.user.id,
     timestamp: new Date().toISOString(),

@@ -10,8 +10,14 @@ import { saveRaidResult } from "./store.js";
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
 
-const HR  = "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯";
-const DOT = " · · · · · · · · · · · · · · · ";
+function shortDate(): string {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 function findChannel(interaction: ChatInputCommandInteraction, ...keywords: string[]): TextChannel | null {
   const guild = interaction.guild;
@@ -39,19 +45,13 @@ export const startRaidData = new SlashCommandBuilder()
     o.setName("game_link").setDescription("Roblox game link").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("people_count").setDescription("Members needed (e.g. 15, 10+, All available)").setRequired(true)
-  )
-  .addStringOption((o) =>
-    o.setName("raid_time").setDescription("Raid time (e.g. NOW, In 10 minutes, 3:00 PM EST)").setRequired(true)
+    o.setName("people_count").setDescription("Members needed").setRequired(true)
   )
   .addRoleOption((o) =>
     o.setName("ping_role").setDescription("Role to ping").setRequired(false)
   )
   .addStringOption((o) =>
-    o.setName("allies").setDescription("Allied clans joining the raid").setRequired(false)
-  )
-  .addStringOption((o) =>
-    o.setName("notes").setDescription("Mission notes / briefing").setRequired(false)
+    o.setName("notes").setDescription("Additional notes (optional)").setRequired(false)
   );
 
 export async function executeStartRaid(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -61,35 +61,25 @@ export async function executeStartRaid(interaction: ChatInputCommandInteraction)
   const target      = interaction.options.getString("target", true);
   const gameLink    = interaction.options.getString("game_link", true);
   const peopleCount = interaction.options.getString("people_count", true);
-  const raidTime    = interaction.options.getString("raid_time", true);
   const pingRole    = interaction.options.getRole("ping_role");
-  const allies      = interaction.options.getString("allies") || "None";
-  const notes       = interaction.options.getString("notes") || "—";
+  const notes       = interaction.options.getString("notes");
+
+  const fields: { name: string; value: string }[] = [
+    { name: "GAME LINK", value: gameLink },
+  ];
+  if (notes) {
+    fields.push({ name: "NOTES", value: notes });
+  }
 
   const embed = new EmbedBuilder()
-    .setColor(0x4f46e5)
-    .setAuthor({
-      name: "LAST STAND  ·  COMMAND CENTER",
-      iconURL: interaction.guild?.iconURL() ?? undefined,
-    })
-    .setTitle("⚔  RAID DEPLOYED — ALL FORCES MOBILIZE")
+    .setColor(0x5865f2)
+    .setAuthor({ name: "◈  RAID STARTING" })
+    .setTitle(clanName)
     .setDescription(
-      `${HR}\n` +
-      `▸  **CLAN NAME** ${DOT} \`${clanName}\`\n` +
-      `▸  **TARGET** ${DOT} \`${target}\`\n` +
-      `▸  **STRIKE FORCE** ${DOT} \`${peopleCount}\`\n` +
-      `▸  **STRIKE TIME** ${DOT} \`${raidTime}\`\n` +
-      `▸  **ALLIED CLANS** ${DOT} \`${allies}\`\n` +
-      `${HR}\n` +
-      `🔗  [**CLICK TO ENTER THE BATTLEFIELD**](${gameLink})\n` +
-      `${HR}\n` +
-      `**MISSION BRIEFING**\n` +
-      `> ${notes}`
+      `>>> Target  ·  ${target}\nMembers Needed  ·  ${peopleCount}\nDate  ·  ${shortDate()}`
     )
-    .setFooter({
-      text: `Initiated by ${interaction.user.tag}  ·  Last Stand (LS)`,
-      iconURL: interaction.user.displayAvatarURL(),
-    })
+    .addFields(fields)
+    .setFooter({ text: `Raid called by ${interaction.user.username}` })
     .setTimestamp();
 
   const channel = interaction.channel as TextChannel | null;
@@ -99,7 +89,7 @@ export async function executeStartRaid(interaction: ChatInputCommandInteraction)
   }
 
   await channel.send({ content: pingRole ? `${pingRole}` : undefined, embeds: [embed] });
-  await interaction.editReply({ content: "✅ Raid alert deployed." });
+  await interaction.editReply({ content: "✅ Raid alert posted." });
 }
 
 export const endRaidData = new SlashCommandBuilder()
@@ -113,7 +103,7 @@ export const endRaidData = new SlashCommandBuilder()
     o.setName("opponent_clan").setDescription("Opponent clan name").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("result").setDescription("Raid outcome — type anything (e.g. Victory, Defeat, Clean sweep)").setRequired(true)
+    o.setName("result").setDescription("Raid outcome (e.g. Victory, Defeat, Draw)").setRequired(true)
   )
   .addStringOption((o) =>
     o.setName("top_performers").setDescription("Top performers in the raid").setRequired(true)
@@ -125,43 +115,28 @@ export const endRaidData = new SlashCommandBuilder()
 export async function executeEndRaid(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const clanName     = interaction.options.getString("clan_name", true);
-  const opponentClan = interaction.options.getString("opponent_clan", true);
-  const result       = interaction.options.getString("result", true);
+  const clanName      = interaction.options.getString("clan_name", true);
+  const opponentClan  = interaction.options.getString("opponent_clan", true);
+  const result        = interaction.options.getString("result", true);
   const topPerformers = interaction.options.getString("top_performers", true);
-  const notes        = interaction.options.getString("notes") || "—";
+  const notes         = interaction.options.getString("notes");
 
-  const lower = result.toLowerCase();
-  const color =
-    lower.includes("win") || lower.includes("victory") || lower.includes("won")
-      ? 0x16a34a
-      : lower.includes("loss") || lower.includes("defeat") || lower.includes("lost")
-      ? 0xb91c1c
-      : 0x6d28d9;
+  const fields: { name: string; value: string }[] = [
+    { name: "TOP PERFORMERS", value: topPerformers },
+  ];
+  if (notes) {
+    fields.push({ name: "NOTES", value: notes });
+  }
 
   const embed = new EmbedBuilder()
-    .setColor(color)
-    .setAuthor({
-      name: "LAST STAND  ·  MATCH RESULTS",
-      iconURL: interaction.guild?.iconURL() ?? undefined,
-    })
-    .setTitle("🏁  RAID CONCLUDED — RESULTS LOGGED")
+    .setColor(0x5865f2)
+    .setAuthor({ name: "◈  RAID ENDED" })
+    .setTitle(clanName)
     .setDescription(
-      `${HR}\n` +
-      `▸  **CLAN** ${DOT} \`${clanName}\`\n` +
-      `▸  **OPPONENT** ${DOT} \`${opponentClan}\`\n` +
-      `▸  **OUTCOME** ${DOT} \`${result}\`\n` +
-      `${HR}\n` +
-      `**TOP PERFORMERS**\n` +
-      `> ${topPerformers}\n` +
-      `${HR}\n` +
-      `**POST-RAID NOTES**\n` +
-      `> ${notes}`
+      `>>> Opponent  ·  ${opponentClan}\nResult  ·  ${result}\nDate  ·  ${shortDate()}`
     )
-    .setFooter({
-      text: `Closed by ${interaction.user.tag}  ·  Last Stand (LS)`,
-      iconURL: interaction.user.displayAvatarURL(),
-    })
+    .addFields(fields)
+    .setFooter({ text: `Raid ended by ${interaction.user.username}` })
     .setTimestamp();
 
   saveRaidResult({
@@ -170,7 +145,7 @@ export async function executeEndRaid(interaction: ChatInputCommandInteraction): 
     opponentClan,
     result,
     topPerformers,
-    notes,
+    notes: notes ?? "—",
     endedBy: interaction.user.tag,
     endedById: interaction.user.id,
     timestamp: new Date().toISOString(),
