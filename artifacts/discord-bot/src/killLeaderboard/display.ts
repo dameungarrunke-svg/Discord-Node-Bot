@@ -22,7 +22,6 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DIVIDER_GIF = readFileSync(resolve(__dirname, "fixedbulletlines.gif"));
 const MAX_PLAYER_CARDS = 9;
-const SOFT_BAR = "━━━━━━━━━━━━━━━━━━━━";
 const ADMIN_PERMS = PermissionFlagsBits.ManageGuild;
 
 export const setupKillLeaderboardData = new SlashCommandBuilder()
@@ -85,7 +84,6 @@ function buildHeaderEmbed(totalPlayers: number): EmbedBuilder {
       `Premium TSB player cards.\n` +
       `Showing **${visible}** player${visible === 1 ? "" : "s"}${hidden > 0 ? ` · **${hidden}** more saved` : ""}.`
     )
-    .setImage("attachment://fixedbulletlines.gif")
     .setFooter({ text: `Last Stand  •  Updated ${new Date(now * 1000).toLocaleString()}` });
 }
 
@@ -108,13 +106,12 @@ function buildPlayerEmbed(player: KillPlayer): EmbedBuilder {
     .setDescription(
       `**Roblox:** \`${player.robloxUsername}\`\n` +
       `**Discord:** \`${player.discordUsername}\`\n\n` +
-      `${SOFT_BAR}\n` +
       `**Rank:** #${player.rank}\n` +
       `**Role:** ${player.rolePosition}\n` +
       `**Kills:** ${kills}\n` +
-      `**Stage:** ${player.stage}\n` +
-      `${SOFT_BAR}`
+      `**Stage:** ${player.stage}`
     )
+    .setImage("attachment://fixedbulletlines.gif")
     .setFooter({ text: "Last Stand  •  TSB Player Card" });
 
   if (isValidUrl(player.avatarUrl)) {
