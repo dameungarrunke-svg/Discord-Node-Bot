@@ -1,0 +1,257 @@
+import {
+  ChatInputCommandInteraction,
+  Client,
+  EmbedBuilder,
+  PermissionFlagsBits,
+  SlashCommandBuilder,
+} from "discord.js";
+import { refreshPinnedKillLeaderboard } from "./display.js";
+import {
+  addKillPlayer,
+  editKillPlayer,
+  killPlayerExistsAtRank,
+  KillPlayer,
+  KillStage,
+  KILL_STAGE_COLORS,
+  KILL_STAGES,
+  removeKillPlayerByRank,
+} from "./store.js";
+
+const ADMIN_PERMS = PermissionFlagsBits.ManageGuild;
+
+function stageChoices() {
+  return KILL_STAGES.map((stage) => ({ name: stage, value: stage }));
+}
+
+function isValidAvatarUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function successEmbed(title: string, description: string, color = 0x22c55e): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(color)
+    .setTitle(title)
+    .setDescription(description)
+    .setFooter({ text: "Last Stand  ·  Premium Kill Leaderboard" })
+    .setTimestamp();
+}
+
+export const addKillPlayerData = new SlashCommandBuilder()
+  .setName("addkillplayer")
+  .setDescription("Add a player to the premium kill leaderboard. (Admin only)")
+  .setDefaultMemberPermissions(ADMIN_PERMS)
+  .addIntegerOption((o) =>
+    o.setName("rank").setDescription("Leaderboard rank number").setRequired(true).setMinValue(1)
+  )
+  .addStringOption((o) =>
+    o.setName("display_name").setDescription("Display name shown on the card").setRequired(true)
+  )
+  .addStringOption((o) =>
+    o.setName("roblox_username").setDescription("Roblox username").setRequired(true)
+  )
+  .addStringOption((o) =>
+    o.setName("discord_username").setDescription("Discord username/tag").setRequired(true)
+  )
+  .addStringOption((o) =>
+    o.setName("role_position").setDescription("Role or position, e.g. Head Mod, Recruiter, Clan Member").setRequired(true)
+  )
+  .addIntegerOption((o) =>
+    o.setName("kill_count").setDescription("Player kill count").setRequired(true).setMinValue(0)
+  )
+  .addStringOption((o) =>
+    o.setName("stage").setDescription("Player stage").setRequired(true).addChoices(...stageChoices())
+  )
+  .addStringOption((o) =>
+    o.setName("avatar_url").setDescription("Direct image URL for the right-side avatar").setRequired(true)
+  );
+
+export const editKillPlayerData = new SlashCommandBuilder()
+  .setName("editkillplayer")
+  .setDescription("Edit a premium kill leaderboard player. (Admin only)")
+  .setDefaultMemberPermissions(ADMIN_PERMS)
+  .addIntegerOption((o) =>
+    o.setName("rank").setDescription("Current rank number to edit").setRequired(true).setMinValue(1)
+  )
+  .addIntegerOption((o) =>
+    o.setName("new_rank").setDescription("New rank number").setRequired(false).setMinValue(1)
+  )
+  .addStringOption((o) =>
+    o.setName("display_name").setDescription("New display name").setRequired(false)
+  )
+  .addStringOption((o) =>
+    o.setName("roblox_username").setDescription("New Roblox username").setRequired(false)
+  )
+  .addStringOption((o) =>
+    o.setName("discord_username").setDescription("New Discord username/tag").setRequired(false)
+  )
+  .addStringOption((o) =>
+    o.setName("role_position").setDescription("New role or position").setRequired(false)
+  )
+  .addIntegerOption((o) =>
+    o.setName("kill_count").setDescription("New kill count").setRequired(false).setMinValue(0)
+  )
+  .addStringOption((o) =>
+    o.setName("stage").setDescription("New stage").setRequired(false).addChoices(...stageChoices())
+  )
+  .addStringOption((o) =>
+    o.setName("avatar_url").setDescription("New direct avatar/image URL").setRequired(false)
+  );
+
+export const removeKillPlayerData = new SlashCommandBuilder()
+  .setName("removekillplayer")
+  .setDescription("Remove a player from the premium kill leaderboard. (Admin only)")
+  .setDefaultMemberPermissions(ADMIN_PERMS)
+  .addIntegerOption((o) =>
+    o.setName("rank").setDescription("Rank number to remove").setRequired(true).setMinValue(1)
+  );
+
+export async function executeAddKillPlayer(
+  interaction: ChatInputCommandInteraction,
+  client: Client
+): Promise<void> {
+  const rank = interaction.options.getInteger("rank", true);
+  if (killPlayerExistsAtRank(rank)) {
+    await interaction.editReply({
+      embeds: [
+        successEmbed(
+          "❌ Rank Already Filled",
+          `There is already a player at rank **#${rank}**.\nUse \`/editkillplayer\` to update that card or choose a new rank.`,
+          0xef4444
+        ),
+      ],
+    });
+    return;
+  }
+
+  const avatarUrl = interaction.options.getString("avatar_url", true);
+  if (!isValidAvatarUrl(avatarUrl)) {
+    await interaction.editReply({ content: "❌ Please provide a valid direct avatar/image URL." });
+    return;
+  }
+
+  const player: KillPlayer = {
+    rank,
+    displayName: interaction.options.getString("display_name", true),
+    robloxUsername: interaction.options.getString("roblox_username", true),
+    discordUsername: interaction.options.getString("discord_username", true),
+    rolePosition: interaction.options.getString("role_position", true),
+    killCount: interaction.options.getInteger("kill_count", true),
+    stage: interaction.options.getString("stage", true) as KillStage,
+    avatarUrl,
+  };
+
+  addKillPlayer(player);
+  await refreshPinnedKillLeaderboard(client);
+
+  const embed = successEmbed(
+    "✅ Kill Player Added",
+    `**${player.displayName}** was added to rank **#${player.rank}** with **${player.killCount.toLocaleString()} kills**.\nThe permanent kill leaderboard has been updated.`,
+    KILL_STAGE_COLORS[player.stage]
+  ).setThumbnail(player.avatarUrl);
+
+  await interaction.editReply({ embeds: [embed] });
+}
+
+export async function executeEditKillPlayer(
+  interaction: ChatInputCommandInteraction,
+  client: Client
+): Promise<void> {
+  const rank = interaction.options.getInteger("rank", true);
+  if (!killPlayerExistsAtRank(rank)) {
+    await interaction.editReply({
+      embeds: [successEmbed("❌ Player Not Found", `No kill leaderboard player exists at rank **#${rank}**.`, 0xef4444)],
+    });
+    return;
+  }
+
+  const updates: Partial<KillPlayer> = {};
+  const newRank = interaction.options.getInteger("new_rank");
+  const displayName = interaction.options.getString("display_name");
+  const robloxUsername = interaction.options.getString("roblox_username");
+  const discordUsername = interaction.options.getString("discord_username");
+  const rolePosition = interaction.options.getString("role_position");
+  const killCount = interaction.options.getInteger("kill_count");
+  const stage = interaction.options.getString("stage") as KillStage | null;
+  const avatarUrl = interaction.options.getString("avatar_url");
+
+  if (newRank !== null) {
+    if (newRank !== rank && killPlayerExistsAtRank(newRank)) {
+      await interaction.editReply({
+        embeds: [
+          successEmbed(
+            "❌ Rank Already Filled",
+            `Rank **#${newRank}** already belongs to another player. Choose a free rank or edit that player instead.`,
+            0xef4444
+          ),
+        ],
+      });
+      return;
+    }
+    updates.rank = newRank;
+  }
+  if (displayName) updates.displayName = displayName;
+  if (robloxUsername) updates.robloxUsername = robloxUsername;
+  if (discordUsername) updates.discordUsername = discordUsername;
+  if (rolePosition) updates.rolePosition = rolePosition;
+  if (killCount !== null) updates.killCount = killCount;
+  if (stage) updates.stage = stage;
+  if (avatarUrl) {
+    if (!isValidAvatarUrl(avatarUrl)) {
+      await interaction.editReply({ content: "❌ Please provide a valid direct avatar/image URL." });
+      return;
+    }
+    updates.avatarUrl = avatarUrl;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    await interaction.editReply({ content: "⚠️ No changes provided. Fill in at least one edit field." });
+    return;
+  }
+
+  editKillPlayer(rank, updates);
+  await refreshPinnedKillLeaderboard(client);
+
+  await interaction.editReply({
+    embeds: [
+      successEmbed(
+        "✅ Kill Player Updated",
+        `Rank **#${rank}** was updated and the permanent kill leaderboard has been refreshed.\n\n` +
+          Object.entries(updates)
+            .map(([key, value]) => `**${key}:** ${value}`)
+            .join("\n")
+      ),
+    ],
+  });
+}
+
+export async function executeRemoveKillPlayer(
+  interaction: ChatInputCommandInteraction,
+  client: Client
+): Promise<void> {
+  const rank = interaction.options.getInteger("rank", true);
+  const removed = removeKillPlayerByRank(rank);
+
+  if (!removed) {
+    await interaction.editReply({
+      embeds: [successEmbed("❌ Player Not Found", `No kill leaderboard player exists at rank **#${rank}**.`, 0xef4444)],
+    });
+    return;
+  }
+
+  await refreshPinnedKillLeaderboard(client);
+
+  await interaction.editReply({
+    embeds: [
+      successEmbed(
+        "🗑️ Kill Player Removed",
+        `Rank **#${rank}** was removed and the permanent kill leaderboard has been updated.`
+      ),
+    ],
+  });
+}

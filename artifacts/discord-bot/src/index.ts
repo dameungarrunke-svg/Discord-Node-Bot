@@ -7,6 +7,7 @@ import {
   Routes,
   ChatInputCommandInteraction,
   ButtonInteraction,
+  MessageFlags,
   REST,
 } from "discord.js";
 
@@ -23,6 +24,15 @@ import {
   executeEditPlayer,
 } from "./leaderboard/commands.js";
 import { executeSetupLeaderboard } from "./leaderboard/display.js";
+import { executeSetupKillLeaderboard, setupKillLeaderboardData } from "./killLeaderboard/display.js";
+import {
+  addKillPlayerData,
+  editKillPlayerData,
+  removeKillPlayerData,
+  executeAddKillPlayer,
+  executeEditKillPlayer,
+  executeRemoveKillPlayer,
+} from "./killLeaderboard/commands.js";
 
 import { startRaidData, executeStartRaid, endRaidData, executeEndRaid } from "./raids/index.js";
 import { startTrainingData, executeStartTraining, endTrainingData, executeEndTraining } from "./training/index.js";
@@ -63,6 +73,10 @@ const commands = [
   addPlayerData.toJSON(),
   removePlayerData.toJSON(),
   editPlayerData.toJSON(),
+  setupKillLeaderboardData.toJSON(),
+  addKillPlayerData.toJSON(),
+  editKillPlayerData.toJSON(),
+  removeKillPlayerData.toJSON(),
   startRaidData.toJSON(),
   endRaidData.toJSON(),
   startTrainingData.toJSON(),
@@ -85,6 +99,10 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   addleaderboardplayer: (i) => executeAddPlayer(i, client),
   removeleaderboardplayer: (i) => executeRemovePlayer(i, client),
   editleaderboardplayer: (i) => executeEditPlayer(i, client),
+  setupkillleaderboard: (i) => executeSetupKillLeaderboard(i, client),
+  addkillplayer: (i) => executeAddKillPlayer(i, client),
+  editkillplayer: (i) => executeEditKillPlayer(i, client),
+  removekillplayer: (i) => executeRemoveKillPlayer(i, client),
   startraid: executeStartRaid,
   endraid: executeEndRaid,
   starttraining: executeStartTraining,
@@ -204,7 +222,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     console.log(`[INTERACTION] /${cmd.commandName} received`);
 
     try {
-      await cmd.deferReply({ ephemeral: true });
+      await cmd.deferReply({ flags: MessageFlags.Ephemeral });
     } catch (err) {
       console.error(`[INTERACTION] /${cmd.commandName} — defer failed, cannot respond`, err);
       return;
@@ -235,7 +253,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     console.log(`[INTERACTION] button:${btn.customId} received`);
 
     try {
-      await btn.deferReply({ ephemeral: true });
+      await btn.deferReply({ flags: MessageFlags.Ephemeral });
     } catch (err) {
       console.error(`[INTERACTION] button:${btn.customId} — defer failed, cannot respond`, err);
       return;

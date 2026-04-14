@@ -1,0 +1,133 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DATA_DIR = resolve(__dirname, "../../../data");
+const DATA_FILE = resolve(DATA_DIR, "kill-leaderboard.json");
+
+export type KillStage =
+  | "Stage 2 High Strong"
+  | "Stage 2 High Stable"
+  | "Stage 2 High Weak"
+  | "Stage 2 Mid Strong"
+  | "Stage 2 Mid Stable"
+  | "Stage 2 Low Stable";
+
+export const KILL_STAGES: KillStage[] = [
+  "Stage 2 High Strong",
+  "Stage 2 High Stable",
+  "Stage 2 High Weak",
+  "Stage 2 Mid Strong",
+  "Stage 2 Mid Stable",
+  "Stage 2 Low Stable",
+];
+
+export const KILL_STAGE_COLORS: Record<KillStage, number> = {
+  "Stage 2 High Strong": 0xfbbf24,
+  "Stage 2 High Stable": 0xf59e0b,
+  "Stage 2 High Weak": 0xef4444,
+  "Stage 2 Mid Strong": 0x8b5cf6,
+  "Stage 2 Mid Stable": 0x3b82f6,
+  "Stage 2 Low Stable": 0x64748b,
+};
+
+export interface KillPlayer {
+  rank: number;
+  displayName: string;
+  robloxUsername: string;
+  discordUsername: string;
+  rolePosition: string;
+  killCount: number;
+  stage: KillStage;
+  avatarUrl: string;
+}
+
+export interface KillPinnedMessage {
+  guildId: string;
+  channelId: string;
+  messageId: string;
+}
+
+interface KillLeaderboardData {
+  players: KillPlayer[];
+  pinnedMessage?: KillPinnedMessage;
+}
+
+function emptyData(): KillLeaderboardData {
+  return { players: [] };
+}
+
+function normalize(data: KillLeaderboardData): KillLeaderboardData {
+  return {
+    ...data,
+    players: [...(data.players ?? [])].sort((a, b) => a.rank - b.rank || b.killCount - a.killCount),
+  };
+}
+
+function load(): KillLeaderboardData {
+  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+  if (!existsSync(DATA_FILE)) {
+    const data = emptyData();
+    writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    return data;
+  }
+
+  try {
+    return normalize(JSON.parse(readFileSync(DATA_FILE, "utf-8")) as KillLeaderboardData);
+  } catch {
+    return emptyData();
+  }
+}
+
+function save(data: KillLeaderboardData): void {
+  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+  writeFileSync(DATA_FILE, JSON.stringify(normalize(data), null, 2));
+}
+
+export function getKillPlayers(): KillPlayer[] {
+  return load().players;
+}
+
+export function killPlayerExistsAtRank(rank: number): boolean {
+  return load().players.some((p) => p.rank === rank);
+}
+
+export function addKillPlayer(player: KillPlayer): void {
+  const data = load();
+  data.players.push(player);
+  save(data);
+}
+
+export function editKillPlayer(rank: number, updates: Partial<KillPlayer>): boolean {
+  const data = load();
+  const index = data.players.findIndex((p) => p.rank === rank);
+  if (index === -1) return false;
+  data.players[index] = { ...data.players[index], ...updates };
+  save(data);
+  return true;
+}
+
+export function removeKillPlayerByRank(rank: number): boolean {
+  const data = load();
+  const before = data.players.length;
+  data.players = data.players.filter((p) => p.rank !== rank);
+  save(data);
+  return data.players.length < before;
+}
+
+export function getKillPinnedMessage(): KillPinnedMessage | undefined {
+  return load().pinnedMessage;
+}
+
+export function setKillPinnedMessage(pinned: KillPinnedMessage): void {
+  const data = load();
+  data.pinnedMessage = pinned;
+  save(data);
+}
+
+export function clearKillPinnedMessage(): void {
+  const data = load();
+  delete data.pinnedMessage;
+  save(data);
+}
