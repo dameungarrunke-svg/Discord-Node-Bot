@@ -37,12 +37,30 @@
       "stageRank": "High Strong"
     },
     {
+      "position": 5,
+      "displayName": "LS_ZODY",
+      "robloxUsername": "ZODYfx",
+      "discordUsername": "zody208",
+      "country": "🇮🇳",
+      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-F1291E333B9C338E1E3C428CBCEE1922-Png/150/150/AvatarHeadshot/Webp/noFilter",
+      "stageRank": "High Stable"
+    },
+    {
       "position": 6,
       "displayName": "Ls_Shion",
       "robloxUsername": "ronakoptopp",
       "discordUsername": "sinu_han2",
       "country": "🇮🇳",
       "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-BAF152EA68B16C7E771DB2F61AC62188-Png/150/150/AvatarHeadshot/Webp/noFilter",
+      "stageRank": "Mid Strong"
+    },
+    {
+      "position": 7,
+      "displayName": "LS_Rithwik",
+      "robloxUsername": "Spiutinduf",
+      "discordUsername": "rituwikpro",
+      "country": "🇮🇳",
+      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-7F71B3A0DD50F5F0FAB60C58149012AC-Png/150/150/AvatarHeadshot/Webp/noFilter",
       "stageRank": "Mid Strong"
     },
     {
@@ -57,7 +75,7 @@
   ],
   "pinnedMessage": {
     "guildId": "1479910330669990025",
-    "channelId": "1479912066864382074",
-    "messageId": "1493533580155162764"
+    "channelId": "1479912023239164016",
+    "messageId": "1493536710708166836"
   }
 }

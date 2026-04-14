@@ -24,6 +24,20 @@ import {
 } from "./leaderboard/commands.js";
 import { executeSetupLeaderboard } from "./leaderboard/display.js";
 
+import { startRaidData, executeStartRaid, endRaidData, executeEndRaid } from "./raids/index.js";
+import { startTrainingData, executeStartTraining, endTrainingData, executeEndTraining } from "./training/index.js";
+import {
+  announceData, executeAnnounce,
+  warnData, executeWarn,
+  promoteData, executePromote,
+  demoteData, executeDemote,
+  attendanceData, executeAttendance,
+  pollData, executePoll,
+  mvpData, executeMvp,
+  suggestionData, executeSuggestion,
+} from "./utility/index.js";
+import { setupRulesData, executeSetupRules } from "./rules/index.js";
+
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
   console.error("DISCORD_BOT_TOKEN is not set. Exiting.");
@@ -36,6 +50,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessageReactions,
   ],
 });
 
@@ -45,6 +60,19 @@ const commands = [
   addPlayerData.toJSON(),
   removePlayerData.toJSON(),
   editPlayerData.toJSON(),
+  startRaidData.toJSON(),
+  endRaidData.toJSON(),
+  startTrainingData.toJSON(),
+  endTrainingData.toJSON(),
+  announceData.toJSON(),
+  warnData.toJSON(),
+  promoteData.toJSON(),
+  demoteData.toJSON(),
+  attendanceData.toJSON(),
+  pollData.toJSON(),
+  mvpData.toJSON(),
+  suggestionData.toJSON(),
+  setupRulesData.toJSON(),
 ];
 
 async function registerCommandsForGuild(guildId: string): Promise<void> {
@@ -107,11 +135,24 @@ client.on(Events.MessageCreate, async (message: Message) => {
       "`!hello` — Say hello\n" +
       "`!help` — Show this help message\n\n" +
       "**Slash Commands:**\n" +
-      "`/setupchallengepanel` — *(Admin)* Deploy the TSB challenge ticket panel\n" +
-      "`/setupleaderboard` — *(Admin)* Deploy the permanent TSB leaderboard\n" +
+      "`/setupchallengepanel` — *(Admin)* Deploy the challenge ticket panel\n" +
+      "`/setupleaderboard` — *(Admin)* Deploy the leaderboard\n" +
       "`/addleaderboardplayer` — *(Admin)* Add a player to the leaderboard\n" +
       "`/removeleaderboardplayer` — *(Admin)* Remove a player from the leaderboard\n" +
-      "`/editleaderboardplayer` — *(Admin)* Edit a leaderboard player"
+      "`/editleaderboardplayer` — *(Admin)* Edit a leaderboard player\n" +
+      "`/startraid` — *(Admin)* Announce a raid\n" +
+      "`/endraid` — *(Admin)* End a raid and log results\n" +
+      "`/starttraining` — *(Admin)* Announce a training session\n" +
+      "`/endtraining` — *(Admin)* End a training and log results\n" +
+      "`/announce` — *(Admin)* Post an announcement\n" +
+      "`/warn` — *(Mod)* Warn a member\n" +
+      "`/promote` — *(Admin)* Promote a member\n" +
+      "`/demote` — *(Admin)* Demote a member\n" +
+      "`/attendance` — *(Mod)* Mark a member's attendance\n" +
+      "`/poll` — *(Mod)* Create a community poll\n" +
+      "`/mvp` — *(Mod)* Award MVP to a member\n" +
+      "`/suggestion` — Submit a suggestion\n" +
+      "`/setuprules` — *(Admin)* Deploy the clan rulebook"
     );
   }
 });
@@ -126,6 +167,19 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
       addleaderboardplayer: (i) => executeAddPlayer(i, client),
       removeleaderboardplayer: (i) => executeRemovePlayer(i, client),
       editleaderboardplayer: (i) => executeEditPlayer(i, client),
+      startraid: executeStartRaid,
+      endraid: executeEndRaid,
+      starttraining: executeStartTraining,
+      endtraining: executeEndTraining,
+      announce: executeAnnounce,
+      warn: executeWarn,
+      promote: executePromote,
+      demote: executeDemote,
+      attendance: executeAttendance,
+      poll: executePoll,
+      mvp: executeMvp,
+      suggestion: executeSuggestion,
+      setuprules: executeSetupRules,
     };
 
     const handler = handlers[cmd.commandName];
