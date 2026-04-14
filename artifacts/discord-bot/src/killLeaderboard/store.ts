@@ -8,6 +8,15 @@ const DATA_FILE = resolve(DATA_DIR, "kill-leaderboard.json");
 
 export type KillStage = string;
 
+export const KILL_STAGES = [
+  "Stage 2 High Strong",
+  "Stage 2 High Stable",
+  "Stage 2 High Weak",
+  "Stage 2 Mid Strong",
+  "Stage 2 Mid Stable",
+  "Stage 2 Mid Weak",
+] as const;
+
 export interface KillPlayer {
   rank: number;
   displayName: string;

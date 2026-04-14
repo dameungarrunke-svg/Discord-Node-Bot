@@ -12,11 +12,16 @@ import {
   killPlayerExistsAtRank,
   KillPlayer,
   KillStage,
+  KILL_STAGES,
   moveKillPlayerRank,
   removeKillPlayerByRank,
 } from "./store.js";
 
 const ADMIN_PERMS = PermissionFlagsBits.ManageGuild;
+
+function stageChoices() {
+  return KILL_STAGES.map((stage) => ({ name: stage, value: stage }));
+}
 
 function isValidAvatarUrl(url: string | null | undefined): url is string {
   if (!url) return false;
@@ -72,7 +77,7 @@ export const addKillPlayerData = new SlashCommandBuilder()
     o.setName("kill_count").setDescription("Player kill count, e.g. 20K, 70k, 80000").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("stage").setDescription("Stage, e.g. Stage 1 - High").setRequired(true)
+    o.setName("stage").setDescription("Player stage").setRequired(true).addChoices(...stageChoices())
   )
   .addStringOption((o) =>
     o.setName("avatar_url").setDescription("Direct image URL for the right-side avatar").setRequired(true)
@@ -104,7 +109,7 @@ export const editKillPlayerData = new SlashCommandBuilder()
     o.setName("kill_count").setDescription("New kill count, e.g. 20K, 70k, 80000").setRequired(false)
   )
   .addStringOption((o) =>
-    o.setName("stage").setDescription("New stage, e.g. Stage 1 - High").setRequired(false)
+    o.setName("stage").setDescription("New stage").setRequired(false).addChoices(...stageChoices())
   )
   .addStringOption((o) =>
     o.setName("avatar_url").setDescription("New direct avatar/image URL").setRequired(false)
