@@ -7,7 +7,6 @@ import {
   Routes,
   ChatInputCommandInteraction,
   ButtonInteraction,
-  MessageFlags,
 } from "discord.js";
 
 import { data as setupPanelData, execute as setupPanelExecute } from "./commands/setupChallengePanel.js";
@@ -175,15 +174,41 @@ client.on(Events.MessageCreate, async (message: Message) => {
   }
 });
 
+// Bypass discord.js's REST queue by posting directly to Discord's API.
+// No auth header needed — interaction callbacks are token-authenticated.
+// This is the absolute fastest acknowledgment possible.
+async function ackDeferred(id: string, token: string, ephemeral = true): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `https://discord.com/api/v10/interactions/${id}/${token}/callback`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: 5, // DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+          data: { flags: ephemeral ? 64 : 0 },
+        }),
+      }
+    );
+    if (!res.ok) {
+      console.error(`Ack failed: ${res.status} ${await res.text()}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Ack fetch error:", err);
+    return false;
+  }
+}
+
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isChatInputCommand()) {
     const cmd = interaction as ChatInputCommandInteraction;
 
-    // Acknowledge immediately — this MUST happen within 3 seconds
-    try {
-      await cmd.deferReply({ flags: MessageFlags.Ephemeral });
-    } catch (err) {
-      console.error(`Failed to defer /${cmd.commandName}:`, err);
+    // Acknowledge immediately via raw fetch — no queue, no rate-limiter
+    const ok = await ackDeferred(cmd.id, cmd.token);
+    if (!ok) {
+      console.error(`Failed to ack /${cmd.commandName}`);
       return;
     }
 
@@ -207,11 +232,10 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isButton()) {
     const btn = interaction as ButtonInteraction;
 
-    // Acknowledge immediately
-    try {
-      await btn.deferReply({ flags: MessageFlags.Ephemeral });
-    } catch (err) {
-      console.error(`Failed to defer button [${btn.customId}]:`, err);
+    // Acknowledge immediately via raw fetch — no queue, no rate-limiter
+    const ok = await ackDeferred(btn.id, btn.token);
+    if (!ok) {
+      console.error(`Failed to ack button [${btn.customId}]`);
       return;
     }
 
