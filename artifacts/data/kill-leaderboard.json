@@ -1,16 +1,5 @@
 {
-  "players": [
-    {
-      "rank": 1,
-      "displayName": "eom",
-      "robloxUsername": "eon",
-      "discordUsername": "won",
-      "rolePosition": "head",
-      "killCount": 80000,
-      "stage": "Stage 2 High Weak",
-      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-BAF152EA68B16C7E771DB2F61AC62188-Png/150/150/AvatarHeadshot/Webp/noFilter"
-    }
-  ],
+  "players": [],
   "pinnedMessage": {
     "guildId": "1479910330669990025",
     "channelId": "1479912066864382074",

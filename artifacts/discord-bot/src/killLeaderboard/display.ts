@@ -1,5 +1,6 @@
 import {
   AttachmentBuilder,
+  ChannelType,
   ChatInputCommandInteraction,
   Client,
   EmbedBuilder,
@@ -27,7 +28,14 @@ const ADMIN_PERMS = PermissionFlagsBits.ManageGuild;
 export const setupKillLeaderboardData = new SlashCommandBuilder()
   .setName("setupkillleaderboard")
   .setDescription("Create the permanent kill leaderboard message in this channel. (Admin only)")
-  .setDefaultMemberPermissions(ADMIN_PERMS);
+  .setDefaultMemberPermissions(ADMIN_PERMS)
+  .addChannelOption((option) =>
+    option
+      .setName("channel")
+      .setDescription("Channel where the kill leaderboard should be posted")
+      .setRequired(false)
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+  );
 
 function isValidUrl(url: string | null | undefined): url is string {
   if (!url) return false;
@@ -130,7 +138,8 @@ export async function executeSetupKillLeaderboard(
   interaction: ChatInputCommandInteraction,
   client: Client
 ): Promise<void> {
-  const channel = interaction.channel as TextChannel | null;
+  const selectedChannel = interaction.options.getChannel("channel", false);
+  const channel = (selectedChannel ?? interaction.channel) as TextChannel | null;
   if (!channel || !channel.isTextBased()) {
     await interaction.editReply({ content: "❌ Cannot post a kill leaderboard in this channel." });
     return;
@@ -143,7 +152,7 @@ export async function executeSetupKillLeaderboard(
   }
 
   const pinned = getKillPinnedMessage();
-  if (pinned && pinned.guildId === interaction.guildId) {
+  if (pinned && pinned.guildId === interaction.guildId && pinned.channelId === channel.id) {
     const existingChannel = (await interaction.guild?.channels.fetch(pinned.channelId).catch(() => null)) as TextChannel | null;
     const existingMessage = existingChannel
       ? await existingChannel.messages.fetch(pinned.messageId).catch(() => null)
