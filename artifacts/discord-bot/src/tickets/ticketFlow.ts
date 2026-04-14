@@ -16,25 +16,24 @@ import {
 import { addActiveTicket, hasActiveTicket, isOnCooldown } from "./ticketManager.js";
 
 const QUESTION_TIMEOUT = 5 * 60 * 1000;
+const HR  = "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯";
+const DOT = " · · · · · · · · · · · · · · · ";
 
 const QUESTIONS = [
   {
     key: "opponent",
-    label: "Who are you challenging?",
-    prompt:
-      "**Who are you challenging?**\n> Mention them (`@user`) or type their username.",
+    label: "Opponent",
+    prompt: "**Who are you challenging?**\n> Mention them (`@user`) or type their username.",
   },
   {
     key: "rules",
     label: "Fight Rules",
-    prompt:
-      "**What are the Fight Rules?**\n> e.g. *No items, No cheap spots, 1v1 only*",
+    prompt: "**What are the fight rules?**\n> e.g. *No items, No cheap spots, 1v1 only*",
   },
   {
     key: "notes",
     label: "Additional Notes",
-    prompt:
-      "**Any additional Notes?** *(optional)*\n> Type your notes or type `skip` to leave blank.",
+    prompt: "**Any additional notes?** *(optional)*\n> Type your notes or type `skip` to leave blank.",
   },
 ];
 
@@ -60,10 +59,14 @@ export async function handleCreateTicket(interaction: ButtonInteraction): Promis
       flags: MessageFlags.Ephemeral,
       embeds: [
         new EmbedBuilder()
-          .setColor(0xe74c3c)
-          .setTitle("⏳ Cooldown Active")
+          .setColor(0xb91c1c)
+          .setAuthor({ name: "LAST STAND  ·  CHALLENGE SYSTEM" })
+          .setTitle("⏳  COOLDOWN ACTIVE")
           .setDescription(
-            `You recently closed a challenge ticket.\nPlease wait **${seconds}s** before opening a new one.`
+            `${HR}\n` +
+            `You recently closed a ticket.\n` +
+            `Please wait **${seconds} seconds** before opening a new one.\n` +
+            `${HR}`
           ),
       ],
     });
@@ -75,10 +78,14 @@ export async function handleCreateTicket(interaction: ButtonInteraction): Promis
       flags: MessageFlags.Ephemeral,
       embeds: [
         new EmbedBuilder()
-          .setColor(0xe74c3c)
-          .setTitle("❌ Ticket Already Open")
+          .setColor(0xb91c1c)
+          .setAuthor({ name: "LAST STAND  ·  CHALLENGE SYSTEM" })
+          .setTitle("⛔  TICKET ALREADY OPEN")
           .setDescription(
-            "You already have an open challenge ticket.\nPlease close it before opening a new one."
+            `${HR}\n` +
+            `You already have an open challenge ticket.\n` +
+            `Please close it before opening a new one.\n` +
+            `${HR}`
           ),
       ],
     });
@@ -146,7 +153,7 @@ export async function handleCreateTicket(interaction: ButtonInteraction): Promis
   addActiveTicket(userId, channel.id);
 
   await interaction.editReply({
-    content: `✅ Your challenge ticket has been created: ${channel}`,
+    content: `✅ Your challenge ticket is ready: ${channel}`,
   });
 
   await runTicketQA(channel, interaction.user.id, guild);
@@ -160,15 +167,17 @@ async function runTicketQA(
   const member = await guild.members.fetch(userId).catch(() => null);
 
   const introEmbed = new EmbedBuilder()
-    .setColor(0xc0392b)
-    .setTitle("⚔️  Challenge Ticket Opened")
+    .setColor(0x9f1239)
+    .setAuthor({ name: "LAST STAND  ·  CHALLENGE SYSTEM" })
+    .setTitle("⚔  CHALLENGE TICKET OPENED")
     .setDescription(
-      `Welcome, ${member ? `<@${userId}>` : "Challenger"}!\n\n` +
-      "Please answer the following questions to submit your challenge.\n" +
-      "You have **5 minutes** to respond to each question.\n\n" +
-      "━━━━━━━━━━━━━━━━━━━━━━"
+      `${HR}\n\n` +
+      `Welcome, ${member ? `<@${userId}>` : "Challenger"}.\n\n` +
+      `Please answer the following questions to submit your match request.\n` +
+      `You have **5 minutes** to respond to each prompt.\n\n` +
+      `${HR}`
     )
-    .setFooter({ text: "The Strongest Battlegrounds  •  Challenge System" })
+    .setFooter({ text: "Last Stand (LS)  ·  Challenge System" })
     .setTimestamp();
 
   await channel.send({ embeds: [introEmbed] });
@@ -177,7 +186,7 @@ async function runTicketQA(
 
   for (const question of QUESTIONS) {
     const questionEmbed = new EmbedBuilder()
-      .setColor(0x2c3e50)
+      .setColor(0x1e293b)
       .setDescription(`<@${userId}>\n\n${question.prompt}`);
 
     await channel.send({ embeds: [questionEmbed] });
@@ -193,10 +202,14 @@ async function runTicketQA(
 
     if (!collected || collected.size === 0) {
       const timeoutEmbed = new EmbedBuilder()
-        .setColor(0xe74c3c)
-        .setTitle("⏰ Ticket Timed Out")
+        .setColor(0xb91c1c)
+        .setAuthor({ name: "LAST STAND  ·  CHALLENGE SYSTEM" })
+        .setTitle("⏰  TICKET TIMED OUT")
         .setDescription(
-          "You did not respond in time. This ticket will be deleted in **10 seconds**."
+          `${HR}\n` +
+          `No response received within the time limit.\n` +
+          `This ticket will be deleted in **10 seconds**.\n` +
+          `${HR}`
         );
       await channel.send({ embeds: [timeoutEmbed] });
       setTimeout(() => channel.delete().catch(() => {}), 10_000);
@@ -217,30 +230,35 @@ async function sendChallengeSummary(
   answers: Record<string, string>
 ): Promise<void> {
   const summaryEmbed = new EmbedBuilder()
-    .setColor(0xc0392b)
-    .setTitle("⚔️  Challenge Request Submitted")
+    .setColor(0x9f1239)
+    .setAuthor({ name: "LAST STAND  ·  CHALLENGE SUBMITTED" })
+    .setTitle("⚔  MATCH REQUEST PENDING")
     .setDescription(
-      "A new challenge has been submitted. Staff will coordinate the match.\n" +
-      "━━━━━━━━━━━━━━━━━━━━━━"
+      `${HR}\n` +
+      `A challenge has been submitted. Staff will coordinate the match.\n` +
+      `${HR}\n` +
+      `▸  **CHALLENGER** ${DOT} <@${userId}>\n` +
+      `▸  **OPPONENT** ${DOT} \`${answers["opponent"] ?? "—"}\`\n` +
+      `${HR}\n` +
+      `**FIGHT RULES**\n` +
+      `> ${answers["rules"] ?? "—"}\n\n` +
+      `**NOTES**\n` +
+      `> ${answers["notes"] ?? "—"}\n` +
+      `${HR}`
     )
-    .addFields(
-      { name: "🎯  Challenger", value: `<@${userId}>`, inline: true },
-      { name: "🆚  Opponent", value: answers["opponent"] ?? "—", inline: true },
-      { name: "\u200b", value: "\u200b", inline: false },
-      { name: "📜  Fight Rules", value: answers["rules"] ?? "—", inline: false },
-      { name: "📝  Notes", value: answers["notes"] ?? "—", inline: false }
-    )
-    .setFooter({ text: "The Strongest Battlegrounds  •  Challenge System" })
+    .setFooter({ text: "Last Stand (LS)  ·  Challenge System" })
     .setTimestamp();
 
   const controlsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("close_ticket")
-      .setLabel("🔒  Close Ticket")
+      .setLabel("Close Ticket")
+      .setEmoji("🔒")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("delete_ticket")
-      .setLabel("🗑️  Delete Ticket")
+      .setLabel("Delete Ticket")
+      .setEmoji("🗑️")
       .setStyle(ButtonStyle.Danger)
   );
 

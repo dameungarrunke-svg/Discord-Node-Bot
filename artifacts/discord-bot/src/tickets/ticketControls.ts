@@ -7,6 +7,8 @@ import {
 } from "discord.js";
 import { removeActiveTicketByChannelId } from "./ticketManager.js";
 
+const HR = "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯";
+
 export async function handleCloseTicket(interaction: ButtonInteraction): Promise<void> {
   const channel = interaction.channel as TextChannel;
   if (!channel) return;
@@ -45,17 +47,20 @@ export async function handleCloseTicket(interaction: ButtonInteraction): Promise
   ]);
 
   if (userId) {
-    await channel.permissionOverwrites.create(userId, {
-      ViewChannel: false,
-    });
+    await channel.permissionOverwrites.create(userId, { ViewChannel: false });
   }
 
   const closeEmbed = new EmbedBuilder()
-    .setColor(0x95a5a6)
-    .setTitle("🔒  Ticket Closed")
+    .setColor(0x334155)
+    .setAuthor({ name: "LAST STAND  ·  CHALLENGE SYSTEM" })
+    .setTitle("🔒  TICKET CLOSED")
     .setDescription(
-      `This ticket was closed by <@${interaction.user.id}>.\n\nOnly staff can view or delete this channel.`
+      `${HR}\n` +
+      `Closed by <@${interaction.user.id}>.\n` +
+      `Only staff can view or delete this channel.\n` +
+      `${HR}`
     )
+    .setFooter({ text: "Last Stand (LS)  ·  Challenge System" })
     .setTimestamp();
 
   await interaction.editReply({ embeds: [closeEmbed] });
@@ -82,9 +87,16 @@ export async function handleDeleteTicket(interaction: ButtonInteraction): Promis
   }
 
   const deleteEmbed = new EmbedBuilder()
-    .setColor(0xe74c3c)
-    .setTitle("🗑️  Deleting Ticket")
-    .setDescription("This ticket will be permanently deleted in **5 seconds**.");
+    .setColor(0xb91c1c)
+    .setAuthor({ name: "LAST STAND  ·  CHALLENGE SYSTEM" })
+    .setTitle("🗑️  DELETING TICKET")
+    .setDescription(
+      `${HR}\n` +
+      `This ticket will be permanently deleted in **5 seconds**.\n` +
+      `${HR}`
+    )
+    .setFooter({ text: "Last Stand (LS)  ·  Challenge System" })
+    .setTimestamp();
 
   await interaction.reply({ embeds: [deleteEmbed] });
 

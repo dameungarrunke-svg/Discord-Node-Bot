@@ -11,7 +11,9 @@ import { addWarn, getWarns, addPromotion, addAttendance, addMvp } from "./store.
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
 const MOD   = PermissionFlagsBits.ModerateMembers;
-const DIVIDER = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+
+const HR  = "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯";
+const DOT = " · · · · · · · · · · · · · · · ";
 
 function findChannel(interaction: ChatInputCommandInteraction, ...keywords: string[]): TextChannel | null {
   const guild = interaction.guild;
@@ -27,16 +29,16 @@ function findChannel(interaction: ChatInputCommandInteraction, ...keywords: stri
 
 export const announceData = new SlashCommandBuilder()
   .setName("announce")
-  .setDescription("Post a premium announcement embed.")
+  .setDescription("Broadcast an official clan announcement.")
   .setDefaultMemberPermissions(ADMIN)
   .addStringOption((o) =>
     o.setName("title").setDescription("Announcement title").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("message").setDescription("Announcement body").setRequired(true)
+    o.setName("message").setDescription("Announcement body / content").setRequired(true)
   )
   .addChannelOption((o) =>
-    o.setName("channel").setDescription("Channel to post in (defaults to current)").setRequired(false)
+    o.setName("channel").setDescription("Target channel (defaults to current)").setRequired(false)
   )
   .addRoleOption((o) =>
     o.setName("ping_role").setDescription("Role to ping (optional)").setRequired(false)
@@ -45,9 +47,9 @@ export const announceData = new SlashCommandBuilder()
 export async function executeAnnounce(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const title   = interaction.options.getString("title", true);
-  const message = interaction.options.getString("message", true);
-  const target  = interaction.options.getChannel("channel") as TextChannel | null;
+  const title    = interaction.options.getString("title", true);
+  const message  = interaction.options.getString("message", true);
+  const target   = interaction.options.getChannel("channel") as TextChannel | null;
   const pingRole = interaction.options.getRole("ping_role");
 
   const channel = (target ?? interaction.channel) as TextChannel | null;
@@ -57,32 +59,34 @@ export async function executeAnnounce(interaction: ChatInputCommandInteraction):
   }
 
   const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
+    .setColor(0x1d4ed8)
     .setAuthor({
-      name: "LAST STAND (LS)  —  ANNOUNCEMENT",
+      name: "LAST STAND  ·  OFFICIAL ANNOUNCEMENT",
       iconURL: interaction.guild?.iconURL() ?? undefined,
     })
-    .setTitle(`📢  ${title}`)
-    .setDescription(`${DIVIDER}\n\n${message}\n\n${DIVIDER}`)
+    .setTitle(`📢  ${title.toUpperCase()}`)
+    .setDescription(
+      `${HR}\n\n${message}\n\n${HR}`
+    )
     .setFooter({
-      text: `Posted by ${interaction.user.tag}  •  Last Stand (LS)`,
+      text: `Posted by ${interaction.user.tag}  ·  Last Stand (LS)`,
       iconURL: interaction.user.displayAvatarURL(),
     })
     .setTimestamp();
 
   await channel.send({ content: pingRole ? `${pingRole}` : undefined, embeds: [embed] });
-  await interaction.editReply({ content: `✅ Announcement posted in ${channel}.` });
+  await interaction.editReply({ content: `✅ Announcement posted to ${channel}.` });
 }
 
 export const warnData = new SlashCommandBuilder()
   .setName("warn")
-  .setDescription("Issue a formal warning to a member.")
+  .setDescription("Issue a formal warning to a server member.")
   .setDefaultMemberPermissions(MOD)
   .addUserOption((o) =>
     o.setName("user").setDescription("Member to warn").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("reason").setDescription("Reason for warning").setRequired(true)
+    o.setName("reason").setDescription("Reason for the warning").setRequired(true)
   );
 
 export async function executeWarn(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -105,26 +109,28 @@ export async function executeWarn(interaction: ChatInputCommandInteraction): Pro
   const history = getWarns(target.id, interaction.guildId ?? "");
 
   const embed = new EmbedBuilder()
-    .setColor(0xeab308)
+    .setColor(0xca8a04)
     .setAuthor({
-      name: "LAST STAND (LS)  —  WARNING ISSUED",
+      name: "LAST STAND  ·  MODERATION LOG",
       iconURL: interaction.guild?.iconURL() ?? undefined,
     })
-    .setTitle("⚠️  MEMBER WARNED")
-    .setDescription(`${DIVIDER}`)
-    .addFields(
-      { name: "👤  Member", value: `<@${target.id}>`, inline: true },
-      { name: "🛡️  Moderator", value: `<@${interaction.user.id}>`, inline: true },
-      { name: "📋  Total Warnings", value: `\`${history.length}\``, inline: true },
-      { name: "📝  Reason", value: reason, inline: false }
+    .setTitle("⚠  FORMAL WARNING ISSUED")
+    .setDescription(
+      `${HR}\n` +
+      `▸  **MEMBER** ${DOT} <@${target.id}>\n` +
+      `▸  **ISSUED BY** ${DOT} <@${interaction.user.id}>\n` +
+      `▸  **TOTAL WARNINGS** ${DOT} \`${history.length}\`\n` +
+      `${HR}\n` +
+      `**REASON**\n` +
+      `> ${reason}`
     )
-    .setFooter({ text: "Last Stand (LS)  •  Moderation Log" })
+    .setThumbnail(target.displayAvatarURL())
+    .setFooter({ text: `Last Stand (LS)  ·  Moderation System` })
     .setTimestamp();
 
   const channel = interaction.channel as TextChannel | null;
   if (channel) await channel.send({ embeds: [embed] });
-
-  await interaction.editReply({ content: `✅ Warning issued to **${target.tag}**. Total warnings: **${history.length}**` });
+  await interaction.editReply({ content: `✅ Warning issued to **${target.tag}**. (${history.length} total)` });
 }
 
 export const promoteData = new SlashCommandBuilder()
@@ -135,7 +141,7 @@ export const promoteData = new SlashCommandBuilder()
     o.setName("user").setDescription("Member to promote").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("rank").setDescription("New rank title").setRequired(true)
+    o.setName("rank").setDescription("New rank / title").setRequired(true)
   );
 
 export async function executePromote(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -157,20 +163,21 @@ export async function executePromote(interaction: ChatInputCommandInteraction): 
   });
 
   const embed = new EmbedBuilder()
-    .setColor(0x22c55e)
+    .setColor(0x15803d)
     .setAuthor({
-      name: "LAST STAND (LS)  —  PROMOTION",
+      name: "LAST STAND  ·  RANK REGISTRY",
       iconURL: interaction.guild?.iconURL() ?? undefined,
     })
-    .setTitle("🎖️  MEMBER PROMOTED")
-    .setDescription(`${DIVIDER}`)
-    .addFields(
-      { name: "👤  Member", value: `<@${target.id}>`, inline: true },
-      { name: "🏅  New Rank", value: `\`${rank}\``, inline: true },
-      { name: "🛡️  Promoted By", value: `<@${interaction.user.id}>`, inline: true }
+    .setTitle("🎖  RANK PROMOTION CONFIRMED")
+    .setDescription(
+      `${HR}\n` +
+      `▸  **MEMBER** ${DOT} <@${target.id}>\n` +
+      `▸  **NEW RANK** ${DOT} \`${rank}\`\n` +
+      `▸  **PROMOTED BY** ${DOT} <@${interaction.user.id}>\n` +
+      `${HR}`
     )
     .setThumbnail(target.displayAvatarURL())
-    .setFooter({ text: "Last Stand (LS)  •  Rank Promotion" })
+    .setFooter({ text: `Last Stand (LS)  ·  Rank Registry` })
     .setTimestamp();
 
   const channel = interaction.channel as TextChannel | null;
@@ -186,7 +193,7 @@ export const demoteData = new SlashCommandBuilder()
     o.setName("user").setDescription("Member to demote").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("rank").setDescription("New (lower) rank title").setRequired(true)
+    o.setName("rank").setDescription("New rank / title").setRequired(true)
   );
 
 export async function executeDemote(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -208,20 +215,21 @@ export async function executeDemote(interaction: ChatInputCommandInteraction): P
   });
 
   const embed = new EmbedBuilder()
-    .setColor(0xef4444)
+    .setColor(0xb91c1c)
     .setAuthor({
-      name: "LAST STAND (LS)  —  DEMOTION",
+      name: "LAST STAND  ·  RANK REGISTRY",
       iconURL: interaction.guild?.iconURL() ?? undefined,
     })
-    .setTitle("📉  MEMBER DEMOTED")
-    .setDescription(`${DIVIDER}`)
-    .addFields(
-      { name: "👤  Member", value: `<@${target.id}>`, inline: true },
-      { name: "📋  New Rank", value: `\`${rank}\``, inline: true },
-      { name: "🛡️  Demoted By", value: `<@${interaction.user.id}>`, inline: true }
+    .setTitle("📉  RANK DEMOTION CONFIRMED")
+    .setDescription(
+      `${HR}\n` +
+      `▸  **MEMBER** ${DOT} <@${target.id}>\n` +
+      `▸  **NEW RANK** ${DOT} \`${rank}\`\n` +
+      `▸  **DEMOTED BY** ${DOT} <@${interaction.user.id}>\n` +
+      `${HR}`
     )
     .setThumbnail(target.displayAvatarURL())
-    .setFooter({ text: "Last Stand (LS)  •  Rank Demotion" })
+    .setFooter({ text: `Last Stand (LS)  ·  Rank Registry` })
     .setTimestamp();
 
   const channel = interaction.channel as TextChannel | null;
@@ -231,13 +239,13 @@ export async function executeDemote(interaction: ChatInputCommandInteraction): P
 
 export const attendanceData = new SlashCommandBuilder()
   .setName("attendance")
-  .setDescription("Mark a member's attendance for an event.")
+  .setDescription("Log a member's attendance for an event.")
   .setDefaultMemberPermissions(MOD)
   .addStringOption((o) =>
     o.setName("event").setDescription("Event name").setRequired(true)
   )
   .addUserOption((o) =>
-    o.setName("user").setDescription("Member to mark present").setRequired(true)
+    o.setName("user").setDescription("Member to mark as present").setRequired(true)
   );
 
 export async function executeAttendance(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -258,18 +266,20 @@ export async function executeAttendance(interaction: ChatInputCommandInteraction
   });
 
   const embed = new EmbedBuilder()
-    .setColor(0x06b6d4)
+    .setColor(0x0369a1)
     .setAuthor({
-      name: "LAST STAND (LS)  —  ATTENDANCE",
+      name: "LAST STAND  ·  ATTENDANCE REGISTRY",
       iconURL: interaction.guild?.iconURL() ?? undefined,
     })
-    .setTitle("✅  ATTENDANCE MARKED")
-    .addFields(
-      { name: "👤  Member", value: `<@${target.id}>`, inline: true },
-      { name: "📅  Event", value: `\`${event}\``, inline: true },
-      { name: "🛡️  Marked By", value: `<@${interaction.user.id}>`, inline: true }
+    .setTitle("✅  ATTENDANCE LOGGED")
+    .setDescription(
+      `${HR}\n` +
+      `▸  **MEMBER** ${DOT} <@${target.id}>\n` +
+      `▸  **EVENT** ${DOT} \`${event}\`\n` +
+      `▸  **LOGGED BY** ${DOT} <@${interaction.user.id}>\n` +
+      `${HR}`
     )
-    .setFooter({ text: "Last Stand (LS)  •  Attendance System" })
+    .setFooter({ text: `Last Stand (LS)  ·  Attendance System` })
     .setTimestamp();
 
   await interaction.editReply({ embeds: [embed] });
@@ -277,51 +287,54 @@ export async function executeAttendance(interaction: ChatInputCommandInteraction
 
 export const pollData = new SlashCommandBuilder()
   .setName("poll")
-  .setDescription("Create a community vote/poll.")
+  .setDescription("Launch a community vote or poll.")
   .setDefaultMemberPermissions(MOD)
   .addStringOption((o) =>
     o.setName("question").setDescription("Poll question").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("option1").setDescription("Option 1").setRequired(true)
+    o.setName("option1").setDescription("Option A").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("option2").setDescription("Option 2").setRequired(true)
+    o.setName("option2").setDescription("Option B").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("option3").setDescription("Option 3 (optional)").setRequired(false)
+    o.setName("option3").setDescription("Option C (optional)").setRequired(false)
   )
   .addStringOption((o) =>
-    o.setName("option4").setDescription("Option 4 (optional)").setRequired(false)
+    o.setName("option4").setDescription("Option D (optional)").setRequired(false)
   );
 
 export async function executePoll(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const question = interaction.options.getString("question", true);
-  const options = [
+  const rawOptions = [
     interaction.options.getString("option1", true),
     interaction.options.getString("option2", true),
     interaction.options.getString("option3"),
     interaction.options.getString("option4"),
   ].filter((o): o is string => o !== null);
 
-  const emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣"];
+  const emojis  = ["🇦", "🇧", "🇨", "🇩"];
+  const labels  = ["A", "B", "C", "D"];
 
-  const optionsText = options
-    .map((opt, i) => `${emojis[i]}  **${opt}**`)
-    .join("\n\n");
+  const optionsText = rawOptions
+    .map((opt, i) => `${emojis[i]}  \`${labels[i]}\`  —  **${opt}**`)
+    .join("\n");
 
   const embed = new EmbedBuilder()
-    .setColor(0x8b5cf6)
+    .setColor(0x7c3aed)
     .setAuthor({
-      name: "LAST STAND (LS)  —  COMMUNITY POLL",
+      name: "LAST STAND  ·  COMMUNITY VOTE",
       iconURL: interaction.guild?.iconURL() ?? undefined,
     })
     .setTitle(`📊  ${question}`)
-    .setDescription(`${DIVIDER}\n\n${optionsText}\n\n${DIVIDER}\n\n*React below to cast your vote.*`)
+    .setDescription(
+      `${HR}\n\n${optionsText}\n\n${HR}\n*Cast your vote by reacting below.*`
+    )
     .setFooter({
-      text: `Poll by ${interaction.user.tag}  •  Last Stand (LS)`,
+      text: `Poll by ${interaction.user.tag}  ·  Last Stand (LS)`,
       iconURL: interaction.user.displayAvatarURL(),
     })
     .setTimestamp();
@@ -333,26 +346,25 @@ export async function executePoll(interaction: ChatInputCommandInteraction): Pro
   }
 
   const msg: Message = await channel.send({ embeds: [embed] });
-
-  for (let i = 0; i < options.length; i++) {
+  for (let i = 0; i < rawOptions.length; i++) {
     await msg.react(emojis[i]).catch(() => {});
   }
 
-  await interaction.editReply({ content: "✅ Poll posted." });
+  await interaction.editReply({ content: "✅ Poll launched." });
 }
 
 export const mvpData = new SlashCommandBuilder()
   .setName("mvp")
-  .setDescription("Award MVP to a member for outstanding performance.")
+  .setDescription("Award MVP recognition to a standout member.")
   .setDefaultMemberPermissions(MOD)
   .addUserOption((o) =>
-    o.setName("user").setDescription("Member receiving MVP").setRequired(true)
+    o.setName("user").setDescription("MVP recipient").setRequired(true)
   )
   .addStringOption((o) =>
     o.setName("event").setDescription("Event or match name").setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("reason").setDescription("Reason for MVP award").setRequired(true)
+    o.setName("reason").setDescription("Reason for the MVP award").setRequired(true)
   );
 
 export async function executeMvp(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -375,21 +387,23 @@ export async function executeMvp(interaction: ChatInputCommandInteraction): Prom
   });
 
   const embed = new EmbedBuilder()
-    .setColor(0xffd700)
+    .setColor(0xb45309)
     .setAuthor({
-      name: "LAST STAND (LS)  —  MVP AWARD",
+      name: "LAST STAND  ·  PERFORMANCE BOARD",
       iconURL: interaction.guild?.iconURL() ?? undefined,
     })
     .setTitle("🏆  MVP OF THE SESSION")
-    .setDescription(`${DIVIDER}`)
-    .addFields(
-      { name: "🌟  MVP", value: `<@${target.id}>`, inline: true },
-      { name: "📅  Event", value: `\`${event}\``, inline: true },
-      { name: "🛡️  Awarded By", value: `<@${interaction.user.id}>`, inline: true },
-      { name: "📝  Reason", value: reason, inline: false }
+    .setDescription(
+      `${HR}\n` +
+      `▸  **PLAYER** ${DOT} <@${target.id}>\n` +
+      `▸  **EVENT** ${DOT} \`${event}\`\n` +
+      `▸  **AWARDED BY** ${DOT} <@${interaction.user.id}>\n` +
+      `${HR}\n` +
+      `**CITATION**\n` +
+      `> ${reason}`
     )
     .setThumbnail(target.displayAvatarURL())
-    .setFooter({ text: "Last Stand (LS)  •  MVP Award" })
+    .setFooter({ text: `Last Stand (LS)  ·  Performance Board` })
     .setTimestamp();
 
   const channel = interaction.channel as TextChannel | null;
@@ -410,18 +424,20 @@ export async function executeSuggestion(interaction: ChatInputCommandInteraction
   const suggestion = interaction.options.getString("suggestion", true);
 
   const embed = new EmbedBuilder()
-    .setColor(0x6366f1)
+    .setColor(0x0891b2)
     .setAuthor({
-      name: "LAST STAND (LS)  —  SUGGESTION",
+      name: "LAST STAND  ·  SUGGESTIONS BOARD",
       iconURL: interaction.guild?.iconURL() ?? undefined,
     })
-    .setTitle("💡  NEW SUGGESTION")
-    .setDescription(`${DIVIDER}\n\n${suggestion}\n\n${DIVIDER}`)
-    .setThumbnail(interaction.user.displayAvatarURL())
-    .addFields(
-      { name: "👤  Submitted By", value: `<@${interaction.user.id}>`, inline: true }
+    .setTitle("💡  NEW SUGGESTION SUBMITTED")
+    .setDescription(
+      `${HR}\n\n` +
+      `${suggestion}\n\n` +
+      `${HR}\n` +
+      `▸  **SUBMITTED BY** ${DOT} <@${interaction.user.id}>`
     )
-    .setFooter({ text: "Last Stand (LS)  •  Suggestions" })
+    .setThumbnail(interaction.user.displayAvatarURL())
+    .setFooter({ text: `Last Stand (LS)  ·  Suggestions Board` })
     .setTimestamp();
 
   const suggestionsChannel = findChannel(interaction, "suggestions", "suggest");
@@ -439,6 +455,6 @@ export async function executeSuggestion(interaction: ChatInputCommandInteraction
   await interaction.editReply({
     content: suggestionsChannel
       ? `✅ Suggestion posted to ${suggestionsChannel}.`
-      : "✅ Suggestion posted. *(No #suggestions channel found — posted here.)*",
+      : "✅ Suggestion posted.",
   });
 }
