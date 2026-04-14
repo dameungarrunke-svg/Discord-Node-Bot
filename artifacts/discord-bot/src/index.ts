@@ -7,6 +7,8 @@ import {
   Routes,
   ChatInputCommandInteraction,
   ButtonInteraction,
+  MessageFlags,
+  REST,
 } from "discord.js";
 
 import { data as setupPanelData, execute as setupPanelExecute } from "./commands/setupChallengePanel.js";
@@ -52,6 +54,9 @@ const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
   ],
 });
+
+// Pre-warmed REST client — same undici connection pool, no TLS cold-start per interaction
+const rest = new REST({ version: "10" }).setToken(token);
 
 const commands = [
   setupPanelData.toJSON(),
@@ -104,24 +109,50 @@ const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = 
 
 async function registerCommandsForGuild(guildId: string): Promise<void> {
   try {
-    await client.rest.put(Routes.applicationGuildCommands(client.user!.id, guildId), {
+    await rest.put(Routes.applicationGuildCommands(client.user!.id, guildId), {
       body: commands,
     });
-    console.log(`Commands registered for guild: ${guildId}`);
+    console.log(`[READY] Commands registered for guild: ${guildId}`);
   } catch (err) {
-    console.error(`Failed to register commands for guild ${guildId}:`, err);
+    console.error(`[ERROR] Failed to register commands for guild ${guildId}:`, err);
+  }
+}
+
+// Acknowledge an interaction via the pre-warmed REST client.
+// Using discord.js REST (undici) avoids TLS cold-start on Node's native fetch.
+async function ackDeferred(id: string, token: string, ephemeral = true): Promise<boolean> {
+  const t0 = Date.now();
+  try {
+    await rest.post(`/interactions/${id}/${token}/callback` as `/${string}`, {
+      body: { type: 5, data: { flags: ephemeral ? 64 : 0 } },
+      auth: false, // interaction callbacks don't need the bot token
+    });
+    console.log(`[ACK] ok — ${Date.now() - t0}ms`);
+    return true;
+  } catch (err: unknown) {
+    const status = (err as { status?: number }).status;
+    console.error(`[ACK] FAILED (${status ?? "?"}) — ${Date.now() - t0}ms`, err);
+    return false;
   }
 }
 
 client.once(Events.ClientReady, async (readyClient) => {
-  console.log(`Logged in as ${readyClient.user.tag}`);
-  console.log(`Guilds in cache: ${readyClient.guilds.cache.size}`);
+  console.log(`[READY] Logged in as ${readyClient.user.tag}`);
+  console.log(`[READY] Guilds in cache: ${readyClient.guilds.cache.size}`);
+
+  // Pre-warm the REST connection to Discord so the first interaction ack is fast
+  try {
+    await rest.get(Routes.gateway());
+    console.log("[READY] REST connection pre-warmed.");
+  } catch {
+    // Non-critical — just a warm-up
+  }
 
   try {
-    await client.rest.put(Routes.applicationCommands(readyClient.user.id), { body: [] });
-    console.log("Cleared global application commands.");
+    await rest.put(Routes.applicationCommands(readyClient.user.id), { body: [] });
+    console.log("[READY] Cleared global application commands.");
   } catch (err) {
-    console.error("Failed to clear global commands:", err);
+    console.error("[ERROR] Failed to clear global commands:", err);
   }
 
   for (const [guildId] of readyClient.guilds.cache) {
@@ -129,12 +160,23 @@ client.once(Events.ClientReady, async (readyClient) => {
   }
 
   if (readyClient.guilds.cache.size === 0) {
-    console.warn("No guilds in cache — bot may not be in any server.");
+    console.warn("[WARN] No guilds in cache — bot may not be in any server.");
   }
 });
 
 client.on(Events.GuildCreate, async (guild) => {
   await registerCommandsForGuild(guild.id);
+});
+
+// Log gateway disconnects/reconnects so we know if the WebSocket drops
+client.on(Events.ShardDisconnect, (event, shardId) => {
+  console.warn(`[GATEWAY] Shard ${shardId} DISCONNECTED — code ${event.code}`);
+});
+client.on(Events.ShardReconnecting, (shardId) => {
+  console.log(`[GATEWAY] Shard ${shardId} reconnecting...`);
+});
+client.on(Events.ShardResume, (shardId, replayed) => {
+  console.log(`[GATEWAY] Shard ${shardId} RESUMED (replayed ${replayed} events)`);
 });
 
 client.on(Events.MessageCreate, async (message: Message) => {
@@ -174,59 +216,36 @@ client.on(Events.MessageCreate, async (message: Message) => {
   }
 });
 
-// Bypass discord.js's REST queue by posting directly to Discord's API.
-// No auth header needed — interaction callbacks are token-authenticated.
-// This is the absolute fastest acknowledgment possible.
-async function ackDeferred(id: string, token: string, ephemeral = true): Promise<boolean> {
-  try {
-    const res = await fetch(
-      `https://discord.com/api/v10/interactions/${id}/${token}/callback`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: 5, // DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
-          data: { flags: ephemeral ? 64 : 0 },
-        }),
-      }
-    );
-    if (!res.ok) {
-      console.error(`Ack failed: ${res.status} ${await res.text()}`);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error("Ack fetch error:", err);
-    return false;
-  }
-}
-
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isChatInputCommand()) {
     const cmd = interaction as ChatInputCommandInteraction;
     const t0 = Date.now();
+    console.log(`[INTERACTION] /${cmd.commandName} received`);
 
-    // Acknowledge immediately via raw fetch — no queue, no rate-limiter
     const ok = await ackDeferred(cmd.id, cmd.token);
-    console.log(`[ACK] /${cmd.commandName} — ${Date.now() - t0}ms — ${ok ? "ok" : "FAILED"}`);
-    if (!ok) return;
+    if (!ok) {
+      console.error(`[INTERACTION] /${cmd.commandName} — ack failed, cannot respond`);
+      return;
+    }
 
-    // Tell discord.js the interaction is deferred so editReply works
+    // Tell discord.js this interaction is already deferred so editReply works
     (cmd as unknown as Record<string, unknown>).deferred = true;
     (cmd as unknown as Record<string, unknown>).ephemeral = true;
+
+    console.log(`[INTERACTION] /${cmd.commandName} — ack+setup ${Date.now() - t0}ms, running handler`);
 
     const handler = slashHandlers[cmd.commandName];
     if (handler) {
       handler(cmd).catch(async (err) => {
-        console.error(`Error in /${cmd.commandName}:`, err);
+        console.error(`[ERROR] /${cmd.commandName}:`, err);
         try {
           await cmd.editReply({ content: "❌ Something went wrong. Please try again." });
         } catch (e2) {
-          console.error(`editReply also failed for /${cmd.commandName}:`, e2);
+          console.error(`[ERROR] editReply also failed for /${cmd.commandName}:`, e2);
         }
       });
     } else {
-      console.warn(`No handler for command: ${cmd.commandName}`);
+      console.warn(`[WARN] No handler for command: ${cmd.commandName}`);
       await cmd.editReply({ content: "❌ Unknown command." });
     }
     return;
@@ -235,24 +254,27 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isButton()) {
     const btn = interaction as ButtonInteraction;
     const t0 = Date.now();
+    console.log(`[INTERACTION] button:${btn.customId} received`);
 
-    // Acknowledge immediately via raw fetch — no queue, no rate-limiter
     const ok = await ackDeferred(btn.id, btn.token);
-    console.log(`[ACK] button:${btn.customId} — ${Date.now() - t0}ms — ${ok ? "ok" : "FAILED"}`);
-    if (!ok) return;
+    if (!ok) {
+      console.error(`[INTERACTION] button:${btn.customId} — ack failed, cannot respond`);
+      return;
+    }
 
-    // Tell discord.js the interaction is deferred so editReply works
     (btn as unknown as Record<string, unknown>).deferred = true;
     (btn as unknown as Record<string, unknown>).ephemeral = true;
+
+    console.log(`[INTERACTION] button:${btn.customId} — ack+setup ${Date.now() - t0}ms, running handler`);
 
     const handler = buttonHandlers[btn.customId];
     if (handler) {
       handler(btn).catch(async (err) => {
-        console.error(`Error in button [${btn.customId}]:`, err);
+        console.error(`[ERROR] button [${btn.customId}]:`, err);
         try {
           await btn.editReply({ content: "❌ Something went wrong. Please try again." });
         } catch (e2) {
-          console.error(`editReply also failed for button [${btn.customId}]:`, e2);
+          console.error(`[ERROR] editReply also failed for button [${btn.customId}]:`, e2);
         }
       });
     }
