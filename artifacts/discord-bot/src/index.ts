@@ -62,6 +62,14 @@ client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
   console.log(`Guilds in cache: ${readyClient.guilds.cache.size}`);
 
+  // Clear any stale global (application-level) commands
+  try {
+    await client.rest.put(Routes.applicationCommands(readyClient.user.id), { body: [] });
+    console.log("Cleared global application commands.");
+  } catch (err) {
+    console.error("Failed to clear global commands:", err);
+  }
+
   for (const [guildId] of readyClient.guilds.cache) {
     await registerCommandsForGuild(guildId);
   }
