@@ -106,14 +106,6 @@ client.once(Events.ClientReady, async (readyClient) => {
     console.warn("No guilds in cache — bot may not be in any server.");
   }
 
-  // Keep the REST HTTP connection warm so interaction responses never time out
-  setInterval(async () => {
-    try {
-      await client.rest.get(Routes.user("@me"));
-    } catch {
-      // Ignore keep-alive errors
-    }
-  }, 3_000);
 });
 
 client.on(Events.GuildCreate, async (guild) => {
@@ -206,22 +198,26 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isButton()) {
     const btn = interaction as ButtonInteraction;
 
-    switch (btn.customId) {
-      case "create_challenge_ticket":
-        handleCreateTicket(btn).catch((err) => {
-          console.error("Error creating challenge ticket:", err);
-        });
-        break;
-      case "close_ticket":
-        handleCloseTicket(btn).catch((err) => {
-          console.error("Error closing ticket:", err);
-        });
-        break;
-      case "delete_ticket":
-        handleDeleteTicket(btn).catch((err) => {
-          console.error("Error deleting ticket:", err);
-        });
-        break;
+    const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
+      create_challenge_ticket: handleCreateTicket,
+      close_ticket: handleCloseTicket,
+      delete_ticket: handleDeleteTicket,
+    };
+
+    const btnHandler = buttonHandlers[btn.customId];
+    if (btnHandler) {
+      btnHandler(btn).catch(async (err) => {
+        console.error(`Error in button [${btn.customId}]:`, err);
+        try {
+          if (btn.deferred || btn.replied) {
+            await btn.editReply({ content: "❌ Something went wrong. Please try again." });
+          } else {
+            await btn.reply({ content: "❌ Something went wrong. Please try again.", flags: MessageFlags.Ephemeral });
+          }
+        } catch {
+          // Interaction already expired
+        }
+      });
     }
     return;
   }

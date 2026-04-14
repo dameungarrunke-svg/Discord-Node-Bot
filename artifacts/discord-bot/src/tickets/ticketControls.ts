@@ -10,8 +10,13 @@ import { removeActiveTicketByChannelId } from "./ticketManager.js";
 const HR = "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯";
 
 export async function handleCloseTicket(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   const channel = interaction.channel as TextChannel;
-  if (!channel) return;
+  if (!channel) {
+    await interaction.editReply({ content: "❌ Could not find channel." });
+    return;
+  }
 
   const member = interaction.guild?.members.cache.get(interaction.user.id);
   const hasStaffPerms =
@@ -22,14 +27,11 @@ export async function handleCloseTicket(interaction: ButtonInteraction): Promise
   const isOwner = userId === interaction.user.id;
 
   if (!isOwner && !hasStaffPerms) {
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral,
+    await interaction.editReply({
       content: "❌ Only the ticket owner or staff can close this ticket.",
     });
     return;
   }
-
-  await interaction.deferReply();
 
   await channel.permissionOverwrites.set([
     {
@@ -67,8 +69,13 @@ export async function handleCloseTicket(interaction: ButtonInteraction): Promise
 }
 
 export async function handleDeleteTicket(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   const channel = interaction.channel as TextChannel;
-  if (!channel) return;
+  if (!channel) {
+    await interaction.editReply({ content: "❌ Could not find channel." });
+    return;
+  }
 
   const member = interaction.guild?.members.cache.get(interaction.user.id);
   const hasStaffPerms =
@@ -79,8 +86,7 @@ export async function handleDeleteTicket(interaction: ButtonInteraction): Promis
   const isOwner = ticketOwnerId === interaction.user.id;
 
   if (!isOwner && !hasStaffPerms) {
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral,
+    await interaction.editReply({
       content: "❌ Only the ticket owner or staff can delete this ticket.",
     });
     return;
@@ -98,7 +104,7 @@ export async function handleDeleteTicket(interaction: ButtonInteraction): Promis
     .setFooter({ text: "Last Stand (LS)  ·  Challenge System" })
     .setTimestamp();
 
-  await interaction.reply({ embeds: [deleteEmbed] });
+  await interaction.editReply({ embeds: [deleteEmbed] });
 
   setTimeout(async () => {
     await channel.delete().catch(() => {});

@@ -47,16 +47,20 @@ function getStaffRoles(guild: Guild): Collection<string, Role> {
 }
 
 export async function handleCreateTicket(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   const guild = interaction.guild;
-  if (!guild) return;
+  if (!guild) {
+    await interaction.editReply({ content: "❌ Could not find server." });
+    return;
+  }
 
   const userId = interaction.user.id;
 
   const cooldownMs = isOnCooldown(userId);
   if (cooldownMs > 0) {
     const seconds = Math.ceil(cooldownMs / 1000);
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral,
+    await interaction.editReply({
       embeds: [
         new EmbedBuilder()
           .setColor(0xb91c1c)
@@ -74,8 +78,7 @@ export async function handleCreateTicket(interaction: ButtonInteraction): Promis
   }
 
   if (hasActiveTicket(userId)) {
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral,
+    await interaction.editReply({
       embeds: [
         new EmbedBuilder()
           .setColor(0xb91c1c)
@@ -91,8 +94,6 @@ export async function handleCreateTicket(interaction: ButtonInteraction): Promis
     });
     return;
   }
-
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const staffRoles = getStaffRoles(guild);
 
