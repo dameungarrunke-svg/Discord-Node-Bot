@@ -10,13 +10,8 @@ import { saveTrainingLog } from "./store.js";
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
 
-function shortDate(): string {
-  return new Date().toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function ts(): number {
+  return Math.floor(Date.now() / 1000);
 }
 
 function findChannel(interaction: ChatInputCommandInteraction, ...keywords: string[]): TextChannel | null {
@@ -51,6 +46,9 @@ export const startTrainingData = new SlashCommandBuilder()
     o.setName("ping_role").setDescription("Role to ping").setRequired(false)
   )
   .addStringOption((o) =>
+    o.setName("attendance").setDescription("Attendance requirement (e.g. Mandatory, Optional)").setRequired(false)
+  )
+  .addStringOption((o) =>
     o.setName("notes").setDescription("Session overview / notes (optional)").setRequired(false)
   );
 
@@ -62,24 +60,45 @@ export async function executeStartTraining(interaction: ChatInputCommandInteract
   const host         = interaction.options.getString("host", true);
   const duration     = interaction.options.getString("duration", true);
   const pingRole     = interaction.options.getRole("ping_role");
+  const attendance   = interaction.options.getString("attendance") || "Open to all";
   const notes        = interaction.options.getString("notes");
 
-  const fields: { name: string; value: string }[] = [
-    { name: "GAME LINK", value: gameLink },
+  const now = ts();
+
+  const fields: { name: string; value: string; inline?: boolean }[] = [
+    {
+      name: "🔗  GAME LINK",
+      value: `**[▶  Click to Join the Session](${gameLink})**`,
+    },
   ];
+
   if (notes) {
-    fields.push({ name: "SESSION OVERVIEW", value: notes });
+    fields.push({
+      name: "📋  SESSION OVERVIEW",
+      value: `*${notes}*`,
+    });
   }
 
   const embed = new EmbedBuilder()
     .setColor(0xf97316)
-    .setAuthor({ name: "◈  TRAINING STARTED" })
+    .setAuthor({
+      name: "◈  TRAINING STARTED  ·  LAST STAND (LS)",
+      iconURL: interaction.guild?.iconURL() ?? undefined,
+    })
     .setTitle(trainingType)
     .setDescription(
-      `>>> Host  ·  ${host}\nDuration  ·  ${duration}\nDate  ·  ${shortDate()}`
+      `◆ ─────────────────────────────── ◆\n` +
+      `> **Host** · ${host}\n` +
+      `> **Duration** · ${duration}\n` +
+      `> **Attendance** · ${attendance}\n` +
+      `> **Date** · <t:${now}:F>\n` +
+      `◆ ─────────────────────────────── ◆`
     )
     .addFields(fields)
-    .setFooter({ text: `Training called by ${interaction.user.username}` })
+    .setFooter({
+      text: `Training called by ${interaction.user.username}`,
+      iconURL: interaction.user.displayAvatarURL(),
+    })
     .setTimestamp();
 
   const channel = interaction.channel as TextChannel | null;
@@ -121,22 +140,41 @@ export async function executeEndTraining(interaction: ChatInputCommandInteractio
   const mvp               = interaction.options.getString("mvp", true);
   const notes             = interaction.options.getString("notes");
 
-  const fields: { name: string; value: string }[] = [
-    { name: "SESSION MVP", value: mvp },
+  const now = ts();
+
+  const fields: { name: string; value: string; inline?: boolean }[] = [
+    {
+      name: "🏅  SESSION MVP",
+      value: `**${mvp}**`,
+    },
   ];
+
   if (notes) {
-    fields.push({ name: "SESSION NOTES", value: notes });
+    fields.push({
+      name: "📋  SESSION NOTES",
+      value: `*${notes}*`,
+    });
   }
 
   const embed = new EmbedBuilder()
     .setColor(0xf97316)
-    .setAuthor({ name: "◈  TRAINING ENDED" })
+    .setAuthor({
+      name: "◈  TRAINING ENDED  ·  LAST STAND (LS)",
+      iconURL: interaction.guild?.iconURL() ?? undefined,
+    })
     .setTitle(trainingType)
     .setDescription(
-      `>>> Host  ·  ${host}\nDuration  ·  ${durationCompleted}\nDate  ·  ${shortDate()}`
+      `◆ ─────────────────────────────── ◆\n` +
+      `> **Host** · ${host}\n` +
+      `> **Duration** · ${durationCompleted}\n` +
+      `> **Date** · <t:${now}:F>\n` +
+      `◆ ─────────────────────────────── ◆`
     )
     .addFields(fields)
-    .setFooter({ text: `Training ended by ${interaction.user.username}` })
+    .setFooter({
+      text: `Training ended by ${interaction.user.username}`,
+      iconURL: interaction.user.displayAvatarURL(),
+    })
     .setTimestamp();
 
   saveTrainingLog({
