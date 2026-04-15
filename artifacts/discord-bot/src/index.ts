@@ -335,4 +335,36 @@ http.createServer((req, res) => {
   console.log(`[KEEP-ALIVE] HTTP server running on port ${KEEP_ALIVE_PORT}`);
 });
 
+// Self-ping every 4 minutes so the process is never considered idle by Replit
+setInterval(() => {
+  http.get(`http://localhost:${KEEP_ALIVE_PORT}/`, (res) => {
+    res.resume();
+  }).on("error", (err) => {
+    console.warn("[KEEP-ALIVE] Self-ping failed:", err.message);
+  });
+}, 4 * 60 * 1000);
+
+// Gateway watchdog — if the WebSocket goes down and doesn't come back within
+// 60 seconds, force a full reconnect so interactions never stay broken.
+let lastHeartbeatAck = Date.now();
+
+client.ws.on("heartbeat" as any, () => {
+  lastHeartbeatAck = Date.now();
+});
+
+setInterval(async () => {
+  const secondsSinceHeartbeat = (Date.now() - lastHeartbeatAck) / 1000;
+  if (secondsSinceHeartbeat > 60) {
+    console.warn(`[WATCHDOG] No heartbeat for ${Math.round(secondsSinceHeartbeat)}s — forcing reconnect`);
+    try {
+      client.destroy();
+      await client.login(token!);
+      lastHeartbeatAck = Date.now();
+      console.log("[WATCHDOG] Reconnected successfully.");
+    } catch (err) {
+      console.error("[WATCHDOG] Reconnect failed:", err);
+    }
+  }
+}, 30 * 1000);
+
 client.login(token);
