@@ -24,7 +24,20 @@
       "timestamp": "2026-04-14T12:11:22.261Z",
       "guildId": "1479910330669990025",
       "raidNumber": 2
+    },
+    {
+      "id": "1776250290238",
+      "clanName": "LAST STAND",
+      "opponentClan": "random",
+      "result": "victory",
+      "topPerformers": "<@1100394861858922627> <@1116405995271364628> <@1385648204120592416>",
+      "notes": "all other opps ragequit and ty to everyone who joined",
+      "endedBy": "dino_00800",
+      "endedById": "1392606557476225176",
+      "timestamp": "2026-04-15T10:51:30.238Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 4
     }
   ],
-  "counter": 2
+  "counter": 4
 }
