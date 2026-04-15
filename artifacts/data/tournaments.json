@@ -1,0 +1,27 @@
+{
+  "counter": 1,
+  "tournaments": [
+    {
+      "id": "LS-0001",
+      "guildId": "1479910330669990025",
+      "channelId": "1479912066864382074",
+      "messageId": "1493936585035612302",
+      "about": "Js",
+      "rules": "eheh",
+      "gameLink": "eheh",
+      "prize": "egsg",
+      "pingRoleId": "1479911907891613928",
+      "tournamentDate": "$+$+",
+      "tournamentTime": "$$-",
+      "hostId": "1492904186264813669",
+      "hostTag": "Last Stand Management#0533",
+      "maxParticipants": 88,
+      "bracketType": "Single Elimination",
+      "entryRequirement": "nothing",
+      "createdById": "1368619589692293203",
+      "createdByTag": "galaxyg7a",
+      "createdAt": "2026-04-15T11:30:37.634Z",
+      "participants": []
+    }
+  ]
+}

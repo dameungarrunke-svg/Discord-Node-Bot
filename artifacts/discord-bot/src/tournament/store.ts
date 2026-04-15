@@ -6,8 +6,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = resolve(__dirname, "../../../data");
 const DATA_FILE = resolve(DATA_DIR, "tournaments.json");
 
-export type BracketType = "Single Elimination" | "Double Elimination" | "Round Robin";
-
 export interface TournamentParticipant {
   userId: string;
   userTag: string;
@@ -29,7 +27,6 @@ export interface TournamentData {
   hostId: string;
   hostTag: string;
   maxParticipants: number;
-  bracketType: BracketType;
   entryRequirement: string;
   notes?: string;
   registrationDeadline?: string;

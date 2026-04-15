@@ -12,7 +12,6 @@ import {
 } from "discord.js";
 import {
   addTournamentParticipant,
-  BracketType,
   getTournament,
   nextTournamentId,
   removeTournamentParticipant,
@@ -21,14 +20,7 @@ import {
 } from "./store.js";
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
-const HR = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
-const THIN = "────── ⋆⋅☆⋅⋆ ──────";
-
-const BRACKET_CHOICES: BracketType[] = [
-  "Single Elimination",
-  "Double Elimination",
-  "Round Robin",
-];
+const HR = "━━━━━━━━━━━━━━━━━━━━";
 
 function safeValue(value: string): string {
   return value.trim() || "—";
@@ -40,40 +32,34 @@ function participantCounter(tournament: TournamentData): string {
 
 function buildTournamentEmbed(tournament: TournamentData, guildIcon?: string | null): EmbedBuilder {
   const participantsOpen = tournament.participants.length < tournament.maxParticipants;
-  const notes = tournament.notes ? `\n\n**COMMAND NOTES**\n> ${tournament.notes}` : "";
+  const notes = tournament.notes ? `\n\n**Notes**\n> ${tournament.notes}` : "";
   const deadline = tournament.registrationDeadline
-    ? `\n▸  **REGISTRATION DEADLINE** ${THIN} \`${tournament.registrationDeadline}\``
+    ? `\n**Deadline:** \`${tournament.registrationDeadline}\``
     : "";
 
   return new EmbedBuilder()
     .setColor(participantsOpen ? 0xdc2626 : 0x7f1d1d)
     .setAuthor({
-      name: "LAST STAND (LS)  ·  TSB CHAMPIONSHIP CONTROL",
+      name: "LAST STAND (LS) · TSB TOURNAMENT",
       iconURL: guildIcon ?? undefined,
     })
-    .setTitle(`⚔️  TOURNAMENT LOCKED IN  ·  ${tournament.id}`)
+    .setTitle(`⚔️ Tournament Announcement · ${tournament.id}`)
     .setDescription(
       `${HR}\n` +
-      `**THE STRONGEST BATTLEGROUNDS COMPETITIVE EVENT**\n` +
-      `Elite players, ranked pressure, no excuses. Step into the arena and prove who survives under Last Stand rules.\n\n` +
-      `**TOURNAMENT ABOUT**\n> ${tournament.about}\n\n` +
-      `**RULES OF ENGAGEMENT**\n> ${tournament.rules}\n\n` +
-      `${HR}\n` +
-      `▸  **DATE** ${THIN} \`${tournament.tournamentDate}\`\n` +
-      `▸  **TIME** ${THIN} \`${tournament.tournamentTime}\`\n` +
-      `▸  **HOST** ${THIN} <@${tournament.hostId}>\n` +
-      `▸  **BRACKET** ${THIN} \`${tournament.bracketType}\`\n` +
-      `▸  **SLOTS** ${THIN} \`${participantCounter(tournament)}\`\n` +
-      `▸  **PRIZE** ${THIN} \`${tournament.prize}\`\n` +
-      `▸  **GAME LINK** ${THIN} ${tournament.gameLink}\n` +
-      `▸  **ENTRY REQUIREMENT** ${THIN} \`${tournament.entryRequirement}\`${deadline}\n` +
-      `${HR}\n\n` +
-      `**REGISTRATION STATUS**\n` +
-      `> ${participantsOpen ? "🟢 Open — use the buttons below to join." : "🔴 Full — all competitive slots are locked."}` +
+      `**About**\n${tournament.about}\n\n` +
+      `**Rules**\n${tournament.rules}\n\n` +
+      `**Date:** \`${tournament.tournamentDate}\`\n` +
+      `**Time:** \`${tournament.tournamentTime}\`\n` +
+      `**Host:** <@${tournament.hostId}>\n` +
+      `**Prize:** \`${tournament.prize}\`\n` +
+      `**Slots:** \`${participantCounter(tournament)}\`\n` +
+      `**Entry:** \`${tournament.entryRequirement}\`${deadline}\n` +
+      `**Game Link:** ${tournament.gameLink}\n\n` +
+      `**Status:** ${participantsOpen ? "Open" : "Full"}` +
       notes
     )
     .setFooter({
-      text: `Last Stand Management  ·  TSB Tournament System  ·  Created by ${tournament.createdByTag}`,
+      text: `Last Stand Management · Created by ${tournament.createdByTag}`,
     })
     .setTimestamp(new Date(tournament.createdAt));
 }
@@ -120,7 +106,7 @@ function buildParticipantsText(tournament: TournamentData): string {
 
 export const tournamentData = new SlashCommandBuilder()
   .setName("tournament")
-  .setDescription("Launch a premium Last Stand TSB tournament announcement.")
+  .setDescription("Launch a Last Stand TSB tournament announcement.")
   .setDefaultMemberPermissions(ADMIN)
   .addStringOption((option) =>
     option.setName("tournament_about").setDescription("What this tournament is about").setRequired(true)
@@ -153,13 +139,6 @@ export const tournamentData = new SlashCommandBuilder()
       .setRequired(true)
       .setMinValue(2)
       .setMaxValue(200)
-  )
-  .addStringOption((option) =>
-    option
-      .setName("bracket_type")
-      .setDescription("Tournament bracket format")
-      .setRequired(true)
-      .addChoices(...BRACKET_CHOICES.map((choice) => ({ name: choice, value: choice })))
   )
   .addStringOption((option) =>
     option.setName("entry_requirement").setDescription("Requirement to enter").setRequired(true)
@@ -197,7 +176,6 @@ export async function executeTournament(interaction: ChatInputCommandInteraction
     hostId: host.id,
     hostTag: host.tag,
     maxParticipants: interaction.options.getInteger("maximum_participants", true),
-    bracketType: interaction.options.getString("bracket_type", true) as BracketType,
     entryRequirement: safeValue(interaction.options.getString("entry_requirement", true)),
     notes: interaction.options.getString("notes")?.trim() || undefined,
     registrationDeadline: interaction.options.getString("registration_deadline")?.trim() || undefined,
