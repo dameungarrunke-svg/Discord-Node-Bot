@@ -9,6 +9,7 @@ import {
   ButtonInteraction,
   REST,
 } from "discord.js";
+import http from "http";
 
 import { data as setupPanelData, execute as setupPanelExecute } from "./commands/setupChallengePanel.js";
 import { handleCreateTicket } from "./tickets/ticketFlow.js";
@@ -324,6 +325,14 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     }
     return;
   }
+});
+
+const KEEP_ALIVE_PORT = parseInt(process.env.PORT ?? "3000", 10);
+http.createServer((req, res) => {
+  res.writeHead(200);
+  res.end("OK");
+}).listen(KEEP_ALIVE_PORT, () => {
+  console.log(`[KEEP-ALIVE] HTTP server running on port ${KEEP_ALIVE_PORT}`);
 });
 
 client.login(token);
