@@ -37,7 +37,20 @@
       "timestamp": "2026-04-15T10:51:30.238Z",
       "guildId": "1479910330669990025",
       "raidNumber": 4
+    },
+    {
+      "id": "1776264200297",
+      "clanName": "LS",
+      "opponentClan": "random bums",
+      "result": "victory",
+      "topPerformers": "<@1144836847571324928> <@1056463568771493888> <@1368619589692293203>",
+      "notes": "—",
+      "endedBy": "pspspspsp999",
+      "endedById": "962263230451957780",
+      "timestamp": "2026-04-15T14:43:20.297Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 5
     }
   ],
-  "counter": 4
+  "counter": 5
 }
