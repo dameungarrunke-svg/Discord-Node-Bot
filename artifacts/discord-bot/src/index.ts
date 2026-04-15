@@ -59,6 +59,13 @@ import {
   executeTournament,
   tournamentData,
 } from "./tournament/index.js";
+import {
+  censorData,
+  executeCensor,
+  stopcensorData,
+  executeStopCensor,
+} from "./moderation/commands.js";
+import { handleModerationMessage } from "./moderation/monitor.js";
 
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
@@ -107,6 +114,8 @@ const commands = [
   setupRulesData.toJSON(),
   tournamentData.toJSON(),
   closeTournamentData.toJSON(),
+  censorData.toJSON(),
+  stopcensorData.toJSON(),
 ];
 
 // Defined once at startup — not recreated on every interaction
@@ -136,6 +145,8 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   setuprules: executeSetupRules,
   tournament: executeTournament,
   closetournamey: executeCloseTournament,
+  censor: executeCensor,
+  stopcensor: executeStopCensor,
 };
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
@@ -227,6 +238,12 @@ client.on(Events.ShardResume, (shardId, replayed) => {
 
 client.on(Events.MessageCreate, async (message: Message) => {
   if (message.author.bot) return;
+
+  // Live moderation — runs before prefix commands
+  handleModerationMessage(message, client).catch((err) =>
+    console.error("[MODERATION] Unhandled error:", err)
+  );
+
   const content = message.content.trim();
 
   if (content === "!ping") {
