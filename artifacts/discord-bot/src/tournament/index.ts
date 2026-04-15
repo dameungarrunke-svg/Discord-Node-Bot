@@ -14,7 +14,8 @@ import {
 } from "./store.js";
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
-const HR = "━━━━━━━━━━━━━━━━━━━━━━━━";
+const HR = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+const SOFT_HR = "⋆｡°✩────────────────✩°｡⋆";
 
 function safeValue(value: string): string {
   return value.trim() || "—";
@@ -30,27 +31,31 @@ function buildTournamentEmbed(tournament: TournamentData, guildIcon?: string | n
   const deadline = tournament.registrationDeadline
     ? `\n**Deadline:** \`${tournament.registrationDeadline}\``
     : "";
+  const status = tournament.closed ? "⛔ CLOSED" : participantsOpen ? "🟢 OPEN" : "🔴 FULL";
 
   return new EmbedBuilder()
     .setColor(participantsOpen ? 0xdc2626 : 0x7f1d1d)
     .setAuthor({
-      name: "LAST STAND (LS) · TSB TOURNAMENT",
+      name: "LAST STAND (LS)  ✦  TSB TOURNAMENT",
       iconURL: guildIcon ?? undefined,
     })
-    .setTitle(`⚔️ TOURNAMENT · ${tournament.id}`)
+    .setTitle(`⚔️  𝐓𝐎𝐔𝐑𝐍𝐀𝐌𝐄𝐍𝐓 𝐀𝐍𝐍𝐎𝐔𝐍𝐂𝐄𝐌𝐄𝐍𝐓  ·  ${tournament.id}`)
     .setDescription(
       `${HR}\n` +
-      `**${tournament.about}**\n\n` +
-      `**Rules**\n> ${tournament.rules}\n\n` +
-      `**Date:** \`${tournament.tournamentDate}\`  •  **Time:** \`${tournament.tournamentTime}\`\n` +
-      `**Host:** <@${tournament.hostId}>  •  **Prize:** \`${tournament.prize}\`\n` +
-      `**Slots:** \`${participantCounter(tournament)}\`  •  **Status:** \`${tournament.closed ? "Closed" : participantsOpen ? "Open" : "Full"}\`\n` +
-      `**Entry:** \`${tournament.entryRequirement}\`${deadline}\n\n` +
-      `**Game Link**\n${tournament.gameLink}` +
+      `## 🏆 𝐏𝐑𝐈𝐙𝐄\n` +
+      `# 『 ${tournament.prize} 』\n` +
+      `${SOFT_HR}\n\n` +
+      `**✦ Event**\n> ${tournament.about}\n\n` +
+      `**⚔️ Rules**\n> ${tournament.rules}\n\n` +
+      `**📅 Date:** \`${tournament.tournamentDate}\`  ✦  **⏰ Time:** \`${tournament.tournamentTime}\`\n` +
+      `**👑 Host:** <@${tournament.hostId}>  ✦  **🎟️ Slots:** \`${participantCounter(tournament)}\`\n` +
+      `**📌 Status:** \`${status}\`\n` +
+      `**✅ Entry:** \`${tournament.entryRequirement}\`${deadline}\n\n` +
+      `**🔗 Game Link**\n${tournament.gameLink}` +
       notes
     )
     .setFooter({
-      text: `Last Stand Management · Created by ${tournament.createdByTag}`,
+      text: `Last Stand Management  ✦  TSB Tournament Control  ✦  Created by ${tournament.createdByTag}`,
     })
     .setTimestamp(new Date(tournament.createdAt));
 }
