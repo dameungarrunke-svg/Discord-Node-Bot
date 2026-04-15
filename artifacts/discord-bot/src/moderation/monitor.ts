@@ -4,7 +4,6 @@ import {
   EmbedBuilder,
   TextChannel,
   GuildMember,
-  PermissionFlagsBits,
 } from "discord.js";
 import { scan } from "./detector.js";
 import {
@@ -66,9 +65,6 @@ export async function handleModerationMessage(
 
   const guildId = message.guild.id;
   const member  = message.member as GuildMember | null;
-
-  // Skip users with Manage Guild permission (admins / staff)
-  if (member?.permissions.has(PermissionFlagsBits.ManageGuild)) return;
 
   // ── Anti-spam check ─────────────────────────────────────────────────────────
   const isSpamming = trackSpam(message.author.id);

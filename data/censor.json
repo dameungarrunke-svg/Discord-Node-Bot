@@ -1,4 +1,9 @@
 {
-  "guilds": {},
+  "guilds": {
+    "1479910330669990025": {
+      "enabled": true,
+      "modLogChannelId": "1494034114813104238"
+    }
+  },
   "flags": {}
 }

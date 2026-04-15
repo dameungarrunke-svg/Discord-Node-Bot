@@ -361,27 +361,34 @@ setInterval(() => {
   });
 }, 4 * 60 * 1000);
 
-// Gateway watchdog — if the WebSocket goes down and doesn't come back within
-// 60 seconds, force a full reconnect so interactions never stay broken.
-let lastHeartbeatAck = Date.now();
+// Gateway watchdog — tracks last Discord activity and force-reconnects only if
+// nothing has been received for 5 minutes (discord.js handles short outages natively).
+let lastActivity = Date.now();
 
-client.ws.on("heartbeat" as any, () => {
-  lastHeartbeatAck = Date.now();
-});
+function touchActivity(): void {
+  lastActivity = Date.now();
+}
+
+// Update on any Discord gateway event so quiet servers don't trigger false reconnects
+client.on(Events.MessageCreate, touchActivity);
+client.on(Events.InteractionCreate, touchActivity);
+client.on(Events.ShardResume, touchActivity);
+client.on(Events.ShardReconnecting, touchActivity);
+client.once(Events.ClientReady, touchActivity);
 
 setInterval(async () => {
-  const secondsSinceHeartbeat = (Date.now() - lastHeartbeatAck) / 1000;
-  if (secondsSinceHeartbeat > 60) {
-    console.warn(`[WATCHDOG] No heartbeat for ${Math.round(secondsSinceHeartbeat)}s — forcing reconnect`);
+  const secondsSilent = (Date.now() - lastActivity) / 1000;
+  if (secondsSilent > 300) { // 5 minutes of total silence = something is wrong
+    console.warn(`[WATCHDOG] No Discord activity for ${Math.round(secondsSilent)}s — forcing reconnect`);
     try {
       client.destroy();
       await client.login(token!);
-      lastHeartbeatAck = Date.now();
+      touchActivity();
       console.log("[WATCHDOG] Reconnected successfully.");
     } catch (err) {
       console.error("[WATCHDOG] Reconnect failed:", err);
     }
   }
-}, 30 * 1000);
+}, 60 * 1000);
 
 client.login(token);
