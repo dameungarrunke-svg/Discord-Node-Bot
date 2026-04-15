@@ -7,7 +7,6 @@ import {
   Routes,
   ChatInputCommandInteraction,
   ButtonInteraction,
-  MessageFlags,
   REST,
 } from "discord.js";
 
@@ -259,7 +258,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     console.log(`[INTERACTION] /${cmd.commandName} received`);
 
     try {
-      await cmd.deferReply({ flags: MessageFlags.Ephemeral });
+      await cmd.deferReply({ ephemeral: true });
     } catch (err) {
       console.error(`[INTERACTION] /${cmd.commandName} — defer failed, cannot respond`, err);
       return;
@@ -290,7 +289,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     console.log(`[INTERACTION] button:${btn.customId} received`);
 
     try {
-      await btn.deferReply({ flags: MessageFlags.Ephemeral });
+      await btn.deferReply({ ephemeral: true });
     } catch (err) {
       console.error(`[INTERACTION] button:${btn.customId} — defer failed, cannot respond`, err);
       return;

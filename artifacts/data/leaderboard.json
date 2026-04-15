@@ -11,7 +11,7 @@
     },
     {
       "position": 2,
-      "displayName": "LS_LEO",
+      "displayName": "LS_DINO",
       "robloxUsername": "Callme_Leo2709",
       "discordUsername": "dino_0080",
       "country": "🇮🇳",
@@ -20,20 +20,20 @@
     },
     {
       "position": 3,
-      "displayName": "LS_ArceusSIM",
-      "robloxUsername": "ArceusSIM",
-      "discordUsername": "arceussim",
-      "country": "🇮🇳",
-      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-278C30526608013D6F5CB426837DE088-Png/150/150/AvatarHeadshot/Webp/noFilter",
-      "stageRank": "High Strong"
-    },
-    {
-      "position": 4,
       "displayName": "14all",
       "robloxUsername": "shableina",
       "discordUsername": "lowkeygreenleaf",
       "country": "🇧🇩",
       "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-C4A65B0B3DB2C5D259D8802C23748D49-Png/48/48/AvatarHeadshot/Webp/noFilter",
+      "stageRank": "High Strong"
+    },
+    {
+      "position": 4,
+      "displayName": "LS_ArcuesSIM",
+      "robloxUsername": "ArcuesSIM",
+      "discordUsername": "arceuessim",
+      "country": "🇮🇳",
+      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-278C30526608013D6F5CB426837DE088-Png/150/150/AvatarHeadshot/Webp/noFilter",
       "stageRank": "High Strong"
     },
     {
@@ -64,6 +64,24 @@
       "stageRank": "Mid Strong"
     },
     {
+      "position": 8,
+      "displayName": "Vacant",
+      "robloxUsername": "Null",
+      "discordUsername": "Null",
+      "country": "Null",
+      "avatarUrl": "https://cdn.discordapp.com/attachments/1479912023239164016/1493850796738088990/1000196431-removebg-preview.png?ex=69e07878&is=69df26f8&hm=e990c3e9e67bb88a36110112019e2cb5f70370904e0a5f41e99e180e5fdc58fa&",
+      "stageRank": "Weak Stable"
+    },
+    {
+      "position": 9,
+      "displayName": "Vacant",
+      "robloxUsername": "Null",
+      "discordUsername": "Null",
+      "country": "Null",
+      "avatarUrl": "https://cdn.discordapp.com/attachments/1479912023239164016/1493850796738088990/1000196431-removebg-preview.png?ex=69e07878&is=69df26f8&hm=e990c3e9e67bb88a36110112019e2cb5f70370904e0a5f41e99e180e5fdc58fa&",
+      "stageRank": "Weak Stable"
+    },
+    {
       "position": 10,
       "displayName": "eon",
       "robloxUsername": "fightoid",
@@ -75,7 +93,7 @@
   ],
   "pinnedMessage": {
     "guildId": "1479910330669990025",
-    "channelId": "1479912064641142944",
-    "messageId": "1493624754182295632"
+    "channelId": "1479912023239164016",
+    "messageId": "1493783628629672077"
   }
 }
