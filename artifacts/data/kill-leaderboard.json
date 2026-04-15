@@ -1,5 +1,26 @@
 {
-  "players": [],
+  "players": [
+    {
+      "rank": 1,
+      "displayName": "PoisonTree963",
+      "robloxUsername": "Poisontree963",
+      "discordUsername": "pspspsp999",
+      "position": "Owner",
+      "killCount": 500,
+      "stage": "Stage 2 High Strong",
+      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-128A77F0B7599743C83EFC16E5E33064-Png/150/150/AvatarHeadshot/Webp/noFilter"
+    },
+    {
+      "rank": 10,
+      "displayName": "EoN",
+      "robloxUsername": "Ls_Fightoid",
+      "discordUsername": "galaxyg7a",
+      "position": "Head Moderator",
+      "killCount": 5000,
+      "stage": "Stage 2 Mid Stable",
+      "avatarUrl": "https://tr.rbxcdn.com/30DAY-AvatarHeadshot-69AE026463E388D9C26A9456425AA0FB-Png/150/150/AvatarHeadshot/Webp/noFilter"
+    }
+  ],
   "pinnedMessage": {
     "guildId": "1479910330669990025",
     "channelId": "1493592552807334029",

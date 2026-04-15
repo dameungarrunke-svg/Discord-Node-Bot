@@ -60,6 +60,8 @@ if (!token) {
   process.exit(1);
 }
 
+const BOT_DISPLAY_NAME = "Last Stand Management";
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -147,6 +149,15 @@ client.once(Events.ClientReady, async (readyClient) => {
   console.log(`[READY] Logged in as ${readyClient.user.tag}`);
   console.log(`[READY] Guilds in cache: ${readyClient.guilds.cache.size}`);
 
+  if (readyClient.user.username !== BOT_DISPLAY_NAME) {
+    try {
+      await readyClient.user.setUsername(BOT_DISPLAY_NAME);
+      console.log(`[READY] Bot username set to ${BOT_DISPLAY_NAME}`);
+    } catch (err) {
+      console.error("[ERROR] Failed to update bot username:", err);
+    }
+  }
+
   // Pre-warm the REST connection to Discord so the first interaction ack is fast
   try {
     await rest.get(Routes.gateway());
@@ -164,6 +175,17 @@ client.once(Events.ClientReady, async (readyClient) => {
 
   for (const [guildId] of readyClient.guilds.cache) {
     await registerCommandsForGuild(guildId);
+
+    try {
+      const guild = await readyClient.guilds.fetch(guildId);
+      const me = await guild.members.fetchMe();
+      if (me.displayName !== BOT_DISPLAY_NAME) {
+        await me.setNickname(BOT_DISPLAY_NAME);
+        console.log(`[READY] Bot nickname set for guild: ${guildId}`);
+      }
+    } catch (err) {
+      console.error(`[ERROR] Failed to update bot nickname for guild ${guildId}:`, err);
+    }
   }
 
   try {

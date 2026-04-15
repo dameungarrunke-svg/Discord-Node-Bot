@@ -29,6 +29,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 ## Discord Bot Notes
 
 - Requires `DISCORD_BOT_TOKEN` in Replit Secrets.
+- Bot display name is managed on startup as `Last Stand Management`.
 - Slash commands are acknowledged immediately with Discord.js `deferReply({ flags: MessageFlags.Ephemeral })`, then command handlers update the deferred reply with `editReply`.
 - Kill leaderboard commands are separate from the original leaderboard: `/setupkillleaderboard`, `/addkillplayer`, `/editkillplayer`, `/removekillplayer`, and `/movek`.
 - `/setupkillleaderboard` and `/setuprules` post in the channel where the command is run, so they can be placed from any eligible text channel without a channel picker.
