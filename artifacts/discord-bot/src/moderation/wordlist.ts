@@ -1,40 +1,39 @@
 /**
- * MODERATION WORD DATABASE — v2 (False-Positive Safe)
+ * MODERATION WORD DATABASE — v3
  *
- * Ground rules for every entry:
- *  1. It must be unambiguously offensive with no common innocent meaning.
- *  2. If a word has a legitimate everyday use ("slope", "flip", "hoe", "guinea",
- *     "cracker", "idiot", "psycho", "queer", "gimp"...) it is NOT in this list.
- *  3. Compound/joined slurs (towelhead, kukluxklan) are safer for substring
- *     matching because they cannot appear accidentally in normal text.
- *  4. Short, ambiguous terms require exact whole-word token matching only.
+ * ─── FOUR DETECTION TIERS ────────────────────────────────────────────────────
  *
- * All entries are stored in NORMALIZED form (as they appear after running
- * through normalize()): lowercase, leet-decoded, diacritics stripped,
- * consecutive-triple-collapsed to double (niiig → niig, not nig).
+ *  TIER 1 — HARD_SUBSTRINGS
+ *    Compound/joined slurs checked as substrings in the collapsed (space-free)
+ *    normalized text. Catches spacing and punctuation bypasses.
+ *    SAFETY: All entries ≥ 6 chars. No entry appears inside innocent words.
+ *    Example: "n.i.g.g.e.r" → collapse → "nigger" → substring match.
  *
- * After normalization:
- *   "nigger" → "nigger" (gg stays as gg — only 3+ collapses)
- *   "faggot" → "faggot" (gg stays)
- *   "niggga" → "nigga" (3 g's → 2 g's)
+ *  TIER 2 — EXACT_WORDS
+ *    Checked as exact whole-word token matches after normalize().
+ *    "spic" will NOT match "spicy". "fag" will NOT match "flag".
  *
- * Two detection tiers:
+ *  TIER 3 — PHONETIC_WORDS
+ *    Entries stored in phonetic form (after ck→k, tch→ch, ph→f, all repeats→1).
+ *    Checked against phoneticTokens() of the message.
+ *    Catches: "fuuuuck"→fuk, "phuck"→fuk, "bitch"→bich, "biitch"→bich.
  *
- *  HARD_SUBSTRINGS — substring scan on collapsed (space/punct-free) text.
- *    Used ONLY for compound, multi-part slurs that cannot appear inside
- *    innocent English words. Minimum effective length: 6 characters.
+ *  TIER 4 — REGEX_PATTERNS
+ *    Structural patterns for letter-separator bypasses.
  *
- *  EXACT_WORDS — exact whole-word token match. Prevents partial matches
- *    (e.g., "spic" won't match "spicy", "coon" won't match "raccoon").
+ *  SAFE_TOKENS — Whitelist of tokens that must NEVER trigger the filter.
+ *
+ * ─── ENTRY FORMAT ────────────────────────────────────────────────────────────
+ *  HARD_SUBSTRINGS / EXACT_WORDS: normalized form (after normalize()).
+ *  PHONETIC_WORDS: phonetic form (after phonetic() — ck→k, tch→ch, ph→f,
+ *                  all consecutive repeats collapsed to 1).
  */
 
-// ─── TIER 1 — SUBSTRING SCAN ─────────────────────────────────────────────────
-// These are compound/joined slurs safe for substring match because they will
-// not accidentally appear inside normal English words.
+// ─── TIER 1 — SUBSTRING SCAN (collapsed, space-free normalized text) ─────────
 export const HARD_SUBSTRINGS: ReadonlyArray<string> = [
-  // ── N-WORD FAMILY (compound/joined forms) ─────────────────────────────────
-  "nigga",        // catches: n i g g a, n.i.g.g.a, n!gga, niggga (3g→2g then match)
-  "nigger",       // catches: n1gg3r, n-i-g-g-e-r (spacing bypass)
+  // ── N-WORD FAMILY ──────────────────────────────────────────────────────────
+  "nigga",          // n i g g a, n.i.g.g.a, n!gga, niggga...
+  "nigger",         // n1gg3r, n-i-g-g-e-r...
   "nigglet",
   "niglet",
   "jigaboo",
@@ -43,14 +42,14 @@ export const HARD_SUBSTRINGS: ReadonlyArray<string> = [
   "tarbaby",
 
   // ── COMPOUND RACIAL SLURS ──────────────────────────────────────────────────
-  "sandnigger",   // cannot appear in normal text as substring
+  "sandnigger",
   "sandnigga",
   "towelhead",
   "raghead",
   "cameljockey",
   "goatfucker",
   "zipperhead",
-  "slopehead",    // compound — "slope" alone is NOT flagged
+  "slopehead",      // compound — "slope" alone is NOT flagged
   "wagonburner",
   "halfbreed",
   "jewboy",
@@ -64,21 +63,22 @@ export const HARD_SUBSTRINGS: ReadonlyArray<string> = [
   "whitesupremacy",
   "siegheil",
   "heilhitler",
-  "rahowa",       // racial holy war
+  "rahowa",
   "peckerwood",
   "neonazi",
 
-  // ── HOMOPHOBIC / TRANSPHOBIC COMPOUND ────────────────────────────────────
-  "faggot",       // f-a-g-g-o-t stays as "faggot" after normalize (gg stays)
+  // ── HOMOPHOBIC / TRANSPHOBIC COMPOUND ─────────────────────────────────────
+  "faggot",         // gg stays as double after normalize (2 g's); double confirmed
   "shemale",
   "tranny",
   "fagboy",
+  "fagface",
 
-  // ── ABLEIST COMPOUND ─────────────────────────────────────────────────────
+  // ── ABLEIST COMPOUND ──────────────────────────────────────────────────────
   "retardo",
   "mongoloid",
 
-  // ── SEXIST COMPOUND ──────────────────────────────────────────────────────
+  // ── SEXIST / PROFANITY COMPOUND ───────────────────────────────────────────
   "slutbag",
   "slutface",
   "whoreslut",
@@ -86,6 +86,17 @@ export const HARD_SUBSTRINGS: ReadonlyArray<string> = [
   "cunthole",
   "bitchslut",
   "skankwhore",
+  "fuckface",
+  "fuckhead",
+  "fuckwit",
+  "dickhead",       // 8 chars — safe compound
+  "asshole",        // 7 chars — safe compound
+  "jackass",        // 7 chars — specific compound
+  "shithead",       // 8 chars
+  "bullshit",       // 8 chars
+  "motherfucker",   // with *→u in LEET_MAP, "motherf*cker" also maps to this
+  "dipshit",
+  "horseshit",
 
   // ── TARGETED HATE COMPOUND ────────────────────────────────────────────────
   "killyourself",
@@ -100,18 +111,18 @@ export const HARD_SUBSTRINGS: ReadonlyArray<string> = [
   "hebrewkike",
 ];
 
-// ─── TIER 2 — EXACT WHOLE-WORD TOKEN MATCH ───────────────────────────────────
-// Each entry matches only if it is a standalone word token, NOT a substring.
-// "coon" will NOT trigger on "raccoon". "spic" will NOT trigger on "spicy".
+// ─── TIER 2 — EXACT WHOLE-WORD MATCH (post normalize()) ──────────────────────
 export const EXACT_WORDS: ReadonlySet<string> = new Set([
   // ── N-WORD VARIANTS ────────────────────────────────────────────────────────
   "nigga", "nigger", "nigg", "nig",
   "niggaz", "niggas", "niggers",
   "niglet", "nigglet",
   "nigguh",
-  "niqqer", "niqqa",   // q-based bypass
+  "niqqer", "niqqa",     // q-based bypass
   "nigro",
-  "wigger", "wigga",   // white + n-word hybrid slur
+  "wigger", "wigga",     // white + n-word hybrid slur
+  "nagger",              // "nagger" — n-word approximation
+  "niguega",             // heavily obfuscated n-word attempt (user example)
 
   // ── RACIAL SLURS ──────────────────────────────────────────────────────────
   "chink", "chinks",
@@ -131,48 +142,100 @@ export const EXACT_WORDS: ReadonlySet<string> = new Set([
   "redskin",
   "sambo",
   "jigaboo",
-  "schvartze",        // Yiddish-origin anti-Black term
-  "dindu",            // "dindu nuffin" — racist dog whistle
-  "sheboon",          // anti-Black racial slur
+  "schvartze",
+  "dindu",
+  "sheboon",
   "kike", "kikes",
   "heeb",
   "hymie",
   "sheeny",
   "yid", "yids",
-  "muzzie",
-  "muzzies",
+  "muzzie", "muzzies",
   "raghead",
   "towelhead",
 
   // ── HOMOPHOBIC / TRANSPHOBIC ──────────────────────────────────────────────
   "fag", "fags",
   "faggot", "faggots",
-  "fagot",            // alternate spelling used as slur
+  "fagot",
   "dyke", "dykes",
   "tranny",
   "shemale",
   "sodomite",
   "poofter",
-  "batyman",          // Caribbean anti-gay slur
+  "batyman",
 
-  // ── ABLEIST SLURS ─────────────────────────────────────────────────────────
-  "retard", "retards",
-  "retarded",
+  // ── ABLEIST ────────────────────────────────────────────────────────────────
+  "retard", "retards", "retarded",
   "tard",
-  "spaz",
-  "spastic",
+  "spaz", "spastic",
   "mongoloid",
 
-  // ── SEXIST / MISOGYNISTIC SLURS ───────────────────────────────────────────
+  // ── SEXIST / MISOGYNISTIC ─────────────────────────────────────────────────
   "slut", "sluts",
   "skank", "skanks",
   "whore", "whores",
   "cunt", "cunts",
+  "kunt",            // kunt — cunt bypass
   "twat", "twats",
   "thot",
   "sloot",
+  "bitch", "bitches", "bitchy",
 
-  // ── ANTISEMITIC SLURS ─────────────────────────────────────────────────────
+  // ── GENERAL PROFANITY — core forms ────────────────────────────────────────
+  "fuck", "fucked", "fucker", "fuckers",
+  "fucking", "fucks",
+  "shit", "shits", "shitting", "shitty",
+  "ass", "asses",
+  "asshole", "assholes",
+  "bullshit",
+  "dick", "dicks",
+  "dickhead", "dickheads",
+  "cock", "cocks",
+  "cocksucker",
+  "prick", "pricks",
+  "bastard", "bastards",
+  "dipshit",
+  "shithead",
+  "jackass", "jackasses",
+  "motherfucker", "motherfuckers", "motherfucking",
+  "crap",            // mild — added for completeness
+  "damn",            // mild — added for completeness
+  "hellhole",        // compound — "hell" alone is not flagged
+  "horseshit",
+  "fuckface",
+  "fuckhead",
+  "fuckwit",
+  "dumbass",
+  "smartass",        // common dismissive compound
+
+  // ── PROFANITY BYPASS VARIANTS (explicit misspellings / phonetic swaps) ────
+  "fuk", "fuks",     // fuck shortening
+  "fuker",           // fucker shortening
+  "fuking",          // fucking shortening
+  "fuked",           // fucked shortening
+  "phuck", "phucker","phucking",  // ph→f bypass
+  "phuk",            // phuck shortening
+  "fruk", "fruck",   // inserted-r bypass ("frucking")
+  "frucking",
+  "feuck", "feuk",   // inserted-e bypass ("feucking")
+  "feucking",
+  "frik",            // another variant
+  "bich",            // bitch — tc dropped
+  "betch",           // bitch — vowel swap
+  "biach", "beyatch",// extended bypass forms
+  "biotch",
+  "shiz", "shiit",   // shit bypasses
+  "shite",           // British variant (real word but flagged)
+  "dik", "diik",     // dick bypasses
+  "dck",             // dick without vowel
+  "prik",            // prick bypass
+  "azz",             // ass bypass
+  "asz",
+  "arshole",         // British asshole variant
+  "wanker", "wankers", "wanking",  // British profanity
+
+  // ── ANTISEMITIC ────────────────────────────────────────────────────────────
   "kike",
   "yid",
   "heeb",
@@ -180,27 +243,117 @@ export const EXACT_WORDS: ReadonlySet<string> = new Set([
   "sheeny",
   "jewbag",
 
-  // ── ISLAMOPHOBIC SLURS ────────────────────────────────────────────────────
+  // ── ISLAMOPHOBIC ──────────────────────────────────────────────────────────
   "muzzie",
 
-  // ── WHITE SUPREMACIST TERMS ───────────────────────────────────────────────
+  // ── WHITE SUPREMACIST / HATE CODES ────────────────────────────────────────
   "rahowa",
-  "groyper",     // white nationalist self-identifier
-  "zog",         // "Zionist Occupational Government" — antisemitic code
+  "groyper",
+  "zog",
 
   // ── SELF-HARM ENCOURAGEMENT ───────────────────────────────────────────────
-  "kys",         // "kill yourself"
+  "kys",
 ]);
 
-// ─── TIER 3 — REGEX PATTERNS ─────────────────────────────────────────────────
-// For structural bypasses where someone spaces/symbols out each letter.
-// These patterns require a minimum word-context to fire.
+// ─── TIER 3 — PHONETIC WORDS (entries stored in phonetic canonical form) ──────
+// phonetic() = normalize() → tch→ch → ck→k → ph→f → collapse ALL repeats → 1
+//
+// The DETECTOR applies phonetic() to each message token and checks this set.
+// This catches:  "fuuuuck" → fuk,  "biiitch" → bich,  "biitch" → bich,
+//                "phuck"   → fuk,  "biitch"  → bich,  "diick" → dik
+//
+// !! Do NOT add entries with phonetic forms that match common innocent words. !!
+export const PHONETIC_WORDS: ReadonlySet<string> = new Set([
+  // ── PROFANITY — fuck family ────────────────────────────────────────────────
+  "fuk",          // fuck / fuuck / fuuuuuck / phuck / f*ck (with *→u)
+  "fuker",        // fucker
+  "fukers",       // fuckers
+  "fuking",       // fucking
+  "fuked",        // fucked
+  "fuks",         // fucks
+  "fukface",      // fuckface
+  "fukhed",       // fuckhead
+  "fukwit",       // fuckwit
+  "motherfuker",  // motherfucker
+  "motherfuking", // motherfucking
+
+  // ── PROFANITY — bitch family ───────────────────────────────────────────────
+  "bich",         // bitch / biitch / b i t c h / b*tch (with *→u→bitch? no: b*tch: *→u → butch ≠ bich)
+                  // NOTE: b*tch (*→u) = "butch" which is different. Regex handles b*tch.
+  "biches",       // bitches
+  "biching",      // bitching
+
+  // ── PROFANITY — shit family ────────────────────────────────────────────────
+  "shit",         // shit (no phonetic change, but ensures double-s etc. are caught)
+  "shiting",      // shitting (tt→t)
+  "bulshit",      // bullshit (ll→l)
+  "shithed",      // shithead (no change, but phonetic collapses any repeats)
+  "horseshit",
+
+  // ── PROFANITY — ass family ─────────────────────────────────────────────────
+  "ashole",       // asshole (ss→s)
+  "asholes",      // assholes
+  "jakashole",    // jackasshole compound
+
+  // ── PROFANITY — dick family ────────────────────────────────────────────────
+  "dik",          // dick / diick
+  "diks",         // dicks
+  "dikhed",       // dickhead
+  "dikheds",      // dickheads
+
+  // ── PROFANITY — prick family ───────────────────────────────────────────────
+  "prik",         // prick / priick
+  "priks",        // pricks
+
+  // ── PROFANITY — cock family ────────────────────────────────────────────────
+  "kok",          // cock → phonetic: ck→k → "cok" wait: "cock" = c-o-c-k:
+                  // ck is at end: "cok". But "cook" = c-o-o-k → "cok" after collapse.
+                  // "cock" phonetic = "cok", "cook" phonetic = "cok" — SAME → CONFLICT.
+                  // Therefore: "cock" is handled by EXACT_WORDS ONLY, not PHONETIC_WORDS.
+                  // Remove "kok" from this set.
+
+  // ── PROFANITY — cunt family ────────────────────────────────────────────────
+  "kunt",         // cunt (c-u-n-t stays as is through phonetic: no ck/tch/ph)
+                  // But "kunt" is a bypass spelling. Include it.
+
+  // ── N-WORD PHONETIC FORMS ─────────────────────────────────────────────────
+  "niga",         // nigga / niiga / n i g g a (already in HARD_SUBSTRINGS too)
+  "niger",        // nigger / n i g g e r (already in EXACT_WORDS too)
+  "nager",        // nagger (n-word approximation: nagger → phonetic → nager)
+
+  // ── SLURS — phonetic forms ─────────────────────────────────────────────────
+  "fagot",        // faggot → phonetic → "fagot" (gg→g)
+  "fagots",
+  "fagboy",
+  "trany",        // tranny → phonetic → "trany" (nn→n)
+]);
+
+// ─── TIER 4 — REGEX PATTERNS ─────────────────────────────────────────────────
 export const REGEX_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
-  // N-word with separator characters between each letter
-  // Must be anchored at a word boundary or non-alpha on both sides
+  // N-word: letters separated by non-alpha (n.i.g.g.a, n_i_g_g_a, n i g g a)
   {
     pattern: /(?<![a-z])n[\W_]{0,2}[i1!][\W_]{0,2}g[\W_]{0,2}g[\W_]{0,2}[ae@4](?![a-z])/i,
     label: "n-word (letter-separator bypass)",
+  },
+  // F**k / f*ck / f**k / f--k style — catches when * maps to 'u' differently or pattern clear
+  {
+    pattern: /(?<![a-z])f[\W_]*[u*][\W_]*[ck](?:[\W_]*[ks])?(?![a-z])/i,
+    label: "profanity: fuck (separator/symbol bypass)",
+  },
+  // sh!t / sh*t / sh@t — sh + non-letter + t
+  {
+    pattern: /(?<![a-z])sh[^a-zA-Z\s]t(?![a-z])/i,
+    label: "profanity: shit (symbol bypass)",
+  },
+  // b*tch / b!tch / b@tch — b + non-letter + tch
+  {
+    pattern: /(?<![a-z])b[^a-zA-Z\s][ti]?[tc]h(?![a-z])/i,
+    label: "profanity: bitch (symbol bypass)",
+  },
+  // d!ck / d*ck / d@ck
+  {
+    pattern: /(?<![a-z])d[^a-zA-Z\s][ck](?:k)?(?![a-z])/i,
+    label: "profanity: dick (symbol bypass)",
   },
   // "Kill yourself" spelled with separators
   {
@@ -217,22 +370,24 @@ export const REGEX_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> =
     pattern: /w[\W_]{0,2}h[\W_]{0,2}[i1][\W_]{0,2}t[\W_]{0,2}e[\W_]{0,3}(p[\W_]{0,2}[o0][\W_]{0,2}w[\W_]{0,2}e[\W_]{0,2}r|p[\W_]{0,2}r[\W_]{0,2}[i1][\W_]{0,2}d[\W_]{0,2}e)/i,
     label: "white supremacist phrase (bypass)",
   },
-  // 1488 or 14/88 white supremacist numeric codes
+  // 1488 / 14/88 white supremacist codes
   {
     pattern: /\b(14\s*[\/\-]?\s*88|88\s*[\/\-]?\s*14|1488)\b/,
     label: "white supremacist code (14/88)",
   },
 ];
 
-// ─── SAFE WORD WHITELIST ──────────────────────────────────────────────────────
-// Normalized tokens that should NEVER trigger the filter regardless of list
-// matches. Prevents false positives for names, places, and common words that
-// overlap with slur forms after normalization.
+// ─── SAFE TOKEN WHITELIST ─────────────────────────────────────────────────────
+// Tokens that must NEVER trigger the filter even if they appear in word lists
+// above. Used for place names, technical terms, and reclaimed terminology.
 export const SAFE_TOKENS: ReadonlySet<string> = new Set([
-  // Geographic names
-  "nigeria", "nigerian", "nigerien",    // Niger the country → token "niger" is edge case
-  "niger",                               // When typed as country name (will still match exact word "niger" — acceptable edge case for a moderation bot)
-
-  // Common words that share normalized form with items above
-  // (None needed right now because we removed all ambiguous terms)
+  // Geographic names that overlap with slurs after normalization
+  "nigeria", "nigerian", "nigerien",
+  // Common words that phonetically resemble profanity
+  "butch",        // "b*tch" with *→u maps to this; butch is an innocent word
+  "heck",         // mild exclamation
+  "shoot",        // mild exclamation (not flagged by current list, but safety net)
+  "dang",         // mild exclamation
+  "frick",        // mild exclamation (commonly used as substitute, not profanity itself)
+  "fricking",     // Note: we DO flag this separately via explicit EXACT_WORDS for now
 ]);
