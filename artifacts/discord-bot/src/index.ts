@@ -52,7 +52,12 @@ import {
   suggestionData, executeSuggestion,
 } from "./utility/index.js";
 import { setupRulesData, executeSetupRules } from "./rules/index.js";
-import { executeTournament, handleTournamentButton, tournamentData } from "./tournament/index.js";
+import {
+  closeTournamentData,
+  executeCloseTournament,
+  executeTournament,
+  tournamentData,
+} from "./tournament/index.js";
 
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
@@ -100,6 +105,7 @@ const commands = [
   suggestionData.toJSON(),
   setupRulesData.toJSON(),
   tournamentData.toJSON(),
+  closeTournamentData.toJSON(),
 ];
 
 // Defined once at startup — not recreated on every interaction
@@ -128,6 +134,7 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   suggestion: executeSuggestion,
   setuprules: executeSetupRules,
   tournament: executeTournament,
+  closetournamey: executeCloseTournament,
 };
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
@@ -250,7 +257,8 @@ client.on(Events.MessageCreate, async (message: Message) => {
       "`/mvp` — *(Mod)* Award MVP to a member\n" +
       "`/suggestion` — Submit a suggestion\n" +
       "`/setuprules` — *(Admin)* Deploy the clan rulebook\n" +
-      "`/tournament` — *(Admin)* Launch a TSB tournament"
+      "`/tournament` — *(Admin)* Launch a TSB tournament\n" +
+      "`/closetournamey` — *(Admin)* Close a TSB tournament"
     );
   }
 });
@@ -311,15 +319,8 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
           console.error(`[ERROR] editReply also failed for button [${btn.customId}]:`, e2);
         }
       });
-    } else if (btn.customId.startsWith("tournament_")) {
-      handleTournamentButton(btn).catch(async (err) => {
-        console.error(`[ERROR] button [${btn.customId}]:`, err);
-        try {
-          await btn.editReply({ content: "❌ Something went wrong. Please try again." });
-        } catch (e2) {
-          console.error(`[ERROR] editReply also failed for button [${btn.customId}]:`, e2);
-        }
-      });
+    } else {
+      await btn.editReply({ content: "⚠️ This button is no longer active." });
     }
     return;
   }

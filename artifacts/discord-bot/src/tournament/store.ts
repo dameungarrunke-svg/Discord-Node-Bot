@@ -30,6 +30,7 @@ export interface TournamentData {
   entryRequirement: string;
   notes?: string;
   registrationDeadline?: string;
+  closed?: boolean;
   createdById: string;
   createdByTag: string;
   createdAt: string;
@@ -89,6 +90,16 @@ export function saveTournament(tournament: TournamentData): void {
 
 export function getTournament(id: string): TournamentData | undefined {
   return load().tournaments.find((item) => item.id === id);
+}
+
+export function closeTournament(id: string): TournamentData | undefined {
+  const data = load();
+  const tournament = data.tournaments.find((item) => item.id === id);
+  if (!tournament) return undefined;
+
+  tournament.closed = true;
+  save(data);
+  return tournament;
 }
 
 export function addTournamentParticipant(

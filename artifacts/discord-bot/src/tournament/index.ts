@@ -1,8 +1,4 @@
 import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonInteraction,
-  ButtonStyle,
   ChatInputCommandInteraction,
   EmbedBuilder,
   PermissionFlagsBits,
@@ -11,16 +7,14 @@ import {
   TextChannel,
 } from "discord.js";
 import {
-  addTournamentParticipant,
-  getTournament,
+  closeTournament,
   nextTournamentId,
-  removeTournamentParticipant,
   saveTournament,
   TournamentData,
 } from "./store.js";
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
-const HR = "━━━━━━━━━━━━━━━━━━━━";
+const HR = "━━━━━━━━━━━━━━━━━━━━━━━━";
 
 function safeValue(value: string): string {
   return value.trim() || "—";
@@ -31,7 +25,7 @@ function participantCounter(tournament: TournamentData): string {
 }
 
 function buildTournamentEmbed(tournament: TournamentData, guildIcon?: string | null): EmbedBuilder {
-  const participantsOpen = tournament.participants.length < tournament.maxParticipants;
+  const participantsOpen = !tournament.closed && tournament.participants.length < tournament.maxParticipants;
   const notes = tournament.notes ? `\n\n**Notes**\n> ${tournament.notes}` : "";
   const deadline = tournament.registrationDeadline
     ? `\n**Deadline:** \`${tournament.registrationDeadline}\``
@@ -43,19 +37,16 @@ function buildTournamentEmbed(tournament: TournamentData, guildIcon?: string | n
       name: "LAST STAND (LS) · TSB TOURNAMENT",
       iconURL: guildIcon ?? undefined,
     })
-    .setTitle(`⚔️ Tournament Announcement · ${tournament.id}`)
+    .setTitle(`⚔️ TOURNAMENT · ${tournament.id}`)
     .setDescription(
       `${HR}\n` +
-      `**About**\n${tournament.about}\n\n` +
-      `**Rules**\n${tournament.rules}\n\n` +
-      `**Date:** \`${tournament.tournamentDate}\`\n` +
-      `**Time:** \`${tournament.tournamentTime}\`\n` +
-      `**Host:** <@${tournament.hostId}>\n` +
-      `**Prize:** \`${tournament.prize}\`\n` +
-      `**Slots:** \`${participantCounter(tournament)}\`\n` +
-      `**Entry:** \`${tournament.entryRequirement}\`${deadline}\n` +
-      `**Game Link:** ${tournament.gameLink}\n\n` +
-      `**Status:** ${participantsOpen ? "Open" : "Full"}` +
+      `**${tournament.about}**\n\n` +
+      `**Rules**\n> ${tournament.rules}\n\n` +
+      `**Date:** \`${tournament.tournamentDate}\`  •  **Time:** \`${tournament.tournamentTime}\`\n` +
+      `**Host:** <@${tournament.hostId}>  •  **Prize:** \`${tournament.prize}\`\n` +
+      `**Slots:** \`${participantCounter(tournament)}\`  •  **Status:** \`${tournament.closed ? "Closed" : participantsOpen ? "Open" : "Full"}\`\n` +
+      `**Entry:** \`${tournament.entryRequirement}\`${deadline}\n\n` +
+      `**Game Link**\n${tournament.gameLink}` +
       notes
     )
     .setFooter({
@@ -64,44 +55,11 @@ function buildTournamentEmbed(tournament: TournamentData, guildIcon?: string | n
     .setTimestamp(new Date(tournament.createdAt));
 }
 
-function buildTournamentButtons(tournament: TournamentData): ActionRowBuilder<ButtonBuilder> {
-  const full = tournament.participants.length >= tournament.maxParticipants;
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`tournament_join:${tournament.id}`)
-      .setLabel("Join Tournament")
-      .setEmoji("⚔️")
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(full),
-    new ButtonBuilder()
-      .setCustomId(`tournament_leave:${tournament.id}`)
-      .setLabel("Leave Tournament")
-      .setEmoji("🚪")
-      .setStyle(ButtonStyle.Danger),
-    new ButtonBuilder()
-      .setCustomId(`tournament_view:${tournament.id}`)
-      .setLabel("View Participants")
-      .setEmoji("👥")
-      .setStyle(ButtonStyle.Secondary)
-  );
-}
-
 function buildTournamentMessage(tournament: TournamentData, guildIcon?: string | null) {
   return {
     embeds: [buildTournamentEmbed(tournament, guildIcon)],
-    components: [buildTournamentButtons(tournament)],
+    components: [],
   };
-}
-
-function buildParticipantsText(tournament: TournamentData): string {
-  if (tournament.participants.length === 0) {
-    return "No participants have joined yet.";
-  }
-
-  return tournament.participants
-    .slice(0, 50)
-    .map((participant, index) => `\`${(index + 1).toString().padStart(2, "0")}.\` <@${participant.userId}>`)
-    .join("\n");
 }
 
 export const tournamentData = new SlashCommandBuilder()
@@ -150,6 +108,14 @@ export const tournamentData = new SlashCommandBuilder()
     option.setName("notes").setDescription("Optional extra notes").setRequired(false)
   );
 
+export const closeTournamentData = new SlashCommandBuilder()
+  .setName("closetournamey")
+  .setDescription("Close a tournament announcement. (Admin only)")
+  .setDefaultMemberPermissions(ADMIN)
+  .addStringOption((option) =>
+    option.setName("tournament_id").setDescription("Tournament ID, e.g. LS-0001").setRequired(true)
+  );
+
 export async function executeTournament(interaction: ChatInputCommandInteraction): Promise<void> {
   const channel = interaction.channel as TextChannel | null;
   if (!channel || !channel.isTextBased()) {
@@ -179,6 +145,7 @@ export async function executeTournament(interaction: ChatInputCommandInteraction
     entryRequirement: safeValue(interaction.options.getString("entry_requirement", true)),
     notes: interaction.options.getString("notes")?.trim() || undefined,
     registrationDeadline: interaction.options.getString("registration_deadline")?.trim() || undefined,
+    closed: false,
     createdById: interaction.user.id,
     createdByTag: interaction.user.tag,
     createdAt: new Date().toISOString(),
@@ -195,79 +162,34 @@ export async function executeTournament(interaction: ChatInputCommandInteraction
   saveTournament(tournament);
 
   await interaction.editReply({
-    content: `✅ Premium TSB tournament created: ${message.url}`,
+    content: `✅ TSB tournament created: ${message.url}`,
   });
 }
 
-export async function handleTournamentButton(interaction: ButtonInteraction): Promise<boolean> {
-  const [action, tournamentId] = interaction.customId.split(":");
-  if (!action.startsWith("tournament_") || !tournamentId) return false;
-
-  const tournament = getTournament(tournamentId);
+export async function executeCloseTournament(interaction: ChatInputCommandInteraction): Promise<void> {
+  const tournamentId = interaction.options.getString("tournament_id", true).trim().toUpperCase();
+  const tournament = closeTournament(tournamentId);
   if (!tournament) {
-    await interaction.editReply({ content: "❌ Tournament data could not be found." });
-    return true;
+    await interaction.editReply({ content: `❌ Tournament **${tournamentId}** was not found.` });
+    return;
   }
 
-  if (action === "tournament_view") {
-    const embed = new EmbedBuilder()
-      .setColor(0x1f2937)
-      .setTitle(`👥 Participants · ${tournament.id}`)
-      .setDescription(
-        `${HR}\n` +
-        `**Registered:** \`${participantCounter(tournament)}\`\n\n` +
-        `${buildParticipantsText(tournament)}\n` +
-        `${HR}`
-      )
-      .setFooter({ text: "Last Stand Management  ·  Tournament Registry" });
+  const guild = await interaction.client.guilds.fetch(tournament.guildId).catch(() => null);
+  const channel = (guild
+    ? await guild.channels.fetch(tournament.channelId).catch(() => null)
+    : null) as TextChannel | null;
 
-    await interaction.editReply({ embeds: [embed] });
-    return true;
+  if (!channel || !channel.isTextBased()) {
+    await interaction.editReply({ content: "❌ Tournament channel could not be found." });
+    return;
   }
 
-  if (action === "tournament_join") {
-    const result = addTournamentParticipant(tournament.id, {
-      userId: interaction.user.id,
-      userTag: interaction.user.tag,
-      joinedAt: new Date().toISOString(),
-    });
-
-    if (result === "duplicate") {
-      await interaction.editReply({ content: "⚠️ You are already registered for this tournament." });
-      return true;
-    }
-    if (result === "full") {
-      await interaction.editReply({ content: "❌ This tournament is already full." });
-      return true;
-    }
-    if (result === "missing") {
-      await interaction.editReply({ content: "❌ Tournament data could not be found." });
-      return true;
-    }
-
-    const updated = getTournament(tournament.id)!;
-    await interaction.message.edit(buildTournamentMessage(updated, interaction.guild?.iconURL() ?? undefined));
-    await interaction.editReply({ content: `✅ You joined tournament **${tournament.id}**.` });
-    return true;
+  const message = await channel.messages.fetch(tournament.messageId).catch(() => null);
+  if (!message) {
+    await interaction.editReply({ content: "❌ Tournament message could not be found." });
+    return;
   }
 
-  if (action === "tournament_leave") {
-    const result = removeTournamentParticipant(tournament.id, interaction.user.id);
-
-    if (result === "not_joined") {
-      await interaction.editReply({ content: "⚠️ You are not registered for this tournament." });
-      return true;
-    }
-    if (result === "missing") {
-      await interaction.editReply({ content: "❌ Tournament data could not be found." });
-      return true;
-    }
-
-    const updated = getTournament(tournament.id)!;
-    await interaction.message.edit(buildTournamentMessage(updated, interaction.guild?.iconURL() ?? undefined));
-    await interaction.editReply({ content: `✅ You left tournament **${tournament.id}**.` });
-    return true;
-  }
-
-  return false;
+  await message.edit(buildTournamentMessage(tournament, interaction.guild?.iconURL() ?? undefined));
+  await interaction.editReply({ content: `✅ Tournament **${tournament.id}** closed.` });
 }

@@ -35,6 +35,6 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `/setupkillleaderboard` and `/setuprules` post in the channel where the command is run, so they can be placed from any eligible text channel without a channel picker.
 - Kill leaderboard data is stored at `artifacts/discord-bot/data/kill-leaderboard.json`. Player cards use a clean Discord embed layout matching the reference image: rank/name title, Roblox username, Discord username, decorated unlabeled position text, kill count, stage, bottom divider GIF, and a right-side avatar thumbnail.
 - Kill leaderboard stage options are: Stage 2 High Strong, Stage 2 High Stable, Stage 2 High Weak, Stage 2 Mid Strong, Stage 2 Mid Stable, and Stage 2 Mid Weak.
-- `/tournament` creates a clean Last Stand / TSB tournament announcement with role ping, participant counter, persistent participant tracking, and Join/Leave/View Participants buttons. Tournament data is stored at `artifacts/discord-bot/data/tournaments.json`.
+- `/tournament` creates a polished Last Stand / TSB tournament announcement with role ping, participant counter, and no public buttons. `/closetournamey` closes an existing tournament by ID, updates the embed status to Closed, and removes any old button components. Tournament data is stored at `artifacts/discord-bot/data/tournaments.json`.
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
