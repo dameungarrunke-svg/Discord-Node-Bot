@@ -1,5 +1,5 @@
 {
-  "counter": 3,
+  "counter": 4,
   "tournaments": [
     {
       "id": "LS-0001",
@@ -66,6 +66,30 @@
       "createdById": "1368619589692293203",
       "createdByTag": "galaxyg7a",
       "createdAt": "2026-04-15T11:36:34.617Z",
+      "participants": []
+    },
+    {
+      "id": "LS-0004",
+      "guildId": "1479910330669990025",
+      "channelId": "1479912035952230514",
+      "messageId": "1493938980998217755",
+      "about": "This Is a Tournament <:emoji_50:1487316096892669982>",
+      "rules": "No rules fight dirty",
+      "gameLink": "No link for u pablos",
+      "prize": "5000000",
+      "pingRoleId": "1479911853168529713",
+      "tournamentDate": "Today",
+      "tournamentTime": "Today",
+      "hostId": "1368619589692293203",
+      "hostTag": "galaxyg7a",
+      "maxParticipants": 15,
+      "entryRequirement": "None",
+      "notes": "no notes",
+      "registrationDeadline": "today",
+      "closed": true,
+      "createdById": "1368619589692293203",
+      "createdByTag": "galaxyg7a",
+      "createdAt": "2026-04-15T11:40:08.871Z",
       "participants": []
     }
   ]
