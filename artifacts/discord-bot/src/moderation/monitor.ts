@@ -91,11 +91,18 @@ export async function handleModerationMessage(
   const result = scan(message.content);
   if (!result) return;
 
+  console.log(
+    `[MODERATION] Detected "${result.matchedTerm}" (${result.method}) from ${message.author.tag} in #${(message.channel as TextChannel).name}: "${message.content.slice(0, 80)}"`
+  );
+
   // Delete the offending message
+  let messageDeleted = false;
   try {
     await message.delete();
-  } catch {
-    /* already deleted or missing permissions */
+    messageDeleted = true;
+    console.log(`[MODERATION] Message deleted successfully.`);
+  } catch (err: any) {
+    console.error(`[MODERATION] ⚠️ Failed to delete message — bot may lack Manage Messages permission. Error: ${err?.message ?? err}`);
   }
 
   // Increment flag count
@@ -111,16 +118,29 @@ export async function handleModerationMessage(
     action = "warn1";
   }
 
-  // ── Apply timeout on 3rd+ flag ──────────────────────────────────────────────
+  // ── Apply punishment on 3rd+ flag ───────────────────────────────────────────
   let timedOut = false;
   if (action === "timeout" && member) {
+    // ALWAYS reset flags on flag-3 action, regardless of whether timeout works.
+    // Without this, failed timeouts cause an infinite loop of flag-3 actions.
+    resetFlags(guildId, message.author.id);
+
+    // 1. Try Discord timeout (requires Moderate Members permission)
     try {
       await member.timeout(15 * 60 * 1000, "Repeated use of prohibited language (3 flags)");
       timedOut = true;
-      // Reset active flag counter after timeout is applied
-      resetFlags(guildId, message.author.id);
-    } catch (err) {
-      console.error("[MODERATION] Failed to apply timeout:", err);
+      console.log(`[MODERATION] Timeout applied to ${message.author.tag} for 15 minutes.`);
+    } catch {
+      console.warn(`[MODERATION] ⚠️ Timeout failed (bot needs Moderate Members permission). Trying kick fallback…`);
+
+      // 2. Fallback: kick (requires Kick Members permission)
+      try {
+        await member.kick("Repeated use of prohibited language — bot lacks timeout permission.");
+        timedOut = true; // treat kick as a successful punishment for embed display
+        console.log(`[MODERATION] Kick applied to ${message.author.tag} as timeout fallback.`);
+      } catch {
+        console.error(`[MODERATION] ⚠️ Kick also failed. Bot needs either Moderate Members or Kick Members permission. User was warned only.`);
+      }
     }
   }
 
