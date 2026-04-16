@@ -383,6 +383,43 @@ setInterval(() => {
   });
 }, 30 * 1000);
 
+// Watchdog: only triggers when the WebSocket is genuinely DISCONNECTED (status 5).
+// Does NOT run on quiet-but-healthy servers. Uses a lock to prevent concurrent reconnects.
+// Because the WS must be down for this to fire, no interactions can arrive during the
+// brief destroy → login window, so the "Unknown interaction" race condition cannot occur.
+let wsReconnecting = false;
+
+setInterval(async () => {
+  if (wsReconnecting) return;
+
+  // discord.js Status enum: 0=Ready, 5=Disconnected. Only act on genuine disconnection.
+  const WS_DISCONNECTED = 5;
+  if (client.ws.status !== WS_DISCONNECTED) return;
+
+  wsReconnecting = true;
+  console.warn("[WATCHDOG] WebSocket is DISCONNECTED — waiting 5 s for auto-resume...");
+
+  // Give discord.js 5 seconds to self-resume before we intervene.
+  await new Promise<void>((r) => setTimeout(r, 5_000));
+
+  if (client.ws.status !== WS_DISCONNECTED) {
+    console.log("[WATCHDOG] Connection restored automatically — no action needed.");
+    wsReconnecting = false;
+    return;
+  }
+
+  console.warn("[WATCHDOG] Still disconnected after 5 s — forcing full reconnect.");
+  try {
+    client.destroy();          // WS is already dead, so no interactions are in-flight here
+    await client.login(token!); // re-sets the token and opens a new WebSocket
+    console.log("[WATCHDOG] Reconnected successfully.");
+  } catch (err) {
+    console.error("[WATCHDOG] Reconnect failed:", err);
+  } finally {
+    wsReconnecting = false;
+  }
+}, 30_000);
+
 // Catch unhandled promise rejections so they don't silently corrupt bot state
 process.on("unhandledRejection", (reason) => {
   console.error("[PROCESS] Unhandled promise rejection:", reason);
