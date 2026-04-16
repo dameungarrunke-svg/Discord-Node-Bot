@@ -5,7 +5,7 @@ import {
   TextChannel,
   GuildMember,
 } from "discord.js";
-import { scan } from "./detector.js";
+import { scan, DetectionMethod } from "./detector.js";
 import {
   isCensorEnabled,
   getCensorConfig,
@@ -156,6 +156,7 @@ export async function handleModerationMessage(
         message.channel as TextChannel,
         result.matchedTerm,
         result.method,
+        result.normalizedForm,
         message.content,
         action,
         timedOut,
@@ -222,7 +223,8 @@ function buildModLogEmbed(
   userTag: string,
   channel: TextChannel,
   matchedTerm: string,
-  method: "substring" | "word" | "regex",
+  method: DetectionMethod,
+  normalizedForm: string | undefined,
   originalContent: string,
   action: "warn1" | "warn2" | "timeout",
   timedOut: boolean,
@@ -239,37 +241,48 @@ function buildModLogEmbed(
 
   const methodLabel =
     method === "regex"
-      ? "Structural pattern match"
+      ? "🔍 Structural pattern match (symbol/separator bypass detected)"
       : method === "substring"
-      ? "Collapsed substring match"
-      : "Exact word match";
+      ? "🔗 Collapsed substring match (spacing bypass detected)"
+      : method === "phonetic-substring"
+      ? "🎵 Phonetic+spacing bypass detected"
+      : method === "phonetic"
+      ? "🎵 Phonetic variation detected (leet/repeat/misspelling bypass)"
+      : "✅ Exact word match";
 
   const truncated =
     originalContent.length > 200
       ? originalContent.slice(0, 197) + "…"
       : originalContent;
 
+  const fields: { name: string; value: string; inline: boolean }[] = [
+    { name: "👤  User", value: `<@${userId}> (${userTag})`, inline: true },
+    { name: "📍  Channel", value: `<#${channel.id}>`, inline: true },
+    { name: "⚡  Action", value: actionLabel, inline: true },
+    { name: "🔍  Detection", value: methodLabel, inline: false },
+    { name: "🚩  Active Flags", value: `${flagCount >= 3 ? "0 (reset after timeout)" : `${flagCount} / 3`}`, inline: true },
+    { name: "🏷️  Matched Term", value: `\`${matchedTerm}\``, inline: true },
+  ];
+
+  if (normalizedForm && normalizedForm !== matchedTerm) {
+    fields.push({
+      name: "🧠  Normalized Form",
+      value: `\`${normalizedForm.slice(0, 80)}\``,
+      inline: false,
+    });
+  }
+
+  fields.push({
+    name: "💬  Original Message",
+    value: `\`\`\`${truncated}\`\`\``,
+    inline: false,
+  });
+
   return new EmbedBuilder()
     .setColor(action === "timeout" ? 0xe74c3c : action === "warn2" ? 0xe67e22 : 0xf39c12)
     .setTitle("📋  Moderation Action Log")
     .setDescription(`${HR}`)
-    .addFields(
-      { name: "👤  User", value: `<@${userId}> (${userTag})`, inline: true },
-      { name: "📍  Channel", value: `<#${channel.id}>`, inline: true },
-      { name: "⚡  Action", value: actionLabel, inline: true },
-      { name: "🔍  Detection Method", value: methodLabel, inline: true },
-      { name: "🚩  Flags (active)", value: `${flagCount >= 3 ? "0 (reset)" : flagCount} / 3`, inline: true },
-      {
-        name: "🏷️  Matched Term",
-        value: `\`${matchedTerm}\``,
-        inline: true,
-      },
-      {
-        name: "💬  Original Message",
-        value: `\`\`\`${truncated}\`\`\``,
-        inline: false,
-      }
-    )
+    .addFields(fields)
     .setFooter({ text: "Last Stand Management · Moderation System" })
     .setTimestamp();
 }
