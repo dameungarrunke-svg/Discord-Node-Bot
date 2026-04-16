@@ -142,6 +142,27 @@ export const HARD_SUBSTRINGS: ReadonlyArray<string> = [
   "kikejew",
   "jewkike",
   "hebrewkike",
+
+  // ── HINDI / URDU COMPOUND SLURS ───────────────────────────────────────────
+  "madarchod",
+  "maderuchod",
+  "maderchod",
+  "madarchood",
+  "behenchod",
+  "bhenchod",
+  "benchod",
+  "bakrichod",
+  "bakrachod",
+  "gandmaro",
+  "gandmarao",
+  "gandmaar",
+  "gaandmaro",
+  "bhosdike",
+  "bhosdiwale",
+  "bhosdika",
+  "machod",
+  "maachod",
+  "chodbhenchod",
 ];
 
 // ─── TIER 1b — PHONETIC HARD SUBSTRINGS (phoneticCollapse text) ───────────────
@@ -382,6 +403,53 @@ export const EXACT_WORDS: ReadonlySet<string> = new Set([
   // ── SELF-HARM ENCOURAGEMENT ───────────────────────────────────────────────
   "kys",
   "kms",
+
+  // ── RAPE / SEXUAL VIOLENCE ────────────────────────────────────────────────
+  "rape", "raped", "raping", "rapist", "rapists", "raper", "rapey",
+  "r4pe", "r4ped", "r4pist",
+
+  // ── HINDI / URDU PROFANITY — chod family (fuck) ───────────────────────────
+  "chod", "chodu", "chodi", "choda", "chode", "chodd", "chods",
+  "chood", "choodu", "choodi", "chooda",
+  "chud", "chuda", "chudi", "chude",
+  "chodna", "chodne", "chodta", "chodti", "chodke",
+  "chodoge", "chodegi", "chodenge",
+  "chodunga", "chodungi",
+
+  // ── madarchod family (motherfucker) ──────────────────────────────────────
+  "madarchod", "maderuchod", "maderchod", "madarchood", "madarchodu",
+  "maderchood", "madarchodd",
+  "machod", "maachod",
+
+  // ── behenchod family (sisterfucker) ───────────────────────────────────────
+  "behenchod", "bhenchod", "benchod", "bhaichod",
+  "behanchood", "bhenchood",
+
+  // ── gand family (ass/butt — vulgar) ───────────────────────────────────────
+  "gand", "gaand", "gandu", "gaandu", "gande", "gaande",
+  "gandmaro", "gandmarao", "gandmaar", "gaandmaro",
+
+  // ── bhosda / bhosdi family (vagina — very vulgar) ─────────────────────────
+  "bhosda", "bhosdi", "bhosdike", "bhosdiwale", "bhosdika",
+  "bhosdaa", "bhosdii",
+
+  // ── lund / lauda family (penis — vulgar) ──────────────────────────────────
+  "lund", "lauda", "laudu", "laude", "loda", "lodu",
+  "lundd", "laudaa",
+
+  // ── randi / raand (whore — vulgar) ────────────────────────────────────────
+  "randi", "raand", "rande", "randibaaz",
+
+  // ── haramzada family (bastard) ────────────────────────────────────────────
+  "haramzada", "haramzadi", "haramzaada", "haramzaadi",
+  "haramkhor",
+
+  // ── Other Hindi/Urdu slurs ────────────────────────────────────────────────
+  "kutiya", "kutti",
+  "bhadwa", "bhadwe", "bhadwaa",
+  "bakrichod", "bakrachod",
+  "maaki", "terimaa", "maakichut",
+  "bur", "buri",
 ]);
 
 // ─── TIER 3 — PHONETIC WORDS (stored in phonetic canonical form) ──────────────
@@ -597,6 +665,48 @@ export const REGEX_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> =
     pattern: /\bk\s+y\s+s\b/i,
     label: "self-harm: k y s (space bypass)",
   },
+
+  // ── rape / r4pe / r@pe  (lookbehind prevents matching "grape", "drape")
+  {
+    pattern: /(?<![a-z])r[a@4]p[e3](?:d|s|ing|ist|ists)?(?![a-z])/i,
+    label: "sexual violence: rape (exact/symbol bypass)",
+  },
+
+  // ── pussy / pus$y / p*ssy
+  {
+    pattern: /(?<![a-z])p[u*][\W_]*s[\W_]*s[\W_]*y(?![a-z])/i,
+    label: "profanity: pussy (symbol/separator bypass)",
+  },
+
+  // ── chod and all inflections with separators (Hindi: fuck)
+  {
+    pattern: /ch[o0u][\W_]{0,2}d[uioaedst]*/i,
+    label: "Hindi profanity: chod family (separator/variant bypass)",
+  },
+
+  // ── madarchod with separators (Hindi: motherfucker)
+  {
+    pattern: /m[a@4]d[a@4]r[\W_]{0,3}ch[o0u]d/i,
+    label: "Hindi profanity: madarchod (separator bypass)",
+  },
+
+  // ── behenchod / bhenchod with separators (Hindi: sisterfucker)
+  {
+    pattern: /bh?[e3]n[\W_]{0,3}ch[o0u]d/i,
+    label: "Hindi profanity: behenchod/bhenchod (separator bypass)",
+  },
+
+  // ── gand maro / gand maar (Hindi: fuck off / vulgar)
+  {
+    pattern: /g[a@4](?:a|nd?)[\W_]{0,3}m[a@4]r[ao]/i,
+    label: "Hindi profanity: gand maro (separator bypass)",
+  },
+
+  // ── gandu with separators
+  {
+    pattern: /(?<![a-z])g[a@4][a]?nd[u*](?![a-z])/i,
+    label: "Hindi profanity: gandu (separator bypass)",
+  },
 ];
 
 // ─── SUBSTRING CORES ──────────────────────────────────────────────────────────
@@ -669,6 +779,25 @@ export const SUBSTRING_CORES: ReadonlyArray<string> = [
   "bitchslut",
   "cumslut",
   "niggerlover",
+
+  // ── Hindi/Urdu cores (safe as substrings — don't appear in English words) ─
+  // "chord".includes("chod") = FALSE (chord has 'r' before 'd'), so "chod" is safe
+  // "grand".includes("gand") = FALSE (grand has 'r' after 'g'), so "gand" is safe
+  "chod",          // core Hindi slur (fuck)
+  "chud",          // past-tense variant
+  "gand",          // ass/vulgar
+  "gaand",         // alternate spelling
+  "gandu",         // asshole
+  "bhosda",        // very vulgar slur
+  "bhosdi",
+  "madarchod",     // motherfucker
+  "maderuchod",
+  "behenchod",     // sisterfucker
+  "bhenchod",
+  "benchod",
+  "haramzada",     // bastard
+  "haramzadi",
+  "bhadwa",        // pimp/vulgar
 ];
 
 // ─── SAFE TOKEN WHITELIST ─────────────────────────────────────────────────────
