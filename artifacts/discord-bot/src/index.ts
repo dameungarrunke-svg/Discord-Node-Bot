@@ -7,6 +7,7 @@ import {
   Routes,
   ChatInputCommandInteraction,
   ButtonInteraction,
+  MessageFlags,
   REST,
 } from "discord.js";
 import http from "http";
@@ -288,7 +289,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     console.log(`[INTERACTION] /${cmd.commandName} received`);
 
     try {
-      await cmd.deferReply({ ephemeral: true });
+      await cmd.deferReply({ flags: MessageFlags.Ephemeral });
     } catch (err) {
       console.error(`[INTERACTION] /${cmd.commandName} — defer failed, cannot respond`, err);
       return;
@@ -329,7 +330,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     console.log(`[INTERACTION] button:${btn.customId} received`);
 
     try {
-      await btn.deferReply({ ephemeral: true });
+      await btn.deferReply({ flags: MessageFlags.Ephemeral });
     } catch (err) {
       console.error(`[INTERACTION] button:${btn.customId} — defer failed, cannot respond`, err);
       return;
@@ -381,36 +382,6 @@ setInterval(() => {
     console.warn("[KEEP-ALIVE] Self-ping failed:", err.message);
   });
 }, 30 * 1000);
-
-// Gateway watchdog — tracks last Discord activity and force-reconnects only if
-// nothing has been received for 5 minutes (discord.js handles short outages natively).
-let lastActivity = Date.now();
-
-function touchActivity(): void {
-  lastActivity = Date.now();
-}
-
-// Update on any Discord gateway event so quiet servers don't trigger false reconnects
-client.on(Events.MessageCreate, touchActivity);
-client.on(Events.InteractionCreate, touchActivity);
-client.on(Events.ShardResume, touchActivity);
-client.on(Events.ShardReconnecting, touchActivity);
-client.once(Events.ClientReady, touchActivity);
-
-setInterval(async () => {
-  const secondsSilent = (Date.now() - lastActivity) / 1000;
-  if (secondsSilent > 300) { // 5 minutes of total silence = something is wrong
-    console.warn(`[WATCHDOG] No Discord activity for ${Math.round(secondsSilent)}s — forcing reconnect`);
-    try {
-      client.destroy();
-      await client.login(token!);
-      touchActivity();
-      console.log("[WATCHDOG] Reconnected successfully.");
-    } catch (err) {
-      console.error("[WATCHDOG] Reconnect failed:", err);
-    }
-  }
-}, 60 * 1000);
 
 // Catch unhandled promise rejections so they don't silently corrupt bot state
 process.on("unhandledRejection", (reason) => {
