@@ -352,14 +352,15 @@ http.createServer((req, res) => {
   console.log(`[KEEP-ALIVE] HTTP server running on port ${KEEP_ALIVE_PORT}`);
 });
 
-// Self-ping every 4 minutes so the process is never considered idle by Replit
+// Self-ping every 30 seconds so the process stays warm and can respond within
+// Discord's strict 3-second interaction acknowledgement window.
 setInterval(() => {
   http.get(`http://localhost:${KEEP_ALIVE_PORT}/`, (res) => {
     res.resume();
   }).on("error", (err) => {
     console.warn("[KEEP-ALIVE] Self-ping failed:", err.message);
   });
-}, 4 * 60 * 1000);
+}, 30 * 1000);
 
 // Gateway watchdog — tracks last Discord activity and force-reconnects only if
 // nothing has been received for 5 minutes (discord.js handles short outages natively).
@@ -390,5 +391,15 @@ setInterval(async () => {
     }
   }
 }, 60 * 1000);
+
+// Catch unhandled promise rejections so they don't silently corrupt bot state
+process.on("unhandledRejection", (reason) => {
+  console.error("[PROCESS] Unhandled promise rejection:", reason);
+});
+
+// Catch synchronous uncaught exceptions and log them before Node exits
+process.on("uncaughtException", (err) => {
+  console.error("[PROCESS] Uncaught exception — bot may need restart:", err);
+});
 
 client.login(token);
