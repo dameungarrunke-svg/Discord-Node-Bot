@@ -347,6 +347,12 @@ export const EXACT_WORDS: ReadonlySet<string> = new Set([
   "jackoff", "jerkoff",
   "fap", "fapping", "fapped",
 
+  // ── ASSHOLE BYPASS VARIANTS ───────────────────────────────────────────────
+  "ahole", "aholes",          // asshole with 'ss' dropped
+  "azzhole", "azhole",        // ass→azz bypass
+  "a55hole", "a5shole",
+  "arshole",                  // arse+hole fusion
+
   // ── PROFANITY BYPASS VARIANTS ─────────────────────────────────────────────
   "fuk", "fuks",
   "fuker",
@@ -779,6 +785,9 @@ export const SUBSTRING_CORES: ReadonlyArray<string> = [
   "bitchslut",
   "cumslut",
   "niggerlover",
+
+  // ── Additional bypass forms (safe as substrings) ──────────────────────────
+  "ahole",         // asshole with ss dropped — not in any innocent English word
 
   // ── Hindi/Urdu cores (safe as substrings — don't appear in English words) ─
   // "chord".includes("chod") = FALSE (chord has 'r' before 'd'), so "chod" is safe

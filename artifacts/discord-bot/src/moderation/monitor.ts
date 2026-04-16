@@ -118,28 +118,23 @@ export async function handleModerationMessage(
     action = "warn1";
   }
 
-  // ── Apply punishment on 3rd+ flag ───────────────────────────────────────────
+  // ── Apply timeout on 3rd+ flag ──────────────────────────────────────────────
   let timedOut = false;
   if (action === "timeout" && member) {
-    // ALWAYS reset flags on flag-3 action, regardless of whether timeout works.
-    // Without this, failed timeouts cause an infinite loop of flag-3 actions.
+    // ALWAYS reset flags on flag-3, regardless of whether timeout succeeds.
+    // Without this, a failed timeout leaves flags at 3+ forever (infinite loop).
     resetFlags(guildId, message.author.id);
 
-    // 1. Try Discord timeout (requires Moderate Members permission)
-    try {
-      await member.timeout(15 * 60 * 1000, "Repeated use of prohibited language (3 flags)");
-      timedOut = true;
-      console.log(`[MODERATION] Timeout applied to ${message.author.tag} for 15 minutes.`);
-    } catch {
-      console.warn(`[MODERATION] ⚠️ Timeout failed (bot needs Moderate Members permission). Trying kick fallback…`);
-
-      // 2. Fallback: kick (requires Kick Members permission)
+    // Discord does not allow bots to timeout server owners — skip silently.
+    if (message.guild.ownerId === message.author.id) {
+      console.log(`[MODERATION] Cannot timeout server owner (Discord restriction). Message was deleted and logged.`);
+    } else {
       try {
-        await member.kick("Repeated use of prohibited language — bot lacks timeout permission.");
-        timedOut = true; // treat kick as a successful punishment for embed display
-        console.log(`[MODERATION] Kick applied to ${message.author.tag} as timeout fallback.`);
-      } catch {
-        console.error(`[MODERATION] ⚠️ Kick also failed. Bot needs either Moderate Members or Kick Members permission. User was warned only.`);
+        await member.timeout(15 * 60 * 1000, "Repeated use of prohibited language (3 flags)");
+        timedOut = true;
+        console.log(`[MODERATION] Timeout applied to ${message.author.tag} for 15 minutes.`);
+      } catch (err: any) {
+        console.error(`[MODERATION] ⚠️ Timeout failed — ensure the bot has Moderate Members permission and its role is above the member's highest role. Error: ${err?.message ?? err}`);
       }
     }
   }
