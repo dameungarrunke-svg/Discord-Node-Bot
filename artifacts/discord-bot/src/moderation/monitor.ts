@@ -248,6 +248,8 @@ function buildModLogEmbed(
       ? "🎵 Phonetic+spacing bypass detected"
       : method === "phonetic"
       ? "🎵 Phonetic variation detected (leet/repeat/misspelling bypass)"
+      : method === "compound"
+      ? "🧩 Compound word match (flagged word embedded inside another word)"
       : "✅ Exact word match";
 
   const truncated =

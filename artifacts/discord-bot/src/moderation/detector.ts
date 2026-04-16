@@ -11,6 +11,7 @@ import {
   PHONETIC_WORDS,
   REGEX_PATTERNS,
   SAFE_TOKENS,
+  SUBSTRING_CORES,
 } from "./wordlist.js";
 
 export type DetectionMethod =
@@ -18,6 +19,7 @@ export type DetectionMethod =
   | "substring"
   | "phonetic-substring"
   | "word"
+  | "compound"       // a censored word found INSIDE a larger token (e.g. faceretarded)
   | "phonetic";
 
 export interface DetectionResult {
@@ -29,48 +31,45 @@ export interface DetectionResult {
 }
 
 /**
- * FIVE-STAGE INTELLIGENT SCANNER
+ * SIX-STAGE SCANNER
  *
- * Scans a raw Discord message for hate speech, slurs, bypasses, and profanity.
- * Returns null if clean, DetectionResult if a violation is found.
+ * Stage 1  — Regex structural patterns (symbol/separator bypasses)
+ * Stage 2  — Collapsed substring scan: HARD_SUBSTRINGS + SUBSTRING_CORES
+ *              Catches spacing bypasses AND compound words in one pass.
+ *              e.g. "f.u.c.k.f.a.c.e" → collapse → "fuckface" → flagged
+ * Stage 3  — Phonetic collapsed substring scan (PHONETIC_HARD_SUBSTRINGS)
+ *              Catches phonetic + spacing combined bypasses.
+ * Stage 4  — Exact whole-word token match (EXACT_WORDS)
+ *              "spicy" ≠ "spic" — word boundary is respected.
+ * Stage 4b — Compound token scan (SUBSTRING_CORES inside each token)
+ *              If a token CONTAINS a flagged core word it is caught here.
+ *              e.g. token "faceretarded" contains "retarded" → flagged.
+ *              e.g. token "dickheadlol"  contains "dickhead"  → flagged.
+ * Stage 5  — Phonetic whole-word token scan (PHONETIC_WORDS)
+ *              Catches leet-speak and phonetic variants: fvck→fuk, biitch→bich.
  *
- * Stage 1 — Regex structural patterns
- *   Catches explicit letter-separator and symbol-substitution bypasses using
- *   carefully tuned regex patterns with boundary guards.
- *
- * Stage 2 — Collapsed substring scan (HARD_SUBSTRINGS)
- *   normalize() → strip all non-alpha → substring search.
- *   Catches spacing bypasses: "n.i.g.g.a" → "nigga".
- *
- * Stage 3 — Phonetic collapsed substring scan (PHONETIC_HARD_SUBSTRINGS)
- *   phonetic() → strip all non-alpha → substring search.
- *   Catches phonetic + spacing bypasses: "ph.u.c.k.f.a.c.e" → "fukface".
- *
- * Stage 4 — Exact whole-word token scan (EXACT_WORDS)
- *   normalize() → split on non-alpha → exact token match.
- *   "spicy" does NOT match "spic". "flag" does NOT match "fag".
- *
- * Stage 5 — Phonetic whole-word token scan (PHONETIC_WORDS) ← THE KEY STAGE
- *   phonetic() → split on non-alpha → exact phonetic-form match.
- *   Catches repeated-char bypasses, leet-speak, and phonetic misspellings:
- *   "fuuuuuck" → "fuk", "biitch" → "bich", "phuck" → "fuk", "fvck" → "fuk".
- *
- * Safety guarantees:
- *   • Stage 2/3 only match entries ≥ 5 chars (prevents fragment collisions).
- *   • Stages 4/5 require the full token to match (proper word-boundary logic).
- *   • SAFE_TOKENS whitelist exempts known false-positive tokens at every stage.
+ * False-positive safety:
+ *   • SUBSTRING_CORES only contains words ≥ 4 chars that never appear inside
+ *     innocent English compound words (excludes "cock", "dick", "ass", "arse", etc.)
+ *   • SAFE_TOKENS whitelist prevents known innocent tokens from ever matching.
+ *   • Stage 4 exact-match and Stage 5 require the full token to match.
  */
 export function scan(rawMessage: string): DetectionResult | null {
   // ── Stage 1: Regex structural patterns ──────────────────────────────────────
-  // These already contain their own boundary / context logic.
   for (const { pattern, label } of REGEX_PATTERNS) {
     if (pattern.test(rawMessage)) {
       return { flagged: true, matchedTerm: label, method: "regex" };
     }
   }
 
-  // ── Stage 2: Collapsed substring scan (spacing / punctuation bypasses) ──────
+  // ── Stage 2: Collapsed substring scan ───────────────────────────────────────
+  // Checks the full message (all spaces/punctuation stripped) against:
+  //   a) HARD_SUBSTRINGS — long compound slurs
+  //   b) SUBSTRING_CORES — core profanity words (safe to substring-check)
+  // This catches: spacing bypasses, punctuation bypasses, and compound words
+  // where the profanity is attached to other text (facefuck, asshole123, etc.)
   const collapsed = collapse(rawMessage);
+
   for (const slur of HARD_SUBSTRINGS) {
     if (slur.length >= 5 && collapsed.includes(slur)) {
       return {
@@ -82,8 +81,18 @@ export function scan(rawMessage: string): DetectionResult | null {
     }
   }
 
+  for (const core of SUBSTRING_CORES) {
+    if (collapsed.includes(core)) {
+      return {
+        flagged: true,
+        matchedTerm: core,
+        method: "substring",
+        normalizedForm: collapsed,
+      };
+    }
+  }
+
   // ── Stage 3: Phonetic collapsed substring scan ───────────────────────────────
-  // Catches phonetic + spacing combined bypasses.
   const pCollapsed = phoneticCollapse(rawMessage);
   for (const slur of PHONETIC_HARD_SUBSTRINGS) {
     if (slur.length >= 4 && pCollapsed.includes(slur)) {
@@ -100,6 +109,8 @@ export function scan(rawMessage: string): DetectionResult | null {
   const tokens = tokenize(rawMessage);
   for (const token of tokens) {
     if (SAFE_TOKENS.has(token)) continue;
+
+    // 4a — Exact match
     if (EXACT_WORDS.has(token)) {
       return {
         flagged: true,
@@ -108,11 +119,24 @@ export function scan(rawMessage: string): DetectionResult | null {
         normalizedForm: token,
       };
     }
+
+    // 4b — Compound match: does this token CONTAIN a flagged core word?
+    // e.g. "faceretarded" contains "retarded", "yourselfisafuckingidiot" contains "fucking"
+    if (token.length > 4) {
+      for (const core of SUBSTRING_CORES) {
+        if (token.includes(core)) {
+          return {
+            flagged: true,
+            matchedTerm: `${core} (in "${token}")`,
+            method: "compound",
+            normalizedForm: token,
+          };
+        }
+      }
+    }
   }
 
-  // ── Stage 5: Phonetic whole-word token scan (PREVIOUSLY UNWIRED — NOW FIXED) ─
-  // This catches: fuuuuuck → fuk, phuck → fuk, fvck → fuk, b!tch → bich,
-  //               biiiitch → bich, nigg3r → niger, f@ggot → fagot, etc.
+  // ── Stage 5: Phonetic whole-word token scan ───────────────────────────────────
   const pTokens = phoneticTokens(rawMessage);
   for (const token of pTokens) {
     if (SAFE_TOKENS.has(token)) continue;

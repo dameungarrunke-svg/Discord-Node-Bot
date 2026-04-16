@@ -599,6 +599,78 @@ export const REGEX_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> =
   },
 ];
 
+// ─── SUBSTRING CORES ──────────────────────────────────────────────────────────
+// Words that are SAFE to search as substrings inside any token or the collapsed
+// full message, because they do not appear inside common innocent English words.
+//
+// Deliberately EXCLUDED (false-positive risk):
+//   "cock"  → "peacock", "cockatoo"
+//   "dick"  → "predict", "verdict"
+//   "ass"   → "class", "pass", "massive"   (too short, excluded by min-4 anyway)
+//   "arse"  → "parse", "sparse"
+//   "crap"  → "scrap"
+//   "damn"  → "damnation" (borderline)
+//   "fag"   → too short (3 chars)
+//   "cum"   → too short (3 chars)
+//
+// Everything here is ≥ 4 chars and ONLY appears in clearly offensive compound
+// words in normal English usage.
+export const SUBSTRING_CORES: ReadonlyArray<string> = [
+  // ── 4-char core (safe as substrings) ──────────────────────────────────────
+  "fuck",
+  "shit",
+  "cunt",
+  "twat",
+  "wank",
+  "slut",
+  "thot",
+  "kunt",
+  "piss",
+
+  // ── 5-char ────────────────────────────────────────────────────────────────
+  "bitch",
+  "nigga",
+  "whore",
+  "prick",
+  "pussy",
+
+  // ── 6-char ────────────────────────────────────────────────────────────────
+  "nigger",
+  "faggot",
+  "retard",
+  "wanker",
+  "fucker",
+  "fucked",
+  "shitty",
+  "kike",        // 4-char but safe
+  "tranny",
+
+  // ── 7-char ────────────────────────────────────────────────────────────────
+  "asshole",
+  "bullshit",
+  "bastard",
+  "dickhead",
+  "fuckwit",
+  "fuckhead",
+  "shithead",
+  "retarded",
+  "retards",
+  "faggots",
+
+  // ── 8+ char (always safe) ─────────────────────────────────────────────────
+  "motherfucker",
+  "motherfucking",
+  "cocksucker",
+  "asswipe",
+  "fuckface",
+  "bitchass",
+  "shithole",
+  "whorehouse",
+  "bitchslut",
+  "cumslut",
+  "niggerlover",
+];
+
 // ─── SAFE TOKEN WHITELIST ─────────────────────────────────────────────────────
 export const SAFE_TOKENS: ReadonlySet<string> = new Set([
   // Geographic names that overlap with slurs after normalization
