@@ -300,8 +300,18 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     if (handler) {
       handler(cmd).catch(async (err) => {
         console.error(`[ERROR] /${cmd.commandName}:`, err);
+        const code: string | undefined = (err as { code?: string })?.code;
+        const message: string = err instanceof Error ? err.message : String(err);
+        let reply = "❌ Something went wrong.";
+        if (code === "MissingPermissions" || message.includes("Missing Permissions")) {
+          reply = "❌ I'm missing permissions to do that. Please make sure I have **Send Messages**, **Embed Links**, and **Manage Channels** permissions.";
+        } else if (code === "MissingAccess" || message.includes("Missing Access")) {
+          reply = "❌ I don't have access to that channel.";
+        } else {
+          reply = `❌ Error: ${message.split("\n")[0]}`;
+        }
         try {
-          await cmd.editReply({ content: "❌ Something went wrong. Please try again." });
+          await cmd.editReply({ content: reply });
         } catch (e2) {
           console.error(`[ERROR] editReply also failed for /${cmd.commandName}:`, e2);
         }
@@ -331,8 +341,18 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     if (handler) {
       handler(btn).catch(async (err) => {
         console.error(`[ERROR] button [${btn.customId}]:`, err);
+        const code: string | undefined = (err as { code?: string })?.code;
+        const message: string = err instanceof Error ? err.message : String(err);
+        let reply = "❌ Something went wrong.";
+        if (code === "MissingPermissions" || message.includes("Missing Permissions")) {
+          reply = "❌ I'm missing permissions. Please make sure I have **Send Messages**, **Embed Links**, and **Manage Channels** permissions.";
+        } else if (code === "MissingAccess" || message.includes("Missing Access")) {
+          reply = "❌ I don't have access to that channel.";
+        } else {
+          reply = `❌ Error: ${message.split("\n")[0]}`;
+        }
         try {
-          await btn.editReply({ content: "❌ Something went wrong. Please try again." });
+          await btn.editReply({ content: reply });
         } catch (e2) {
           console.error(`[ERROR] editReply also failed for button [${btn.customId}]:`, e2);
         }

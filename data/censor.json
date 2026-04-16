@@ -1,25 +1,25 @@
 {
   "guilds": {
     "1479910330669990025": {
-      "enabled": false,
+      "enabled": true,
       "modLogChannelId": "1492853847012413440"
     }
   },
   "flags": {
     "1479910330669990025:1368619589692293203": {
       "count": 2,
-      "lastFlag": "2026-04-16T08:30:49.802Z",
-      "totalLifetime": 26
+      "lastFlag": "2026-04-16T10:24:28.204Z",
+      "totalLifetime": 29
     },
     "1479910330669990025:962263230451957780": {
-      "count": 19,
-      "lastFlag": "2026-04-16T08:12:26.145Z",
-      "totalLifetime": 19
+      "count": 0,
+      "lastFlag": "2026-04-16T10:32:43.495Z",
+      "totalLifetime": 20
     },
     "1479910330669990025:1392606557476225176": {
-      "count": 5,
-      "lastFlag": "2026-04-15T18:18:37.810Z",
-      "totalLifetime": 5
+      "count": 0,
+      "lastFlag": "2026-04-16T09:52:17.198Z",
+      "totalLifetime": 6
     },
     "1479910330669990025:1100394861858922627": {
       "count": 2,
