@@ -50,7 +50,46 @@
       "timestamp": "2026-04-15T14:43:20.297Z",
       "guildId": "1479910330669990025",
       "raidNumber": 5
+    },
+    {
+      "id": "1776354314565",
+      "clanName": "LS",
+      "opponentClan": "randoms",
+      "result": "victory",
+      "topPerformers": "<@1116405995271364628> <@919565774539096096> @staight",
+      "notes": "—",
+      "endedBy": "pspspspsp999",
+      "endedById": "962263230451957780",
+      "timestamp": "2026-04-16T15:45:14.565Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 9
+    },
+    {
+      "id": "1776368568000",
+      "clanName": "LS",
+      "opponentClan": "niw",
+      "result": "victory",
+      "topPerformers": "<@1368619589692293203> , sorry, <@1110334940983328858>",
+      "notes": "—",
+      "endedBy": "pspspspsp999",
+      "endedById": "962263230451957780",
+      "timestamp": "2026-04-16T19:42:48.000Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 11
+    },
+    {
+      "id": "1776369085337",
+      "clanName": "LS",
+      "opponentClan": "NIW",
+      "result": "victory",
+      "topPerformers": "everyone",
+      "notes": "—",
+      "endedBy": "zody.fx",
+      "endedById": "1144836847571324928",
+      "timestamp": "2026-04-16T19:51:25.337Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 12
     }
   ],
-  "counter": 8
+  "counter": 12
 }
