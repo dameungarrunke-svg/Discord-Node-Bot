@@ -62,9 +62,6 @@ export const startRaidData = new SlashCommandBuilder()
   .addStringOption((o) =>
     o.setName("people_count").setDescription("Members needed (e.g. 15)").setRequired(true)
   )
-  .addRoleOption((o) =>
-    o.setName("ping_role").setDescription("Role to ping").setRequired(false)
-  )
   .addStringOption((o) =>
     o.setName("allies").setDescription("Allied clans joining (optional)").setRequired(false)
   )
