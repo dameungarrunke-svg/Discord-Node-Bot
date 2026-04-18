@@ -22,7 +22,19 @@
       "timestamp": "2026-04-14T12:12:06.680Z",
       "guildId": "1479910330669990025",
       "sessionNumber": 2
+    },
+    {
+      "id": "1776521520059",
+      "host": "arceus",
+      "durationCompleted": "1 hour 20 min",
+      "mvp": "rithwik 😇",
+      "notes": "if u wanna spar the should join",
+      "endedBy": "arceussim",
+      "endedById": "1100394861858922627",
+      "timestamp": "2026-04-18T14:12:00.059Z",
+      "guildId": "1479910330669990025",
+      "sessionNumber": 5
     }
   ],
-  "counter": 3
+  "counter": 5
 }

@@ -154,7 +154,20 @@
       "timestamp": "2026-04-18T05:34:57.722Z",
       "guildId": "1479910330669990025",
       "raidNumber": 24
+    },
+    {
+      "id": "1776515471997",
+      "clanName": "Last Stand",
+      "opponentClan": "Some bums",
+      "result": "contested",
+      "topPerformers": "None",
+      "notes": "THE SERVER GOT SHUT DOWN",
+      "endedBy": "galaxyg7a",
+      "endedById": "1368619589692293203",
+      "timestamp": "2026-04-18T12:31:11.997Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 26
     }
   ],
-  "counter": 24
+  "counter": 26
 }

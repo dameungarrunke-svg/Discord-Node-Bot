@@ -50,7 +50,6 @@ function findChannel(
 export const startRaidData = new SlashCommandBuilder()
   .setName("startraid")
   .setDescription("Deploy a raid alert to the server.")
-  .setDefaultMemberPermissions(ADMIN)
   .addStringOption((o) =>
     o.setName("clan_name").setDescription("Your clan name (LS)").setRequired(true)
   )
@@ -137,7 +136,6 @@ export async function executeStartRaid(
 export const endRaidData = new SlashCommandBuilder()
   .setName("endraid")
   .setDescription("Close an active raid and post the match results.")
-  .setDefaultMemberPermissions(ADMIN)
   .addStringOption((o) =>
     o.setName("clan_name").setDescription("Your clan name (LS)").setRequired(true)
   )
