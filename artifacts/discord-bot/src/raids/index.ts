@@ -126,8 +126,9 @@ export async function executeStartRaid(
   }
 
   await channel.send({
-    content: pingRole ? `${pingRole}` : undefined,
+    content: raidPingRole ? `${raidPingRole}` : undefined,
     embeds: [embed],
+    allowedMentions: raidPingRole ? { roles: [raidPingRole.id] } : undefined,
   });
   await interaction.editReply({ content: `✅ Raid #${raidNumber} deployed.` });
 }
