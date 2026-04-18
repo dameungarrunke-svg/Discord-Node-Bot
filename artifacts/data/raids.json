@@ -89,7 +89,72 @@
       "timestamp": "2026-04-16T19:51:25.337Z",
       "guildId": "1479910330669990025",
       "raidNumber": 12
+    },
+    {
+      "id": "1776431298958",
+      "clanName": "Last Stand",
+      "opponentClan": "Random Bums",
+      "result": "victory",
+      "topPerformers": "<@1368619589692293203> <@919565774539096096> <@1385648204120592416>",
+      "notes": "all  surrendered",
+      "endedBy": "galaxyg7a",
+      "endedById": "1368619589692293203",
+      "timestamp": "2026-04-17T13:08:18.958Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 15
+    },
+    {
+      "id": "1776439967825",
+      "clanName": "Last Stand",
+      "opponentClan": "Random Bums",
+      "result": "victory",
+      "topPerformers": "<@1367031795790385204> <@1385648204120592416>",
+      "notes": "Didn't even take 10 mins 😂",
+      "endedBy": "galaxyg7a",
+      "endedById": "1368619589692293203",
+      "timestamp": "2026-04-17T15:32:47.825Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 18
+    },
+    {
+      "id": "1776441532941",
+      "clanName": "Last Stand",
+      "opponentClan": "Random Bums",
+      "result": "victory",
+      "topPerformers": "<@1367031795790385204> <@962263230451957780>",
+      "notes": "Didn't even take 10 mins",
+      "endedBy": "galaxyg7a",
+      "endedById": "1368619589692293203",
+      "timestamp": "2026-04-17T15:58:52.941Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 20
+    },
+    {
+      "id": "1776490496949",
+      "clanName": "Last Stand",
+      "opponentClan": "Random bums",
+      "result": "defeat",
+      "topPerformers": "none",
+      "notes": "No LS member helped",
+      "endedBy": "galaxyg7a",
+      "endedById": "1368619589692293203",
+      "timestamp": "2026-04-18T05:34:56.949Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 23
+    },
+    {
+      "id": "1776490497722",
+      "clanName": "Last Stand",
+      "opponentClan": "Random bums",
+      "result": "defeat",
+      "topPerformers": "none",
+      "notes": "No LS member helped",
+      "endedBy": "galaxyg7a",
+      "endedById": "1368619589692293203",
+      "timestamp": "2026-04-18T05:34:57.722Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 24
     }
   ],
-  "counter": 12
+  "counter": 24
 }
