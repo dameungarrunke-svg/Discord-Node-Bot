@@ -62,6 +62,9 @@ export const startRaidData = new SlashCommandBuilder()
   .addStringOption((o) =>
     o.setName("people_count").setDescription("Members needed (e.g. 15)").setRequired(true)
   )
+  .addRoleOption((o) =>
+    o.setName("ping_role").setDescription("Role to ping").setRequired(false)
+  )
   .addStringOption((o) =>
     o.setName("allies").setDescription("Allied clans joining (optional)").setRequired(false)
   )
@@ -76,13 +79,9 @@ export async function executeStartRaid(
   const target      = interaction.options.getString("target", true);
   const gameLink    = interaction.options.getString("game_link", true);
   const peopleCount = interaction.options.getString("people_count", true);
+  const pingRole    = interaction.options.getRole("ping_role");
   const allies      = interaction.options.getString("allies") || "None";
   const notes       = interaction.options.getString("notes");
-
-  // Auto-find the "Raid ping" role (case-insensitive)
-  const raidPingRole = interaction.guild?.roles.cache.find(
-    (r) => r.name.toLowerCase() === "raid ping"
-  ) ?? null;
 
   const raidNumber = nextRaidNumber();
 
@@ -126,9 +125,8 @@ export async function executeStartRaid(
   }
 
   await channel.send({
-    content: raidPingRole ? `${raidPingRole}` : undefined,
+    content: pingRole ? `${pingRole}` : undefined,
     embeds: [embed],
-    allowedMentions: raidPingRole ? { roles: [raidPingRole.id] } : undefined,
   });
   await interaction.editReply({ content: `✅ Raid #${raidNumber} deployed.` });
 }
