@@ -10,183 +10,202 @@ export interface LeaderboardEntry {
   col2Value: string;
 }
 
-const RANK_COLORS: Record<number, string> = {
-  1: "#f0a832",
-  2: "#c8c8c8",
-  3: "#cd7f32",
+// ─── Colors (exact Arcane palette) ───────────────────────────────────────────
+const C = {
+  cardBg:   "#2b2d31",   // outer card
+  rowBg:    "#1e2124",   // each row container (darker inset)
+  white:    "#ffffff",
+  sep:      "#b0b3b8",   // bullet separator – slightly muted
+  footer:   "#72767d",
+  rank1:    "#f0a832",   // gold
+  rank2:    "#c8ccd0",   // silver
+  rank3:    "#cd7f32",   // bronze
+  rankDef:  "#ffffff",
 };
 
-const BG = "#1e2124";
-const ROW_BG_ODD = "#252830";
-const ROW_BG_EVEN = "#1e2124";
-const TEXT_WHITE = "#ffffff";
-const TEXT_MUTED = "#b0b3b9";
-const ACCENT = "#5865f2";
+// ─── Layout grid (all in LOGICAL px; canvas rendered at 2× for crispness) ─────
+const S = 2; // retina scale
 
-const ROW_H = 56;
-const AVATAR_SIZE = 38;
-const PAD_X = 22;
-const TITLE_H = 72;
-const FOOTER_H = 28;
-const WIDTH = 560;
+// logical dimensions
+const CW       = 660;   // card width
+const CRAD     = 14;    // card corner radius
+const PAD_X    = 14;    // card horizontal padding
+const PAD_TOP  = 22;    // padding above title
+const TITLE_FS = 32;    // title font size
+const TITLE_MB = 18;    // margin below title
+
+const ROW_H    = 64;    // row height (inner box)
+const ROW_GAP  = 5;     // gap between rows
+const ROW_PADX = 12;    // row horizontal inset from card edge
+const ROW_RAD  = 10;    // row corner radius
+
+const AV_SIZE  = 52;    // avatar square side
+const AV_RAD   = 9;     // avatar corner radius
+const AV_MX    = 10;    // avatar margin inside row (left)
+const AV_GAP   = 12;    // gap from avatar right edge to text
+
+const RANK_FS  = 20;    // rank number font size (bold)
+const TEXT_FS  = 19;    // text font size
+const SEP      = "  •  ";
+
+const FOOTER_H  = 34;   // footer section height
+const FOOTER_FS = 13;
+
+// ─── Derived ─────────────────────────────────────────────────────────────────
+const TEXT_X = PAD_X + ROW_PADX + AV_MX + AV_SIZE + AV_GAP;
 
 export async function generateLeaderboardCard(
   title: string,
   entries: LeaderboardEntry[],
 ): Promise<Buffer> {
-  const rowCount = entries.length;
-  const H = TITLE_H + rowCount * ROW_H + FOOTER_H;
-  const canvas = createCanvas(WIDTH, H);
-  const ctx = canvas.getContext("2d");
+  const titleSection = PAD_TOP + TITLE_FS + TITLE_MB;
+  const rowsSection  = entries.length * (ROW_H + ROW_GAP) - ROW_GAP;
+  const CH = titleSection + rowsSection + PAD_TOP + FOOTER_H;
 
-  // Background
-  ctx.fillStyle = BG;
-  ctx.fillRect(0, 0, WIDTH, H);
+  const cw = CW * S;
+  const ch = CH * S;
+  const canvas = createCanvas(cw, ch);
+  const ctx    = canvas.getContext("2d");
 
-  // Top accent bar
-  ctx.fillStyle = ACCENT;
-  ctx.fillRect(0, 0, WIDTH, 4);
+  const p = (v: number) => v * S;
 
-  // Title
-  ctx.fillStyle = TEXT_WHITE;
-  ctx.font = "bold 26px sans-serif";
-  ctx.fillText(title, PAD_X, TITLE_H - 20);
+  // ── Outer card background ──────────────────────────────────────────────────
+  ctx.fillStyle = C.cardBg;
+  rrect(ctx, 0, 0, p(CW), p(CH), p(CRAD));
+  ctx.fill();
 
-  // Rows
+  // ── Title ──────────────────────────────────────────────────────────────────
+  ctx.fillStyle = C.white;
+  ctx.font      = `bold ${p(TITLE_FS)}px sans-serif`;
+  ctx.fillText(title, p(PAD_X + ROW_PADX), p(PAD_TOP + TITLE_FS));
+
+  // ── Rows ───────────────────────────────────────────────────────────────────
   for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i];
-    const y = TITLE_H + i * ROW_H;
+    const e = entries[i];
+    const rowY = titleSection + i * (ROW_H + ROW_GAP);
 
-    // Row background (alternating)
-    ctx.fillStyle = i % 2 === 0 ? ROW_BG_EVEN : ROW_BG_ODD;
-    ctx.fillRect(0, y, WIDTH, ROW_H);
+    // Row container
+    ctx.fillStyle = C.rowBg;
+    rrect(ctx, p(PAD_X), p(rowY), p(CW - PAD_X * 2), p(ROW_H), p(ROW_RAD));
+    ctx.fill();
 
     // Avatar
-    const avatarX = PAD_X;
-    const avatarY = y + (ROW_H - AVATAR_SIZE) / 2;
+    const avX = PAD_X + ROW_PADX + AV_MX;
+    const avY = rowY + (ROW_H - AV_SIZE) / 2;
+    await drawAvatar(ctx, e.avatarURL, p(avX), p(avY), p(AV_SIZE), p(AV_RAD));
 
-    await drawAvatar(ctx, entry.avatarURL, avatarX, avatarY, AVATAR_SIZE);
+    // Text baseline (vertically centred in row)
+    const textY = p(rowY + ROW_H / 2 + TEXT_FS * 0.36);
 
-    // Layout: avatar | rank • @username • col1 col2
-    const textX = avatarX + AVATAR_SIZE + 14;
-    const textY = y + ROW_H / 2 + 7;
+    // Rank
+    const rankColor =
+      e.rank === 1 ? C.rank1 :
+      e.rank === 2 ? C.rank2 :
+      e.rank === 3 ? C.rank3 : C.rankDef;
 
-    // Rank number (colored)
-    const rankColor = RANK_COLORS[entry.rank] ?? TEXT_WHITE;
-    const rankStr = `#${entry.rank}`;
-    ctx.font = "bold 18px sans-serif";
+    ctx.font      = `bold ${p(RANK_FS)}px sans-serif`;
     ctx.fillStyle = rankColor;
-    ctx.fillText(rankStr, textX, textY);
+    const rankStr = `#${e.rank}`;
+    ctx.fillText(rankStr, p(TEXT_X), textY);
+    let curX = p(TEXT_X) + ctx.measureText(rankStr).width;
 
-    const rankW = ctx.measureText(rankStr).width;
+    // separator
+    ctx.font      = `${p(TEXT_FS)}px sans-serif`;
+    ctx.fillStyle = C.sep;
+    ctx.fillText(SEP, curX, textY);
+    curX += ctx.measureText(SEP).width;
 
-    // Separator " • "
-    ctx.fillStyle = TEXT_MUTED;
-    ctx.font = "16px sans-serif";
-    const sep = " • ";
-    const sepW = ctx.measureText(sep).width;
-    ctx.fillText(sep, textX + rankW, textY);
+    // @username
+    ctx.font      = `bold ${p(TEXT_FS)}px sans-serif`;
+    ctx.fillStyle = C.white;
+    const nameStr = `@${e.username}`;
+    ctx.fillText(nameStr, curX, textY);
+    curX += ctx.measureText(nameStr).width;
 
-    // @Username
-    ctx.font = "bold 17px sans-serif";
-    ctx.fillStyle = TEXT_WHITE;
-    const nameStr = `@${entry.username}`;
-    const nameW = ctx.measureText(nameStr).width;
-    ctx.fillText(nameStr, textX + rankW + sepW, textY);
+    // separator
+    ctx.font      = `${p(TEXT_FS)}px sans-serif`;
+    ctx.fillStyle = C.sep;
+    ctx.fillText(SEP, curX, textY);
+    curX += ctx.measureText(SEP).width;
 
-    // Separator " • "
-    ctx.fillStyle = TEXT_MUTED;
-    ctx.font = "16px sans-serif";
-    const sep2W = ctx.measureText(sep).width;
-    ctx.fillText(sep, textX + rankW + sepW + nameW, textY);
-
-    // Stats (col1 and col2)
-    const statsX = textX + rankW + sepW + nameW + sep2W;
-    ctx.font = "16px sans-serif";
-    ctx.fillStyle = TEXT_MUTED;
-
-    const statsStr = `${entry.col1Label}: ${entry.col1Value}  ${entry.col2Label}: ${entry.col2Value}`;
-    // Truncate if too long
-    const maxStatsW = WIDTH - statsX - PAD_X;
-    const truncated = truncateText(ctx, statsStr, maxStatsW);
-    ctx.fillText(truncated, statsX, textY);
+    // Stats
+    ctx.font      = `bold ${p(TEXT_FS)}px sans-serif`;
+    ctx.fillStyle = C.white;
+    const statsStr = `${e.col1Label}: ${e.col1Value} ${e.col2Label}: ${e.col2Value}`;
+    const maxW     = p(CW) - curX - p(PAD_X + ROW_PADX);
+    ctx.fillText(ellipsis(ctx, statsStr, maxW), curX, textY);
   }
 
-  // Footer
-  const footerY = TITLE_H + rowCount * ROW_H;
-  ctx.fillStyle = "#16181b";
-  ctx.fillRect(0, footerY, WIDTH, FOOTER_H);
-  ctx.fillStyle = TEXT_MUTED;
-  ctx.font = "13px sans-serif";
+  // ── Footer ─────────────────────────────────────────────────────────────────
+  const footerY = titleSection + rowsSection + PAD_TOP;
+  const dateStr = new Date().toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+  });
+  ctx.font      = `${p(FOOTER_FS)}px sans-serif`;
+  ctx.fillStyle = C.footer;
   ctx.fillText(
-    `Last Stand Management  ·  ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`,
-    PAD_X,
-    footerY + 18,
+    `Last Stand Management  ·  ${dateStr}`,
+    p(PAD_X + ROW_PADX),
+    p(footerY + FOOTER_H * 0.65),
   );
 
   return canvas.toBuffer("image/png");
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function rrect(
+  ctx: ReturnType<ReturnType<typeof createCanvas>["getContext"]>,
+  x: number, y: number, w: number, h: number, r: number,
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
 async function drawAvatar(
   ctx: ReturnType<ReturnType<typeof createCanvas>["getContext"]>,
   url: string | null,
-  x: number,
-  y: number,
-  size: number,
-): Promise<void> {
-  const radius = 5;
-
+  x: number, y: number,
+  size: number, radius: number,
+) {
   ctx.save();
-  // Clipping rounded rect
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + size - radius, y);
-  ctx.quadraticCurveTo(x + size, y, x + size, y + radius);
-  ctx.lineTo(x + size, y + size - radius);
-  ctx.quadraticCurveTo(x + size, y + size, x + size - radius, y + size);
-  ctx.lineTo(x + radius, y + size);
-  ctx.quadraticCurveTo(x, y + size, x, y + size - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
+  rrect(ctx, x, y, size, size, radius);
   ctx.clip();
 
+  let ok = false;
   if (url) {
     try {
-      const img = await loadImage(url.includes("?") ? url : url + "?size=64");
+      const src = url.replace(/\?.*$/, "") + "?size=128";
+      const img = await loadImage(src);
       ctx.drawImage(img, x, y, size, size);
-    } catch {
-      drawFallbackAvatar(ctx, x, y, size);
-    }
-  } else {
-    drawFallbackAvatar(ctx, x, y, size);
+      ok = true;
+    } catch { /* fallback */ }
   }
-
+  if (!ok) {
+    const g = ctx.createLinearGradient(x, y, x + size, y + size);
+    g.addColorStop(0, "#4f545c");
+    g.addColorStop(1, "#36393f");
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, size, size);
+  }
   ctx.restore();
 }
 
-function drawFallbackAvatar(
+function ellipsis(
   ctx: ReturnType<ReturnType<typeof createCanvas>["getContext"]>,
-  x: number,
-  y: number,
-  size: number,
-): void {
-  const grad = ctx.createLinearGradient(x, y, x + size, y + size);
-  grad.addColorStop(0, "#4f545c");
-  grad.addColorStop(1, "#36393f");
-  ctx.fillStyle = grad;
-  ctx.fillRect(x, y, size, size);
-}
-
-function truncateText(
-  ctx: ReturnType<ReturnType<typeof createCanvas>["getContext"]>,
-  text: string,
-  maxWidth: number,
+  text: string, maxW: number,
 ): string {
-  if (ctx.measureText(text).width <= maxWidth) return text;
+  if (ctx.measureText(text).width <= maxW) return text;
   let t = text;
-  while (t.length > 0 && ctx.measureText(t + "…").width > maxWidth) {
-    t = t.slice(0, -1);
-  }
+  while (t.length && ctx.measureText(t + "…").width > maxW) t = t.slice(0, -1);
   return t + "…";
 }
