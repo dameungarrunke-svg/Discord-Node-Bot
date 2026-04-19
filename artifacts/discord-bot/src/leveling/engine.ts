@@ -1,9 +1,10 @@
 import {
   Message,
   Client,
-  EmbedBuilder,
   TextChannel,
   GuildMember,
+  PermissionFlagsBits,
+  AttachmentBuilder,
 } from "discord.js";
 import {
   getGuildConfig,
@@ -12,21 +13,20 @@ import {
   getGuildLevelRoles,
   GuildConfig,
 } from "./db.js";
+import { generateLevelUpCard } from "./card.js";
 
 // ─── XP Formula (Arcane-style) ────────────────────────────────────────────────
-// XP needed to advance from level N → N+1
+
 export function xpForLevel(level: number): number {
   return 5 * level * level + 50 * level + 100;
 }
 
-// Total XP required to reach a given level from zero
 export function totalXpToReachLevel(target: number): number {
   let sum = 0;
   for (let i = 0; i < target; i++) sum += xpForLevel(i);
   return sum;
 }
 
-// Derive current level, XP within that level, and XP needed for next level-up
 export function computeLevel(totalXp: number): {
   level: number;
   currentXp: number;
@@ -41,7 +41,6 @@ export function computeLevel(totalXp: number): {
   return { level, currentXp: remaining, neededXp: xpForLevel(level) };
 }
 
-// Unicode progress bar
 export function progressBar(current: number, total: number, length = 16): string {
   const pct = total > 0 ? Math.min(current / total, 1) : 0;
   const filled = Math.round(pct * length);
@@ -54,9 +53,7 @@ function isSpam(content: string, lastContent: string): boolean {
   const c = content.trim();
   if (c.length < 3) return true;
   if (c === lastContent) return true;
-  // Repeating single character: "aaaaaaa"
   if (/^(.)\1{5,}$/.test(c)) return true;
-  // All caps + short: "AAAA"
   if (c.length < 6 && c === c.toUpperCase() && /[A-Z]/.test(c)) return true;
   return false;
 }
@@ -66,14 +63,11 @@ function isSpam(content: string, lastContent: string): boolean {
 function computeXpGain(config: GuildConfig, memberRoleIds: string[]): number {
   const base =
     Math.floor(Math.random() * (config.xpMax - config.xpMin + 1)) + config.xpMin;
-
-  // Apply role-based multiplier (best-wins, not stacked)
   let roleBonus = 1.0;
   for (const roleId of memberRoleIds) {
     const m = config.roleMultipliers[roleId];
     if (m && m > roleBonus) roleBonus = m;
   }
-
   const total = config.serverMultiplier * config.eventMultiplier * roleBonus;
   return Math.max(1, Math.round(base * total));
 }
@@ -88,10 +82,8 @@ export async function processMessage(message: Message, client: Client): Promise<
   const userId = message.author.id;
   const config = getGuildConfig(guildId);
 
-  // System-wide kill switch
   if (!config.enabled) return;
 
-  // Channel gate
   if (config.blacklistedChannels.includes(message.channelId)) return;
   if (
     config.whitelistedChannels.length > 0 &&
@@ -102,14 +94,11 @@ export async function processMessage(message: Message, client: Client): Promise<
   const now = Date.now();
   const user = getUser(guildId, userId);
 
-  // Cooldown gate
   if ((now - user.lastMessageAt) / 1000 < config.cooldown) return;
 
-  // Spam gate
   const content = message.content.trim();
-  if (isSpam(content, user.lastMessageContent)) return;
+  if (config.antiSpamEnabled !== false && isSpam(content, user.lastMessageContent)) return;
 
-  // Compute and apply XP
   const memberRoleIds = message.member
     ? [...message.member.roles.cache.keys()]
     : [];
@@ -129,7 +118,6 @@ export async function processMessage(message: Message, client: Client): Promise<
 
   saveUser(guildId, userId, user);
 
-  // Level-up handler
   if (newLevel > oldLevel && message.member) {
     handleLevelUp(
       message.member,
@@ -138,9 +126,117 @@ export async function processMessage(message: Message, client: Client): Promise<
       config,
       client,
       guildId,
-      { currentXp, neededXp }
     ).catch((err) => console.error("[LEVELING] Level-up handler error:", err));
   }
+}
+
+// ─── Role Assignment (with full permission + hierarchy checks) ─────────────────
+
+async function assignLevelRoles(
+  member: GuildMember,
+  newLevel: number,
+  config: GuildConfig,
+  guildId: string,
+): Promise<string | undefined> {
+  const guild = member.guild;
+
+  // Ensure roles are fully fetched into cache
+  try {
+    await guild.roles.fetch();
+  } catch (err) {
+    console.error("[LEVELING] Failed to fetch guild roles:", err);
+  }
+
+  // Check bot has Manage Roles permission
+  const me = guild.members.me ?? await guild.members.fetchMe().catch(() => null);
+  if (!me) {
+    console.error("[LEVELING] Could not fetch bot member object.");
+    return undefined;
+  }
+  if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+    console.error(
+      `[LEVELING] Bot is MISSING ManageRoles permission in guild ${guildId}. Role assignment skipped.`
+    );
+    return undefined;
+  }
+
+  const botHighestPosition = me.roles.highest.position;
+  const levelRoles = getGuildLevelRoles(guildId);
+
+  const rolesToAdd: string[] = [];
+  const rolesToRemove: string[] = [];
+  let unlockedRoleName: string | undefined;
+
+  for (const [lvlStr, roleName] of Object.entries(levelRoles)) {
+    const lvl = Number(lvlStr);
+
+    const role = guild.roles.cache.find(
+      (r) => r.name.toLowerCase() === roleName.toLowerCase()
+    );
+
+    if (!role) {
+      if (lvl <= newLevel) {
+        console.error(
+          `[LEVELING] Role not found: "${roleName}" (level ${lvl}) in guild ${guildId}. ` +
+          `Make sure the role name matches exactly (case-insensitive).`
+        );
+      }
+      continue;
+    }
+
+    // Check bot hierarchy
+    if (role.position >= botHighestPosition) {
+      console.error(
+        `[LEVELING] Cannot manage role "${roleName}" (position ${role.position}) — ` +
+        `bot's highest role is position ${botHighestPosition}. ` +
+        `Move the bot's role ABOVE "${roleName}" in server settings.`
+      );
+      continue;
+    }
+
+    if (lvl === newLevel) {
+      unlockedRoleName = roleName;
+      if (!member.roles.cache.has(role.id)) {
+        rolesToAdd.push(role.id);
+        console.log(
+          `[LEVELING] Queuing role ADD: "${roleName}" (${role.id}) for ${member.user.tag} reaching level ${newLevel}`
+        );
+      } else {
+        console.log(
+          `[LEVELING] "${roleName}" already on ${member.user.tag} — skipping add`
+        );
+      }
+    } else if (!config.keepOldRoles && lvl < newLevel) {
+      if (member.roles.cache.has(role.id)) {
+        rolesToRemove.push(role.id);
+        console.log(
+          `[LEVELING] Queuing role REMOVE: "${roleName}" (${role.id}) from ${member.user.tag}`
+        );
+      }
+    }
+  }
+
+  if (rolesToRemove.length > 0) {
+    try {
+      await member.roles.remove(rolesToRemove, `Level-up to ${newLevel} — replacing old role`);
+      console.log(`[LEVELING] Removed ${rolesToRemove.length} old role(s) from ${member.user.tag}`);
+    } catch (err) {
+      console.error("[LEVELING] Failed to remove old roles:", err);
+    }
+  }
+
+  if (rolesToAdd.length > 0) {
+    try {
+      await member.roles.add(rolesToAdd, `Reached level ${newLevel}`);
+      console.log(
+        `[LEVELING] ✅ Granted role "${unlockedRoleName}" to ${member.user.tag} at level ${newLevel}`
+      );
+    } catch (err) {
+      console.error("[LEVELING] ❌ Failed to add role:", err);
+    }
+  }
+
+  return unlockedRoleName;
 }
 
 // ─── Level-up handler ─────────────────────────────────────────────────────────
@@ -152,85 +248,30 @@ export async function handleLevelUp(
   config: GuildConfig,
   client: Client,
   guildId: string,
-  xpInfo: { currentXp: number; neededXp: number }
+  triggeredBy?: { tag: string; command: string },
 ): Promise<void> {
-  const guild = member.guild;
-  const levelRoles = getGuildLevelRoles(guildId);
-
-  const rolesToAdd: string[] = [];
-  const rolesToRemove: string[] = [];
-  let unlockedRoleName: string | undefined;
-
-  // For each configured level-role, check what to add/remove
-  for (const [lvlStr, roleName] of Object.entries(levelRoles)) {
-    const lvl = Number(lvlStr);
-    const role = guild.roles.cache.find(
-      (r) => r.name.toLowerCase() === roleName.toLowerCase()
-    );
-    if (!role) {
-      // Only log error if this level is being crossed
-      if (lvl === newLevel) {
-        console.error(
-          `[LEVELING] Role not found: "${roleName}" for level ${lvl} in guild ${guildId}`
-        );
-      }
-      continue;
-    }
-
-    if (lvl === newLevel) {
-      unlockedRoleName = roleName;
-      if (!member.roles.cache.has(role.id)) rolesToAdd.push(role.id);
-    } else if (!config.keepOldRoles && lvl < newLevel) {
-      if (member.roles.cache.has(role.id)) rolesToRemove.push(role.id);
-    }
-  }
-
-  if (rolesToRemove.length > 0) {
-    try {
-      await member.roles.remove(rolesToRemove, `Level-up to ${newLevel} — replacing old role`);
-    } catch (err) {
-      console.error("[LEVELING] Failed to remove old roles:", err);
-    }
-  }
-
-  if (rolesToAdd.length > 0) {
-    try {
-      await member.roles.add(rolesToAdd, `Reached level ${newLevel}`);
-    } catch (err) {
-      console.error("[LEVELING] Failed to add new role:", err);
-    }
-  }
+  // Assign roles first (critical)
+  const unlockedRoleName = await assignLevelRoles(member, newLevel, config, guildId);
 
   if (!config.announcements) return;
 
-  // Build level-up embed
-  const bar = progressBar(xpInfo.currentXp, xpInfo.neededXp);
-  const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setAuthor({
-      name: member.user.username,
-      iconURL: member.user.displayAvatarURL(),
-    })
-    .setTitle(`⚡  LEVEL  ${newLevel}`)
-    .setDescription(
-      unlockedRoleName
-        ? `◈  Role Unlocked · **${unlockedRoleName}**`
-        : `◈  Keep climbing — next role awaits.`
-    )
-    .addFields({
-      name: "XP Progress",
-      value: `\`${bar}\`\n${xpInfo.currentXp.toLocaleString()} / ${xpInfo.neededXp.toLocaleString()} XP`,
-    })
-    .setFooter({ text: `Level ${oldLevel} → ${newLevel}` })
-    .setTimestamp();
+  // Build Arcane-style level-up card
+  let cardBuffer: Buffer | null = null;
+  try {
+    const avatarURL = member.user.displayAvatarURL({ extension: "png", size: 128 });
+    cardBuffer = await generateLevelUpCard(avatarURL, oldLevel, newLevel);
+  } catch (err) {
+    console.error("[LEVELING] Failed to generate level-up card:", err);
+  }
 
-  // Find the level-up channel
+  // Find target channel
+  const guild = member.guild;
   let channel: TextChannel | null = null;
   if (config.levelUpChannelId) {
     try {
       channel = (await guild.channels.fetch(config.levelUpChannelId)) as TextChannel | null;
     } catch {
-      /* channel may have been deleted */
+      // channel may have been deleted
     }
   }
   if (!channel) {
@@ -244,14 +285,33 @@ export async function handleLevelUp(
       ) as TextChannel | undefined) ?? null;
   }
 
-  if (channel) {
-    try {
+  if (!channel) return;
+
+  // Build message content — Arcane-style
+  const pingPart = config.pingOnLevelUp ? `<@${member.user.id}> ` : "";
+  const contentLine = `${pingPart}good job, keep it up **${newLevel}**. GG!`;
+
+  const triggerLine = triggeredBy
+    ? `\n*Triggered by ${triggeredBy.command} from ${triggeredBy.tag}*`
+    : "";
+
+  try {
+    if (cardBuffer) {
+      const attachment = new AttachmentBuilder(cardBuffer, { name: "levelup.png" });
       await channel.send({
-        content: config.pingOnLevelUp ? `<@${member.user.id}>` : undefined,
-        embeds: [embed],
+        content: contentLine + triggerLine,
+        files: [attachment],
       });
-    } catch (err) {
-      console.error("[LEVELING] Failed to post level-up embed:", err);
+    } else {
+      // Fallback: text-only if card generation failed
+      await channel.send({
+        content:
+          contentLine +
+          (unlockedRoleName ? `\n🎖️ Role unlocked: **${unlockedRoleName}**` : "") +
+          triggerLine,
+      });
     }
+  } catch (err) {
+    console.error("[LEVELING] Failed to post level-up message:", err);
   }
 }

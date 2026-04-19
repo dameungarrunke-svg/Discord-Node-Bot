@@ -19,12 +19,12 @@
   "users": {
     "1479910330669990025": {
       "1368619589692293203": {
-        "xp": 18,
+        "xp": 75,
         "level": 14,
-        "totalXp": 10063,
-        "weeklyXp": 63,
-        "lastMessageAt": 1776602646719,
-        "lastMessageContent": "@everyone Our own official leveling system COMING<:emoji_60:1487317934908117084> \n\nLevel 5  → Rookie  \nLevel 10 → Experienced  \nLevel 15 → Active  \nLevel 20 → Elite  \nLevel 25 → Elite Active  \nLevel 30 → Elite official member  \nLevel 35 → Monarch  \nLevel 40 → Divine general  \nLevel 45 → Mystic  \nLevel 50 → King 👑"
+        "totalXp": 10120,
+        "weeklyXp": 120,
+        "lastMessageAt": 1776603961977,
+        "lastMessageContent": "That dablu right there!"
       },
       "1144836847571324928": {
         "xp": 41,
@@ -67,12 +67,12 @@
         "lastMessageContent": "https://tenor.com/view/joe-biden-what-gif-3784745843284049350"
       },
       "919565774539096096": {
-        "xp": 20,
+        "xp": 105,
         "level": 1,
-        "totalXp": 120,
-        "weeklyXp": 120,
-        "lastMessageAt": 1776602676098,
-        "lastMessageContent": "Real"
+        "totalXp": 205,
+        "weeklyXp": 205,
+        "lastMessageAt": 1776603951323,
+        "lastMessageContent": "It's fine I can take disrespect"
       },
       "1110334940983328858": {
         "xp": 135,
@@ -89,6 +89,14 @@
         "weeklyXp": 76,
         "lastMessageAt": 1776601891539,
         "lastMessageContent": "Yesssss"
+      },
+      "1116405995271364628": {
+        "xp": 6,
+        "level": 1,
+        "totalXp": 106,
+        "weeklyXp": 106,
+        "lastMessageAt": 1776604000786,
+        "lastMessageContent": "Bro…"
       }
     }
   },

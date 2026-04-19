@@ -30,6 +30,7 @@ export interface GuildConfig {
   serverMultiplier: number;
   roleMultipliers: Record<string, number>;
   eventMultiplier: number;
+  antiSpamEnabled: boolean;
 }
 
 export interface WeeklyHistoryEntry {
@@ -62,6 +63,7 @@ export const DEFAULT_CONFIG: GuildConfig = {
   serverMultiplier: 1.0,
   roleMultipliers: {},
   eventMultiplier: 1.0,
+  antiSpamEnabled: true,
 };
 
 export const DEFAULT_LEVEL_ROLES: Record<string, string> = {

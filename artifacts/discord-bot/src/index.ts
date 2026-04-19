@@ -7,6 +7,7 @@ import {
   Routes,
   ChatInputCommandInteraction,
   ButtonInteraction,
+  StringSelectMenuInteraction,
   MessageFlags,
   REST,
 } from "discord.js";
@@ -77,6 +78,12 @@ import {
   suggestionData, executeSuggestion,
 } from "./utility/index.js";
 import { setupRulesData, executeSetupRules } from "./rules/index.js";
+import {
+  dashboardData,
+  executeDashboard,
+  handleDashboardButton,
+  handleDashboardSelect,
+} from "./leveling/dashboard.js";
 import {
   closeTournamentData,
   executeCloseTournament,
@@ -159,6 +166,7 @@ const commands = [
   levelRolesData.toJSON(),
   startLsXpSystemData.toJSON(),
   stopLsXpSystemData.toJSON(),
+  dashboardData.toJSON(),
 ];
 
 // Defined once at startup — not recreated on every interaction
@@ -209,6 +217,7 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   levelroles: executeLevelRoles,
   startlsxpsystem: executeStartLsXpSystem,
   stoplsxpsystem: executeStopLsXpSystem,
+  dashboard: executeDashboard,
 };
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
@@ -393,11 +402,49 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     return;
   }
 
+  // ── Dashboard select menus (update the original message in-place) ───────────
+  if (interaction.isStringSelectMenu()) {
+    const sel = interaction as StringSelectMenuInteraction;
+    if (sel.customId.startsWith("dash_")) {
+      try {
+        await sel.deferUpdate();
+      } catch (err) {
+        console.error(`[INTERACTION] select:${sel.customId} — deferUpdate failed`, err);
+        return;
+      }
+      handleDashboardSelect(sel).catch(async (err) => {
+        console.error(`[ERROR] dashboard select [${sel.customId}]:`, err);
+        try {
+          await sel.editReply({ content: "❌ Dashboard error: " + (err instanceof Error ? err.message : String(err)) });
+        } catch { /* ignore */ }
+      });
+      return;
+    }
+  }
+
   if (interaction.isButton()) {
     const btn = interaction as ButtonInteraction;
     const t0 = Date.now();
     console.log(`[INTERACTION] button:${btn.customId} received`);
 
+    // ── Dashboard buttons use deferUpdate (update the panel in-place) ─────────
+    if (btn.customId.startsWith("dash_")) {
+      try {
+        await btn.deferUpdate();
+      } catch (err) {
+        console.error(`[INTERACTION] button:${btn.customId} — deferUpdate failed`, err);
+        return;
+      }
+      handleDashboardButton(btn).catch(async (err) => {
+        console.error(`[ERROR] dashboard button [${btn.customId}]:`, err);
+        try {
+          await btn.editReply({ content: "❌ Dashboard error: " + (err instanceof Error ? err.message : String(err)) });
+        } catch { /* ignore */ }
+      });
+      return;
+    }
+
+    // ── Regular buttons ───────────────────────────────────────────────────────
     try {
       await btn.deferReply({ flags: MessageFlags.Ephemeral });
     } catch (err) {
