@@ -1,0 +1,111 @@
+{
+  "configs": {
+    "1479910330669990025": {
+      "enabled": true,
+      "xpMin": 15,
+      "xpMax": 25,
+      "cooldown": 60,
+      "levelUpChannelId": "1479912007414054935",
+      "announcements": true,
+      "pingOnLevelUp": true,
+      "keepOldRoles": true,
+      "blacklistedChannels": [],
+      "whitelistedChannels": [],
+      "serverMultiplier": 1,
+      "roleMultipliers": {},
+      "eventMultiplier": 1
+    }
+  },
+  "users": {
+    "1479910330669990025": {
+      "1368619589692293203": {
+        "xp": 18,
+        "level": 14,
+        "totalXp": 10063,
+        "weeklyXp": 63,
+        "lastMessageAt": 1776602646719,
+        "lastMessageContent": "@everyone Our own official leveling system COMING<:emoji_60:1487317934908117084> \n\nLevel 5  → Rookie  \nLevel 10 → Experienced  \nLevel 15 → Active  \nLevel 20 → Elite  \nLevel 25 → Elite Active  \nLevel 30 → Elite official member  \nLevel 35 → Monarch  \nLevel 40 → Divine general  \nLevel 45 → Mystic  \nLevel 50 → King 👑"
+      },
+      "1144836847571324928": {
+        "xp": 41,
+        "level": 0,
+        "totalXp": 41,
+        "weeklyXp": 41,
+        "lastMessageAt": 1776602654021,
+        "lastMessageContent": "WHAT THE HECK"
+      },
+      "962263230451957780": {
+        "xp": 52,
+        "level": 1,
+        "totalXp": 152,
+        "weeklyXp": 152,
+        "lastMessageAt": 1776602552592,
+        "lastMessageContent": "new system"
+      },
+      "1277329984398299288": {
+        "xp": 126,
+        "level": 1,
+        "totalXp": 226,
+        "weeklyXp": 226,
+        "lastMessageAt": 1776602385225,
+        "lastMessageContent": "Why?"
+      },
+      "1246735947018539019": {
+        "xp": 19,
+        "level": 0,
+        "totalXp": 19,
+        "weeklyXp": 19,
+        "lastMessageAt": 1776601212485,
+        "lastMessageContent": "Nah nahing nah nah dudie"
+      },
+      "944162887323250710": {
+        "xp": 48,
+        "level": 0,
+        "totalXp": 48,
+        "weeklyXp": 48,
+        "lastMessageAt": 1776602679760,
+        "lastMessageContent": "https://tenor.com/view/joe-biden-what-gif-3784745843284049350"
+      },
+      "919565774539096096": {
+        "xp": 20,
+        "level": 1,
+        "totalXp": 120,
+        "weeklyXp": 120,
+        "lastMessageAt": 1776602676098,
+        "lastMessageContent": "Real"
+      },
+      "1110334940983328858": {
+        "xp": 135,
+        "level": 1,
+        "totalXp": 235,
+        "weeklyXp": 235,
+        "lastMessageAt": 1776602570554,
+        "lastMessageContent": "Bye"
+      },
+      "1461079679711838221": {
+        "xp": 76,
+        "level": 0,
+        "totalXp": 76,
+        "weeklyXp": 76,
+        "lastMessageAt": 1776601891539,
+        "lastMessageContent": "Yesssss"
+      }
+    }
+  },
+  "levelRoles": {
+    "1479910330669990025": {
+      "5": "Rookie",
+      "10": "Experienced",
+      "15": "Active",
+      "20": "Elite",
+      "25": "Elite Active",
+      "30": "Elite official member",
+      "35": "Monarch",
+      "40": "Divine general",
+      "45": "Mystic",
+      "50": "King 👑"
+    }
+  },
+  "lastWeeklyReset": 1776601102675,
+  "weeklyHistory": []
+}
