@@ -91,9 +91,9 @@ import {
 } from "./moderation/commands.js";
 import { handleModerationMessage } from "./moderation/monitor.js";
 
-const token = process.env.DISCORD_BOT_TOKEN;
+const token = process.env.DISCORD_TOKEN;
 if (!token) {
-  console.error("DISCORD_BOT_TOKEN is not set. Exiting.");
+  console.error("DISCORD_TOKEN is not set. Exiting.");
   process.exit(1);
 }
 
