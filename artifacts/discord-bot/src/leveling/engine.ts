@@ -88,6 +88,9 @@ export async function processMessage(message: Message, client: Client): Promise<
   const userId = message.author.id;
   const config = getGuildConfig(guildId);
 
+  // System-wide kill switch
+  if (!config.enabled) return;
+
   // Channel gate
   if (config.blacklistedChannels.includes(message.channelId)) return;
   if (
@@ -243,7 +246,10 @@ export async function handleLevelUp(
 
   if (channel) {
     try {
-      await channel.send({ content: `<@${member.user.id}>`, embeds: [embed] });
+      await channel.send({
+        content: config.pingOnLevelUp ? `<@${member.user.id}>` : undefined,
+        embeds: [embed],
+      });
     } catch (err) {
       console.error("[LEVELING] Failed to post level-up embed:", err);
     }

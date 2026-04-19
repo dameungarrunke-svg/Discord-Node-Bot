@@ -17,11 +17,13 @@ export interface UserData {
 }
 
 export interface GuildConfig {
+  enabled: boolean;
   xpMin: number;
   xpMax: number;
   cooldown: number;
   levelUpChannelId: string | null;
   announcements: boolean;
+  pingOnLevelUp: boolean;
   keepOldRoles: boolean;
   blacklistedChannels: string[];
   whitelistedChannels: string[];
@@ -47,11 +49,13 @@ export interface LevelingData {
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
 export const DEFAULT_CONFIG: GuildConfig = {
+  enabled: true,
   xpMin: 15,
   xpMax: 25,
   cooldown: 60,
   levelUpChannelId: null,
   announcements: true,
+  pingOnLevelUp: true,
   keepOldRoles: true,
   blacklistedChannels: [],
   whitelistedChannels: [],

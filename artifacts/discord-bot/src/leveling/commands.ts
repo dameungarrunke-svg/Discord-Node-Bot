@@ -3,7 +3,6 @@ import {
   ChatInputCommandInteraction,
   EmbedBuilder,
   PermissionFlagsBits,
-  MessageFlags,
 } from "discord.js";
 import {
   getUser,
@@ -378,20 +377,40 @@ export async function executeSetXpRange(i: ChatInputCommandInteraction): Promise
 
 export const setXpChannelData = new SlashCommandBuilder()
   .setName("setxpchannel")
-  .setDescription("Set the channel where level-up notifications are sent. (Admin)")
+  .setDescription("Configure the level-up notification channel and ping behaviour. (Admin)")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .addChannelOption((o) =>
-    o.setName("channel").setDescription("Level-up channel").setRequired(false)
+    o.setName("channel").setDescription("Level-up channel (leave empty to auto-detect)").setRequired(false)
+  )
+  .addBooleanOption((o) =>
+    o.setName("ping_user").setDescription("Ping the user when they level up? (default: true)").setRequired(false)
   );
 
 export async function executeSetXpChannel(i: ChatInputCommandInteraction): Promise<void> {
   const channel = i.options.getChannel("channel");
-  patchGuildConfig(i.guildId!, { levelUpChannelId: channel?.id ?? null });
-  await i.editReply({
-    content: channel
-      ? `✅ Level-up notifications will go to <#${channel.id}>.`
-      : `✅ Level-up channel cleared — bot will auto-detect a suitable channel.`,
-  });
+  const pingUser = i.options.getBoolean("ping_user");
+  const patch: Record<string, unknown> = {};
+
+  if (channel !== undefined) patch.levelUpChannelId = channel?.id ?? null;
+  if (pingUser !== null && pingUser !== undefined) patch.pingOnLevelUp = pingUser;
+
+  patchGuildConfig(i.guildId!, patch);
+
+  const lines: string[] = [];
+  if (channel !== undefined) {
+    lines.push(channel ? `◈  Level-up channel → <#${channel.id}>` : `◈  Level-up channel → auto-detect`);
+  }
+  if (pingUser !== null && pingUser !== undefined) {
+    lines.push(`◈  Ping on level-up → **${pingUser ? "Enabled" : "Disabled"}**`);
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle("◈  LEVEL-UP SETTINGS UPDATED")
+    .setDescription(lines.length ? lines.join("\n") : "No changes made.")
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
 }
 
 // ─── /setmultiplier ───────────────────────────────────────────────────────────
@@ -533,12 +552,14 @@ export async function executeXpConfig(i: ChatInputCommandInteraction): Promise<v
     .join("\n") || "None";
 
   const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setTitle("◈  XP SYSTEM CONFIG")
+    .setColor(config.enabled ? 0x5865f2 : 0xed4245)
+    .setTitle(`◈  XP SYSTEM CONFIG  ·  ${config.enabled ? "🟢 ACTIVE" : "🔴 STOPPED"}`)
     .addFields(
+      { name: "System Status", value: config.enabled ? "🟢 Running" : "🔴 Stopped", inline: true },
       { name: "XP Range", value: `${config.xpMin} – ${config.xpMax} per message`, inline: true },
       { name: "Cooldown", value: `${config.cooldown}s`, inline: true },
       { name: "Announcements", value: config.announcements ? "Enabled" : "Disabled", inline: true },
+      { name: "Ping on Level-up", value: config.pingOnLevelUp ? "✅ Yes" : "❌ No", inline: true },
       { name: "Level-up Channel", value: config.levelUpChannelId ? `<#${config.levelUpChannelId}>` : "Auto-detect", inline: true },
       { name: "Keep Old Roles", value: config.keepOldRoles ? "Yes" : "No", inline: true },
       { name: "Server Multiplier", value: `${config.serverMultiplier}x`, inline: true },
@@ -579,6 +600,68 @@ export async function executeLevelRoles(i: ChatInputCommandInteraction): Promise
     .setTitle("◈  LEVEL ROLES")
     .setDescription(lines || "No roles configured.")
     .setFooter({ text: "✅ = role found  ·  ⚠️ = role not found in server" })
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}
+
+// ─── /startlsxpsystem ─────────────────────────────────────────────────────────
+
+export const startLsXpSystemData = new SlashCommandBuilder()
+  .setName("startlsxpsystem")
+  .setDescription("Enable the XP leveling system. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+
+export async function executeStartLsXpSystem(i: ChatInputCommandInteraction): Promise<void> {
+  const config = getGuildConfig(i.guildId!);
+  if (config.enabled) {
+    await i.editReply({ content: "⚠️ The XP system is already running." });
+    return;
+  }
+  patchGuildConfig(i.guildId!, { enabled: true });
+
+  const embed = new EmbedBuilder()
+    .setColor(0x57f287)
+    .setTitle("🟢  XP SYSTEM STARTED")
+    .setDescription(
+      "The XP leveling system is now **active**.\n" +
+      "Members will earn XP for every message they send."
+    )
+    .addFields(
+      { name: "XP Range", value: `${config.xpMin} – ${config.xpMax} per message`, inline: true },
+      { name: "Cooldown", value: `${config.cooldown}s`, inline: true },
+      { name: "Ping on Level-up", value: config.pingOnLevelUp ? "✅ Yes" : "❌ No", inline: true },
+    )
+    .setFooter({ text: `Started by ${i.user.username}` })
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}
+
+// ─── /stoplsxpsystem ──────────────────────────────────────────────────────────
+
+export const stopLsXpSystemData = new SlashCommandBuilder()
+  .setName("stoplsxpsystem")
+  .setDescription("Disable the XP leveling system. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+
+export async function executeStopLsXpSystem(i: ChatInputCommandInteraction): Promise<void> {
+  const config = getGuildConfig(i.guildId!);
+  if (!config.enabled) {
+    await i.editReply({ content: "⚠️ The XP system is already stopped." });
+    return;
+  }
+  patchGuildConfig(i.guildId!, { enabled: false });
+
+  const embed = new EmbedBuilder()
+    .setColor(0xed4245)
+    .setTitle("🔴  XP SYSTEM STOPPED")
+    .setDescription(
+      "The XP leveling system is now **paused**.\n" +
+      "No XP will be earned until restarted with `/startlsxpsystem`.\n\n" +
+      "All existing XP data is preserved."
+    )
+    .setFooter({ text: `Stopped by ${i.user.username}` })
     .setTimestamp();
 
   await i.editReply({ embeds: [embed] });

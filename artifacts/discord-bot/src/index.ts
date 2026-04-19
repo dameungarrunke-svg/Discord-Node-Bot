@@ -60,6 +60,8 @@ import {
   whitelistChannelData, executeWhitelistChannel,
   xpConfigData, executeXpConfig,
   levelRolesData, executeLevelRoles,
+  startLsXpSystemData, executeStartLsXpSystem,
+  stopLsXpSystemData, executeStopLsXpSystem,
 } from "./leveling/commands.js";
 import { processMessage } from "./leveling/engine.js";
 import { startWeeklyResetScheduler } from "./leveling/weekly.js";
@@ -155,6 +157,8 @@ const commands = [
   whitelistChannelData.toJSON(),
   xpConfigData.toJSON(),
   levelRolesData.toJSON(),
+  startLsXpSystemData.toJSON(),
+  stopLsXpSystemData.toJSON(),
 ];
 
 // Defined once at startup — not recreated on every interaction
@@ -203,6 +207,8 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   whitelistchannel: executeWhitelistChannel,
   xpconfig: executeXpConfig,
   levelroles: executeLevelRoles,
+  startlsxpsystem: executeStartLsXpSystem,
+  stoplsxpsystem: executeStopLsXpSystem,
 };
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
