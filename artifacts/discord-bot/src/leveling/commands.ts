@@ -1,0 +1,585 @@
+import {
+  SlashCommandBuilder,
+  ChatInputCommandInteraction,
+  EmbedBuilder,
+  PermissionFlagsBits,
+  MessageFlags,
+} from "discord.js";
+import {
+  getUser,
+  getAllUsers,
+  getGuildConfig,
+  patchGuildConfig,
+  getGuildLevelRoles,
+  setLevelRole,
+  removeLevelRole,
+  modifyUserXp,
+  resetUser,
+} from "./db.js";
+import { computeLevel, progressBar, xpForLevel } from "./engine.js";
+
+// ─── /rank ────────────────────────────────────────────────────────────────────
+
+export const rankData = new SlashCommandBuilder()
+  .setName("rank")
+  .setDescription("View your rank card or another member's.")
+  .addUserOption((o) =>
+    o.setName("user").setDescription("Member to look up").setRequired(false)
+  );
+
+export async function executeRank(i: ChatInputCommandInteraction): Promise<void> {
+  const target = i.options.getUser("user") ?? i.user;
+  const guildId = i.guildId!;
+
+  const userData = getUser(guildId, target.id);
+  const { level, currentXp, neededXp } = computeLevel(userData.totalXp);
+
+  // Server rank position (by total XP)
+  const all = getAllUsers(guildId).sort((a, b) => b.totalXp - a.totalXp);
+  const rank = all.findIndex((u) => u.userId === target.id) + 1;
+  const bar = progressBar(currentXp, neededXp, 18);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setAuthor({
+      name: target.username,
+      iconURL: target.displayAvatarURL(),
+    })
+    .setTitle(`◇  RANK CARD`)
+    .addFields(
+      { name: "Level", value: `**${level}**`, inline: true },
+      { name: "Server Rank", value: `**#${rank === 0 ? "—" : rank}**`, inline: true },
+      { name: "Weekly XP", value: `**${userData.weeklyXp.toLocaleString()}**`, inline: true },
+      {
+        name: `XP Progress  ·  ${currentXp.toLocaleString()} / ${neededXp.toLocaleString()}`,
+        value: `\`${bar}\``,
+      },
+      { name: "Total XP", value: `${userData.totalXp.toLocaleString()} XP`, inline: true }
+    )
+    .setFooter({ text: `Last Stand Management  ·  Leveling System` })
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}
+
+// ─── /leaderboard ─────────────────────────────────────────────────────────────
+
+export const leaderboardLevelData = new SlashCommandBuilder()
+  .setName("levellb")
+  .setDescription("All-time XP leaderboard.")
+  .addIntegerOption((o) =>
+    o.setName("page").setDescription("Page number").setMinValue(1).setRequired(false)
+  );
+
+export async function executeLeaderboard(i: ChatInputCommandInteraction): Promise<void> {
+  const guildId = i.guildId!;
+  const page = (i.options.getInteger("page") ?? 1) - 1;
+  const PER_PAGE = 10;
+
+  const all = getAllUsers(guildId)
+    .filter((u) => u.totalXp > 0)
+    .sort((a, b) => b.totalXp - a.totalXp);
+
+  if (all.length === 0) {
+    await i.editReply({ content: "No XP data yet. Start chatting!" });
+    return;
+  }
+
+  const totalPages = Math.ceil(all.length / PER_PAGE);
+  const safePage = Math.min(page, totalPages - 1);
+  const slice = all.slice(safePage * PER_PAGE, safePage * PER_PAGE + PER_PAGE);
+
+  const medals = ["🥇", "🥈", "🥉"];
+  const lines = await Promise.all(
+    slice.map(async (u, idx) => {
+      const pos = safePage * PER_PAGE + idx + 1;
+      const icon = pos <= 3 ? medals[pos - 1] : `\`#${pos}\``;
+      let name = `<@${u.userId}>`;
+      try {
+        const member = await i.guild!.members.fetch(u.userId).catch(() => null);
+        if (member) name = member.displayName;
+      } catch { /* fallback to mention */ }
+      const { level } = computeLevel(u.totalXp);
+      return `${icon}  **${name}**  ·  Lv.${level}  ·  ${u.totalXp.toLocaleString()} XP`;
+    })
+  );
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle(`◈  XP LEADERBOARD`)
+    .setDescription(lines.join("\n"))
+    .setFooter({ text: `Page ${safePage + 1} / ${totalPages}  ·  ${all.length} members` })
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}
+
+// ─── /weeklylb ────────────────────────────────────────────────────────────────
+
+export const weeklyLbData = new SlashCommandBuilder()
+  .setName("weeklylb")
+  .setDescription("This week's XP leaderboard.");
+
+export async function executeWeeklyLb(i: ChatInputCommandInteraction): Promise<void> {
+  const guildId = i.guildId!;
+
+  const all = getAllUsers(guildId)
+    .filter((u) => u.weeklyXp > 0)
+    .sort((a, b) => b.weeklyXp - a.weeklyXp)
+    .slice(0, 10);
+
+  if (all.length === 0) {
+    await i.editReply({ content: "No weekly XP yet. This week just started!" });
+    return;
+  }
+
+  const medals = ["🥇", "🥈", "🥉"];
+  const lines = await Promise.all(
+    all.map(async (u, idx) => {
+      const icon = idx < 3 ? medals[idx] : `\`#${idx + 1}\``;
+      let name = `<@${u.userId}>`;
+      try {
+        const member = await i.guild!.members.fetch(u.userId).catch(() => null);
+        if (member) name = member.displayName;
+      } catch { /* ignore */ }
+      return `${icon}  **${name}**  ·  ${u.weeklyXp.toLocaleString()} XP this week`;
+    })
+  );
+
+  const embed = new EmbedBuilder()
+    .setColor(0xfaa61a)
+    .setTitle(`◈  WEEKLY LEADERBOARD`)
+    .setDescription(lines.join("\n"))
+    .setFooter({ text: `Resets every Monday  ·  Last Stand Management` })
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}
+
+// ─── /addxp ───────────────────────────────────────────────────────────────────
+
+export const addXpData = new SlashCommandBuilder()
+  .setName("addxp")
+  .setDescription("Add XP to a member. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addUserOption((o) => o.setName("user").setDescription("Target member").setRequired(true))
+  .addIntegerOption((o) =>
+    o.setName("amount").setDescription("XP to add").setMinValue(1).setRequired(true)
+  );
+
+export async function executeAddXp(i: ChatInputCommandInteraction): Promise<void> {
+  const target = i.options.getUser("user", true);
+  const amount = i.options.getInteger("amount", true);
+  const guildId = i.guildId!;
+
+  const updated = modifyUserXp(guildId, target.id, amount, "add");
+  const { level } = computeLevel(updated.totalXp);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x57f287)
+    .setTitle("◈  XP ADDED")
+    .addFields(
+      { name: "Member", value: `<@${target.id}>`, inline: true },
+      { name: "Added", value: `+${amount.toLocaleString()} XP`, inline: true },
+      { name: "Total XP", value: `${updated.totalXp.toLocaleString()} XP`, inline: true },
+      { name: "Current Level", value: `${level}`, inline: true }
+    )
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}
+
+// ─── /removexp ────────────────────────────────────────────────────────────────
+
+export const removeXpData = new SlashCommandBuilder()
+  .setName("removexp")
+  .setDescription("Remove XP from a member. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addUserOption((o) => o.setName("user").setDescription("Target member").setRequired(true))
+  .addIntegerOption((o) =>
+    o.setName("amount").setDescription("XP to remove").setMinValue(1).setRequired(true)
+  );
+
+export async function executeRemoveXp(i: ChatInputCommandInteraction): Promise<void> {
+  const target = i.options.getUser("user", true);
+  const amount = i.options.getInteger("amount", true);
+  const guildId = i.guildId!;
+
+  const updated = modifyUserXp(guildId, target.id, amount, "remove");
+  const { level } = computeLevel(updated.totalXp);
+
+  const embed = new EmbedBuilder()
+    .setColor(0xed4245)
+    .setTitle("◈  XP REMOVED")
+    .addFields(
+      { name: "Member", value: `<@${target.id}>`, inline: true },
+      { name: "Removed", value: `-${amount.toLocaleString()} XP`, inline: true },
+      { name: "Total XP", value: `${updated.totalXp.toLocaleString()} XP`, inline: true },
+      { name: "Current Level", value: `${level}`, inline: true }
+    )
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}
+
+// ─── /setxp ───────────────────────────────────────────────────────────────────
+
+export const setXpData = new SlashCommandBuilder()
+  .setName("setxp")
+  .setDescription("Set a member's total XP to an exact value. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addUserOption((o) => o.setName("user").setDescription("Target member").setRequired(true))
+  .addIntegerOption((o) =>
+    o.setName("amount").setDescription("Exact XP to set").setMinValue(0).setRequired(true)
+  );
+
+export async function executeSetXp(i: ChatInputCommandInteraction): Promise<void> {
+  const target = i.options.getUser("user", true);
+  const amount = i.options.getInteger("amount", true);
+  const guildId = i.guildId!;
+
+  const updated = modifyUserXp(guildId, target.id, amount, "set");
+  const { level } = computeLevel(updated.totalXp);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle("◈  XP SET")
+    .addFields(
+      { name: "Member", value: `<@${target.id}>`, inline: true },
+      { name: "Total XP", value: `${updated.totalXp.toLocaleString()} XP`, inline: true },
+      { name: "Level", value: `${level}`, inline: true }
+    )
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}
+
+// ─── /resetxp ─────────────────────────────────────────────────────────────────
+
+export const resetXpData = new SlashCommandBuilder()
+  .setName("resetxp")
+  .setDescription("Fully reset a member's XP and level. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addUserOption((o) => o.setName("user").setDescription("Target member").setRequired(true));
+
+export async function executeResetXp(i: ChatInputCommandInteraction): Promise<void> {
+  const target = i.options.getUser("user", true);
+  resetUser(i.guildId!, target.id);
+
+  const embed = new EmbedBuilder()
+    .setColor(0xfaa61a)
+    .setTitle("◈  XP RESET")
+    .setDescription(`<@${target.id}>'s XP and level have been wiped.`)
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}
+
+// ─── /setlevelrole ────────────────────────────────────────────────────────────
+
+export const setLevelRoleData = new SlashCommandBuilder()
+  .setName("setlevelrole")
+  .setDescription("Assign a role to be granted at a specific level. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addIntegerOption((o) =>
+    o.setName("level").setDescription("Level threshold").setMinValue(1).setRequired(true)
+  )
+  .addStringOption((o) =>
+    o.setName("role_name").setDescription("Exact role name").setRequired(true)
+  );
+
+export async function executeSetLevelRole(i: ChatInputCommandInteraction): Promise<void> {
+  const level = i.options.getInteger("level", true);
+  const roleName = i.options.getString("role_name", true);
+  const guildId = i.guildId!;
+
+  // Validate role exists
+  const role = i.guild!.roles.cache.find(
+    (r) => r.name.toLowerCase() === roleName.toLowerCase()
+  );
+
+  setLevelRole(guildId, level, roleName);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x57f287)
+    .setTitle("◈  LEVEL ROLE SET")
+    .addFields(
+      { name: "Level", value: `${level}`, inline: true },
+      { name: "Role Name", value: roleName, inline: true },
+      { name: "Role Found", value: role ? "✅ Yes" : "⚠️ Not found in server (will error on grant)", inline: true }
+    )
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}
+
+// ─── /removelevelrole ─────────────────────────────────────────────────────────
+
+export const removeLevelRoleData = new SlashCommandBuilder()
+  .setName("removelevelrole")
+  .setDescription("Remove the role assignment from a level. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addIntegerOption((o) =>
+    o.setName("level").setDescription("Level to clear").setMinValue(1).setRequired(true)
+  );
+
+export async function executeRemoveLevelRole(i: ChatInputCommandInteraction): Promise<void> {
+  const level = i.options.getInteger("level", true);
+  const removed = removeLevelRole(i.guildId!, level);
+
+  await i.editReply({
+    content: removed
+      ? `✅ Role assignment for level ${level} removed.`
+      : `⚠️ No role was set for level ${level}.`,
+  });
+}
+
+// ─── /setxpcooldown ───────────────────────────────────────────────────────────
+
+export const setXpCooldownData = new SlashCommandBuilder()
+  .setName("setxpcooldown")
+  .setDescription("Set XP gain cooldown in seconds. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addIntegerOption((o) =>
+    o.setName("seconds").setDescription("Cooldown in seconds (default: 60)").setMinValue(5).setMaxValue(3600).setRequired(true)
+  );
+
+export async function executeSetXpCooldown(i: ChatInputCommandInteraction): Promise<void> {
+  const seconds = i.options.getInteger("seconds", true);
+  patchGuildConfig(i.guildId!, { cooldown: seconds });
+  await i.editReply({ content: `✅ XP cooldown set to **${seconds} seconds**.` });
+}
+
+// ─── /setxprange ──────────────────────────────────────────────────────────────
+
+export const setXpRangeData = new SlashCommandBuilder()
+  .setName("setxprange")
+  .setDescription("Set the min/max XP awarded per message. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addIntegerOption((o) =>
+    o.setName("min").setDescription("Minimum XP per message").setMinValue(1).setRequired(true)
+  )
+  .addIntegerOption((o) =>
+    o.setName("max").setDescription("Maximum XP per message").setMinValue(1).setRequired(true)
+  );
+
+export async function executeSetXpRange(i: ChatInputCommandInteraction): Promise<void> {
+  const min = i.options.getInteger("min", true);
+  const max = i.options.getInteger("max", true);
+  if (min > max) {
+    await i.editReply({ content: "❌ Minimum XP cannot be greater than maximum." });
+    return;
+  }
+  patchGuildConfig(i.guildId!, { xpMin: min, xpMax: max });
+  await i.editReply({ content: `✅ XP range set to **${min} – ${max}** per message.` });
+}
+
+// ─── /setxpchannel ────────────────────────────────────────────────────────────
+
+export const setXpChannelData = new SlashCommandBuilder()
+  .setName("setxpchannel")
+  .setDescription("Set the channel where level-up notifications are sent. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addChannelOption((o) =>
+    o.setName("channel").setDescription("Level-up channel").setRequired(false)
+  );
+
+export async function executeSetXpChannel(i: ChatInputCommandInteraction): Promise<void> {
+  const channel = i.options.getChannel("channel");
+  patchGuildConfig(i.guildId!, { levelUpChannelId: channel?.id ?? null });
+  await i.editReply({
+    content: channel
+      ? `✅ Level-up notifications will go to <#${channel.id}>.`
+      : `✅ Level-up channel cleared — bot will auto-detect a suitable channel.`,
+  });
+}
+
+// ─── /setmultiplier ───────────────────────────────────────────────────────────
+
+export const setMultiplierData = new SlashCommandBuilder()
+  .setName("setmultiplier")
+  .setDescription("Set an XP multiplier. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addStringOption((o) =>
+    o
+      .setName("type")
+      .setDescription("Multiplier type")
+      .addChoices(
+        { name: "Server-wide", value: "server" },
+        { name: "Event (temporary)", value: "event" },
+        { name: "Role-based", value: "role" }
+      )
+      .setRequired(true)
+  )
+  .addNumberOption((o) =>
+    o.setName("value").setDescription("Multiplier value (e.g. 2.0 for 2x)").setMinValue(0.1).setMaxValue(10).setRequired(true)
+  )
+  .addRoleOption((o) =>
+    o.setName("role").setDescription("Role to apply multiplier to (role type only)").setRequired(false)
+  );
+
+export async function executeSetMultiplier(i: ChatInputCommandInteraction): Promise<void> {
+  const type = i.options.getString("type", true);
+  const value = i.options.getNumber("value", true);
+  const role = i.options.getRole("role");
+  const guildId = i.guildId!;
+  const config = getGuildConfig(guildId);
+
+  if (type === "server") {
+    patchGuildConfig(guildId, { serverMultiplier: value });
+    await i.editReply({ content: `✅ Server-wide XP multiplier set to **${value}x**.` });
+  } else if (type === "event") {
+    patchGuildConfig(guildId, { eventMultiplier: value });
+    await i.editReply({ content: `✅ Event XP multiplier set to **${value}x**. Remember to reset it when the event ends!` });
+  } else if (type === "role") {
+    if (!role) {
+      await i.editReply({ content: "❌ You must specify a role for role-based multipliers." });
+      return;
+    }
+    const updated = { ...config.roleMultipliers, [role.id]: value };
+    patchGuildConfig(guildId, { roleMultipliers: updated });
+    await i.editReply({ content: `✅ Members with **${role.name}** will receive **${value}x** XP.` });
+  }
+}
+
+// ─── /blacklistchannel ────────────────────────────────────────────────────────
+
+export const blacklistChannelData = new SlashCommandBuilder()
+  .setName("blacklistchannel")
+  .setDescription("Block XP gain in a channel. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addChannelOption((o) =>
+    o.setName("channel").setDescription("Channel to blacklist").setRequired(true)
+  )
+  .addBooleanOption((o) =>
+    o.setName("remove").setDescription("Remove from blacklist instead").setRequired(false)
+  );
+
+export async function executeBlacklistChannel(i: ChatInputCommandInteraction): Promise<void> {
+  const channel = i.options.getChannel("channel", true);
+  const remove = i.options.getBoolean("remove") ?? false;
+  const guildId = i.guildId!;
+  const config = getGuildConfig(guildId);
+
+  let list = [...config.blacklistedChannels];
+  if (remove) {
+    list = list.filter((id) => id !== channel.id);
+    patchGuildConfig(guildId, { blacklistedChannels: list });
+    await i.editReply({ content: `✅ <#${channel.id}> removed from XP blacklist.` });
+  } else {
+    if (!list.includes(channel.id)) list.push(channel.id);
+    patchGuildConfig(guildId, { blacklistedChannels: list });
+    await i.editReply({ content: `✅ <#${channel.id}> added to XP blacklist — no XP will be earned there.` });
+  }
+}
+
+// ─── /whitelistchannel ────────────────────────────────────────────────────────
+
+export const whitelistChannelData = new SlashCommandBuilder()
+  .setName("whitelistchannel")
+  .setDescription("Restrict XP gain to specific channels only. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addChannelOption((o) =>
+    o.setName("channel").setDescription("Channel to whitelist").setRequired(true)
+  )
+  .addBooleanOption((o) =>
+    o.setName("remove").setDescription("Remove from whitelist instead").setRequired(false)
+  );
+
+export async function executeWhitelistChannel(i: ChatInputCommandInteraction): Promise<void> {
+  const channel = i.options.getChannel("channel", true);
+  const remove = i.options.getBoolean("remove") ?? false;
+  const guildId = i.guildId!;
+  const config = getGuildConfig(guildId);
+
+  let list = [...config.whitelistedChannels];
+  if (remove) {
+    list = list.filter((id) => id !== channel.id);
+    patchGuildConfig(guildId, { whitelistedChannels: list });
+    await i.editReply({
+      content: list.length === 0
+        ? `✅ <#${channel.id}> removed. Whitelist is now empty — XP allowed in all channels.`
+        : `✅ <#${channel.id}> removed from whitelist.`,
+    });
+  } else {
+    if (!list.includes(channel.id)) list.push(channel.id);
+    patchGuildConfig(guildId, { whitelistedChannels: list });
+    await i.editReply({ content: `✅ <#${channel.id}> added to whitelist. XP will ONLY be earned in whitelisted channels.` });
+  }
+}
+
+// ─── /xpconfig ────────────────────────────────────────────────────────────────
+
+export const xpConfigData = new SlashCommandBuilder()
+  .setName("xpconfig")
+  .setDescription("View the current XP system configuration. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+
+export async function executeXpConfig(i: ChatInputCommandInteraction): Promise<void> {
+  const guildId = i.guildId!;
+  const config = getGuildConfig(guildId);
+  const levelRoles = getGuildLevelRoles(guildId);
+
+  const roleLines = Object.entries(levelRoles)
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .map(([lvl, name]) => `Lv.${lvl} → ${name}`)
+    .join("\n") || "None configured";
+
+  const blChans = config.blacklistedChannels.map((id) => `<#${id}>`).join(", ") || "None";
+  const wlChans = config.whitelistedChannels.map((id) => `<#${id}>`).join(", ") || "None (all channels)";
+
+  const roleMultLines = Object.entries(config.roleMultipliers)
+    .map(([id, m]) => `<@&${id}> → ${m}x`)
+    .join("\n") || "None";
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle("◈  XP SYSTEM CONFIG")
+    .addFields(
+      { name: "XP Range", value: `${config.xpMin} – ${config.xpMax} per message`, inline: true },
+      { name: "Cooldown", value: `${config.cooldown}s`, inline: true },
+      { name: "Announcements", value: config.announcements ? "Enabled" : "Disabled", inline: true },
+      { name: "Level-up Channel", value: config.levelUpChannelId ? `<#${config.levelUpChannelId}>` : "Auto-detect", inline: true },
+      { name: "Keep Old Roles", value: config.keepOldRoles ? "Yes" : "No", inline: true },
+      { name: "Server Multiplier", value: `${config.serverMultiplier}x`, inline: true },
+      { name: "Event Multiplier", value: `${config.eventMultiplier}x`, inline: true },
+      { name: "Blacklisted Channels", value: blChans },
+      { name: "Whitelisted Channels", value: wlChans },
+      { name: "Role Multipliers", value: roleMultLines },
+      { name: "Level Roles", value: `\`\`\`\n${roleLines}\n\`\`\`` },
+    )
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}
+
+// ─── /levelroles ──────────────────────────────────────────────────────────────
+
+export const levelRolesData = new SlashCommandBuilder()
+  .setName("levelroles")
+  .setDescription("View all configured level-up roles.");
+
+export async function executeLevelRoles(i: ChatInputCommandInteraction): Promise<void> {
+  const guildId = i.guildId!;
+  const levelRoles = getGuildLevelRoles(guildId);
+
+  const lines = Object.entries(levelRoles)
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .map(([lvl, name]) => {
+      const role = i.guild!.roles.cache.find(
+        (r) => r.name.toLowerCase() === name.toLowerCase()
+      );
+      const status = role ? "✅" : "⚠️";
+      return `${status}  **Level ${lvl}**  →  ${name}`;
+    })
+    .join("\n");
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle("◈  LEVEL ROLES")
+    .setDescription(lines || "No roles configured.")
+    .setFooter({ text: "✅ = role found  ·  ⚠️ = role not found in server" })
+    .setTimestamp();
+
+  await i.editReply({ embeds: [embed] });
+}

@@ -167,7 +167,20 @@
       "timestamp": "2026-04-18T12:31:11.997Z",
       "guildId": "1479910330669990025",
       "raidNumber": 26
+    },
+    {
+      "id": "1776546063993",
+      "clanName": "LS,WD,SL",
+      "opponentClan": "TSBAH",
+      "result": "victory",
+      "topPerformers": "<@962263230451957780> <@1100394861858922627> <@1073810875363901490> <@1110334940983328858> <@1225726525387837490>",
+      "notes": "—",
+      "endedBy": "pspspspsp999",
+      "endedById": "962263230451957780",
+      "timestamp": "2026-04-18T21:01:03.993Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 27
     }
   ],
-  "counter": 26
+  "counter": 29
 }

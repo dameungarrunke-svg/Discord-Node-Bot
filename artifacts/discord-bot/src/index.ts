@@ -42,6 +42,27 @@ import {
 } from "./killLeaderboard/commands.js";
 
 import { startRaidData, executeStartRaid, endRaidData, executeEndRaid } from "./raids/index.js";
+import {
+  rankData, executeRank,
+  leaderboardLevelData, executeLeaderboard,
+  weeklyLbData, executeWeeklyLb,
+  addXpData, executeAddXp,
+  removeXpData, executeRemoveXp,
+  setXpData, executeSetXp,
+  resetXpData, executeResetXp,
+  setLevelRoleData, executeSetLevelRole,
+  removeLevelRoleData, executeRemoveLevelRole,
+  setXpCooldownData, executeSetXpCooldown,
+  setXpRangeData, executeSetXpRange,
+  setXpChannelData, executeSetXpChannel,
+  setMultiplierData, executeSetMultiplier,
+  blacklistChannelData, executeBlacklistChannel,
+  whitelistChannelData, executeWhitelistChannel,
+  xpConfigData, executeXpConfig,
+  levelRolesData, executeLevelRoles,
+} from "./leveling/commands.js";
+import { processMessage } from "./leveling/engine.js";
+import { startWeeklyResetScheduler } from "./leveling/weekly.js";
 import { startTrainingData, executeStartTraining, endTrainingData, executeEndTraining } from "./training/index.js";
 import {
   announceData, executeAnnounce,
@@ -117,6 +138,23 @@ const commands = [
   closeTournamentData.toJSON(),
   censorData.toJSON(),
   stopcensorData.toJSON(),
+  rankData.toJSON(),
+  leaderboardLevelData.toJSON(),
+  weeklyLbData.toJSON(),
+  addXpData.toJSON(),
+  removeXpData.toJSON(),
+  setXpData.toJSON(),
+  resetXpData.toJSON(),
+  setLevelRoleData.toJSON(),
+  removeLevelRoleData.toJSON(),
+  setXpCooldownData.toJSON(),
+  setXpRangeData.toJSON(),
+  setXpChannelData.toJSON(),
+  setMultiplierData.toJSON(),
+  blacklistChannelData.toJSON(),
+  whitelistChannelData.toJSON(),
+  xpConfigData.toJSON(),
+  levelRolesData.toJSON(),
 ];
 
 // Defined once at startup — not recreated on every interaction
@@ -148,6 +186,23 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   closetournamey: executeCloseTournament,
   censor: executeCensor,
   stopcensor: executeStopCensor,
+  rank: executeRank,
+  levellb: executeLeaderboard,
+  weeklylb: executeWeeklyLb,
+  addxp: executeAddXp,
+  removexp: executeRemoveXp,
+  setxp: executeSetXp,
+  resetxp: executeResetXp,
+  setlevelrole: executeSetLevelRole,
+  removelevelrole: executeRemoveLevelRole,
+  setxpcooldown: executeSetXpCooldown,
+  setxprange: executeSetXpRange,
+  setxpchannel: executeSetXpChannel,
+  setmultiplier: executeSetMultiplier,
+  blacklistchannel: executeBlacklistChannel,
+  whitelistchannel: executeWhitelistChannel,
+  xpconfig: executeXpConfig,
+  levelroles: executeLevelRoles,
 };
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
@@ -217,6 +272,9 @@ client.once(Events.ClientReady, async (readyClient) => {
     console.error("[ERROR] Failed to refresh kill leaderboard:", err);
   }
 
+  // Start weekly XP reset scheduler
+  startWeeklyResetScheduler(readyClient);
+
   if (readyClient.guilds.cache.size === 0) {
     console.warn("[WARN] No guilds in cache — bot may not be in any server.");
   }
@@ -243,6 +301,11 @@ client.on(Events.MessageCreate, async (message: Message) => {
   // Live moderation — runs before prefix commands
   handleModerationMessage(message, client).catch((err) =>
     console.error("[MODERATION] Unhandled error:", err)
+  );
+
+  // XP leveling system
+  processMessage(message, client).catch((err) =>
+    console.error("[LEVELING] Unhandled error:", err)
   );
 
   const content = message.content.trim();
