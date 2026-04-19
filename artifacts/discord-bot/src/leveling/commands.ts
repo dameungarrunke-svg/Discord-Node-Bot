@@ -3,6 +3,7 @@ import {
   ChatInputCommandInteraction,
   EmbedBuilder,
   PermissionFlagsBits,
+  AttachmentBuilder,
 } from "discord.js";
 import {
   getUser,
@@ -16,6 +17,7 @@ import {
   resetUser,
 } from "./db.js";
 import { computeLevel, progressBar, xpForLevel } from "./engine.js";
+import { generateLeaderboardCard, LeaderboardEntry } from "../leaderboardCard.js";
 
 // ─── /rank ────────────────────────────────────────────────────────────────────
 
@@ -88,29 +90,38 @@ export async function executeLeaderboard(i: ChatInputCommandInteraction): Promis
   const safePage = Math.min(page, totalPages - 1);
   const slice = all.slice(safePage * PER_PAGE, safePage * PER_PAGE + PER_PAGE);
 
-  const medals = ["🥇", "🥈", "🥉"];
-  const lines = await Promise.all(
+  const entries: LeaderboardEntry[] = await Promise.all(
     slice.map(async (u, idx) => {
-      const pos = safePage * PER_PAGE + idx + 1;
-      const icon = pos <= 3 ? medals[pos - 1] : `\`#${pos}\``;
-      let name = `<@${u.userId}>`;
+      const rank = safePage * PER_PAGE + idx + 1;
+      let username = u.userId;
+      let avatarURL: string | null = null;
       try {
         const member = await i.guild!.members.fetch(u.userId).catch(() => null);
-        if (member) name = member.displayName;
-      } catch { /* fallback to mention */ }
+        if (member) {
+          username = member.user.username;
+          avatarURL = member.user.displayAvatarURL({ extension: "png", size: 64 });
+        }
+      } catch { /* fallback */ }
       const { level } = computeLevel(u.totalXp);
-      return `${icon}  **${name}**  ·  Lv.${level}  ·  ${u.totalXp.toLocaleString()} XP`;
+      return {
+        rank,
+        avatarURL,
+        username,
+        col1Label: "LVL",
+        col1Value: String(level),
+        col2Label: "XP",
+        col2Value: `+${u.totalXp.toLocaleString()}`,
+      };
     })
   );
 
-  const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setTitle(`◈  XP LEADERBOARD`)
-    .setDescription(lines.join("\n"))
-    .setFooter({ text: `Page ${safePage + 1} / ${totalPages}  ·  ${all.length} members` })
-    .setTimestamp();
+  const buf = await generateLeaderboardCard("XP Leaderboard", entries);
+  const attachment = new AttachmentBuilder(buf, { name: "leaderboard.png" });
 
-  await i.editReply({ embeds: [embed] });
+  await i.editReply({
+    content: `Page ${safePage + 1} / ${totalPages}  ·  ${all.length} members`,
+    files: [attachment],
+  });
 }
 
 // ─── /weeklylb ────────────────────────────────────────────────────────────────
@@ -132,27 +143,39 @@ export async function executeWeeklyLb(i: ChatInputCommandInteraction): Promise<v
     return;
   }
 
-  const medals = ["🥇", "🥈", "🥉"];
-  const lines = await Promise.all(
+  const entries: LeaderboardEntry[] = await Promise.all(
     all.map(async (u, idx) => {
-      const icon = idx < 3 ? medals[idx] : `\`#${idx + 1}\``;
-      let name = `<@${u.userId}>`;
+      let username = u.userId;
+      let avatarURL: string | null = null;
       try {
         const member = await i.guild!.members.fetch(u.userId).catch(() => null);
-        if (member) name = member.displayName;
+        if (member) {
+          username = member.user.username;
+          avatarURL = member.user.displayAvatarURL({ extension: "png", size: 64 });
+        }
       } catch { /* ignore */ }
-      return `${icon}  **${name}**  ·  ${u.weeklyXp.toLocaleString()} XP this week`;
+
+      // Compute level gained this week
+      const currentLevel = computeLevel(u.totalXp).level;
+      const prevLevel = computeLevel(Math.max(0, u.totalXp - u.weeklyXp)).level;
+      const levelGain = Math.max(0, currentLevel - prevLevel);
+
+      return {
+        rank: idx + 1,
+        avatarURL,
+        username,
+        col1Label: "LVL",
+        col1Value: `+${levelGain}`,
+        col2Label: "XP",
+        col2Value: `+${u.weeklyXp.toLocaleString()}`,
+      };
     })
   );
 
-  const embed = new EmbedBuilder()
-    .setColor(0xfaa61a)
-    .setTitle(`◈  WEEKLY LEADERBOARD`)
-    .setDescription(lines.join("\n"))
-    .setFooter({ text: `Resets every Monday  ·  Last Stand Management` })
-    .setTimestamp();
+  const buf = await generateLeaderboardCard("Weekly XP Highlights", entries);
+  const attachment = new AttachmentBuilder(buf, { name: "weeklylb.png" });
 
-  await i.editReply({ embeds: [embed] });
+  await i.editReply({ files: [attachment] });
 }
 
 // ─── /addxp ───────────────────────────────────────────────────────────────────

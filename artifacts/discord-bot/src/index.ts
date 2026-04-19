@@ -366,8 +366,14 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     const t0 = Date.now();
     console.log(`[INTERACTION] /${cmd.commandName} received`);
 
+    const PUBLIC_COMMANDS = new Set(["levellb", "weeklylb", "rank"]);
+    const isPublic = PUBLIC_COMMANDS.has(cmd.commandName);
     try {
-      await cmd.deferReply({ flags: MessageFlags.Ephemeral });
+      if (isPublic) {
+        await cmd.deferReply();
+      } else {
+        await cmd.deferReply({ flags: MessageFlags.Ephemeral });
+      }
     } catch (err) {
       console.error(`[INTERACTION] /${cmd.commandName} — defer failed, cannot respond`, err);
       return;
