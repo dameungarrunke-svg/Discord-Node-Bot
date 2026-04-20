@@ -180,7 +180,20 @@
       "timestamp": "2026-04-18T21:01:03.993Z",
       "guildId": "1479910330669990025",
       "raidNumber": 27
+    },
+    {
+      "id": "1776693278120",
+      "clanName": "LSxSLXWD",
+      "opponentClan": "NIWxSA",
+      "result": "victory",
+      "topPerformers": "<@1073810875363901490> <@1123212289554792538> and more that i forgot sorry",
+      "notes": "—",
+      "endedBy": "pspspspsp999",
+      "endedById": "962263230451957780",
+      "timestamp": "2026-04-20T13:54:38.120Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 30
     }
   ],
-  "counter": 29
+  "counter": 30
 }

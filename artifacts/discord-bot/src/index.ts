@@ -27,6 +27,16 @@ import {
 } from "./leaderboard/commands.js";
 import { executeSetupLeaderboard } from "./leaderboard/display.js";
 import {
+  setupMobileLeaderboardData,
+  addMobilePlayerData,
+  removeMobilePlayerData,
+  editMobilePlayerData,
+  executeAddMobilePlayer,
+  executeRemoveMobilePlayer,
+  executeEditMobilePlayer,
+} from "./leaderboard/mobileCommands.js";
+import { executeSetupMobileLeaderboard } from "./leaderboard/mobileDisplay.js";
+import {
   executeSetupKillLeaderboard,
   refreshPinnedKillLeaderboard,
   setupKillLeaderboardData,
@@ -125,6 +135,10 @@ const commands = [
   addPlayerData.toJSON(),
   removePlayerData.toJSON(),
   editPlayerData.toJSON(),
+  setupMobileLeaderboardData.toJSON(),
+  addMobilePlayerData.toJSON(),
+  removeMobilePlayerData.toJSON(),
+  editMobilePlayerData.toJSON(),
   setupKillLeaderboardData.toJSON(),
   addKillPlayerData.toJSON(),
   editKillPlayerData.toJSON(),
@@ -176,6 +190,10 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   addleaderboardplayer: (i) => executeAddPlayer(i, client),
   removeleaderboardplayer: (i) => executeRemovePlayer(i, client),
   editleaderboardplayer: (i) => executeEditPlayer(i, client),
+  setupmobileleaderboard: (i) => executeSetupMobileLeaderboard(i, client),
+  addmobileplayer: (i) => executeAddMobilePlayer(i, client),
+  removemobileplayer: (i) => executeRemoveMobilePlayer(i, client),
+  editmobileplayer: (i) => executeEditMobilePlayer(i, client),
   setupkillleaderboard: (i) => executeSetupKillLeaderboard(i, client),
   addkillplayer: (i) => executeAddKillPlayer(i, client),
   editkillplayer: (i) => executeEditKillPlayer(i, client),

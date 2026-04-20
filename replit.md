@@ -37,4 +37,15 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Kill leaderboard stage options are: Stage 2 High Strong, Stage 2 High Stable, Stage 2 High Weak, Stage 2 Mid Strong, Stage 2 Mid Stable, and Stage 2 Mid Weak.
 - `/tournament` creates a polished Last Stand / TSB tournament announcement with role ping, highlighted prize section, participant counter, and no public buttons. `/closetournamey` closes an existing tournament by ID, updates the embed status to Closed, and removes any old button components. Tournament data is stored at `artifacts/discord-bot/data/tournaments.json`.
 
+## Mobile Leaderboard
+
+A completely separate leaderboard for mobile players, stored in `artifacts/discord-bot/data/mobile-leaderboard.json`.
+
+- `/setupmobileleaderboard` — Deploy the mobile leaderboard in the current channel
+- `/addmobileplayer` — Add a player to the mobile leaderboard
+- `/editmobileplayer` — Edit a mobile leaderboard player
+- `/removemobileplayer` — Remove a player from the mobile leaderboard
+
+Same design, layout, and styling as the PC leaderboard. Data is fully separate — no sharing or syncing between PC and mobile leaderboards.
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
