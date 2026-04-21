@@ -44,11 +44,29 @@ const LEET_MAP: Record<string, string> = {
   "\u0443": "u", "\u0421": "c", "\u0410": "a", "\u0412": "b",
   "\u0415": "e", "\u041A": "k", "\u041C": "m", "\u041D": "h",
   "\u041E": "o", "\u0420": "p", "\u0422": "t", "\u0425": "x",
+  // Cyrillic п/П (pe) — looks exactly like Latin "n" — key n-word bypass vector
+  "\u043F": "n", "\u041F": "n",
+  // Cyrillic д/Д (de) → d
+  "\u0434": "d", "\u0414": "d",
+  // Cyrillic л/Л (el) → l
+  "\u043B": "l", "\u041B": "l",
+  // Cyrillic й/Й (short i) → i
+  "\u0439": "i", "\u0419": "i",
+  // Cyrillic ч/Ч (che) → ch (approximation: output 'c')
+  "\u0447": "c", "\u0427": "c",
 
   // ── Greek look-alikes ──────────────────────────────────────────────────────────
   "\u03B1": "a", "\u03B5": "e", "\u03B9": "i", "\u03BF": "o",
   "\u03BD": "v", "\u03C1": "p", "\u03C4": "t", "\u03BA": "k",
   "\u0391": "a", "\u0395": "e", "\u0399": "i", "\u039F": "o",
+  // Greek eta (η/Η) visually resembles "n" — primary n-word bypass vector
+  "\u03B7": "n", "\u0397": "n",
+  // Greek sigma (σ/Σ/ς) → s
+  "\u03C3": "s", "\u03C2": "s", "\u03A3": "s",
+  // Greek mu (μ) → m; nu (ν already mapped → v → u via second pass, intentional)
+  "\u03BC": "m",
+  // Greek upsilon variants
+  "\u03C5": "u", "\u03A5": "u",
 
   // ── Fullwidth Latin (East-Asian input bypass) ─────────────────────────────────
   "\uFF41": "a", "\uFF42": "b", "\uFF43": "c", "\uFF44": "d", "\uFF45": "e",
@@ -101,8 +119,12 @@ export function normalize(raw: string): string {
   const decomposed = noInvisible.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const lower = decomposed.toLowerCase();
   // First pass: single-char leet substitution
-  const mapped = lower.split("").map(mapChar).join("");
-  // Second pass: collapse runs of 3+ same chars → 2
+  const pass1 = lower.split("").map(mapChar).join("");
+  // Second pass: re-apply leet map so multi-level substitutions resolve
+  // e.g. Greek ν (U+03BD) → "v" (pass 1) → "u" (pass 2)
+  //      Cyrillic В (U+0412) → "b" (pass 1) → "b" (no change, stable)
+  const mapped = pass1.split("").map(mapChar).join("");
+  // Collapse runs of 3+ same chars → 2
   return mapped.replace(/(.)\1{2,}/g, "$1$1");
 }
 

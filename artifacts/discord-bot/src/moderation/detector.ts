@@ -1,5 +1,6 @@
 import {
   collapse,
+  phonetic,
   phoneticCollapse,
   tokenize,
   phoneticTokens,
@@ -13,6 +14,30 @@ import {
   SAFE_TOKENS,
   SUBSTRING_CORES,
 } from "./wordlist.js";
+
+/**
+ * Phonetic forms of SUBSTRING_CORES that are safe for substring matching.
+ *
+ * Computed once at module load. Only forms that are:
+ *  - ≥ 5 chars in their phonetic canonical form (short forms risk false positives)
+ *  - Not known to appear inside innocent English words
+ *
+ * Skipped: "niger" (in "nigeria"), "fagot"/"fagots" (British cooking term),
+ *           "wore" (past tense of wear), "niga" (4 chars — too short),
+ *           "bich" (4 chars), "pusy" (4 chars), "pis" (3 chars).
+ */
+const PHONETIC_SAFE_SKIP = new Set([
+  "niger", "niga", "fagot", "fagots", "wore", "bich", "pusy", "pis",
+  "kunt", "twat", "wank", "slut", "thot",  // 4-char forms — too short
+]);
+
+const PHONETIC_SUBSTRING_CORES: ReadonlyArray<string> = [
+  ...new Set(
+    SUBSTRING_CORES
+      .map((c) => phonetic(c))
+      .filter((p) => p.length >= 5 && !PHONETIC_SAFE_SKIP.has(p))
+  ),
+];
 
 export type DetectionMethod =
   | "regex"
@@ -92,8 +117,26 @@ export function scan(rawMessage: string): DetectionResult | null {
     }
   }
 
-  // ── Stage 3: Phonetic collapsed substring scan ───────────────────────────────
+  // ── Stage 2b: Phonetic SUBSTRING_CORES vs phonetic-collapsed full message ────
+  // Catches phonetic bypasses embedded in compound words.
+  // e.g. "phuckingidiot" → phoneticCollapse → "fukingidiot" → contains "fuking" ✓
+  // e.g. "motherphuker"  → phoneticCollapse → "motherfuker"  → contains "motherfuker" ✓
+  // e.g. "total-phuck-up" → phoneticCollapse → "totalfukup" → contains "fuk"... but
+  //       "fuk" is only 3 chars and filtered in PHONETIC_SUBSTRING_CORES (min 5). Fine.
   const pCollapsed = phoneticCollapse(rawMessage);
+  for (const pCore of PHONETIC_SUBSTRING_CORES) {
+    if (pCollapsed.includes(pCore)) {
+      return {
+        flagged: true,
+        matchedTerm: pCore,
+        method: "phonetic-substring",
+        normalizedForm: pCollapsed,
+      };
+    }
+  }
+
+  // ── Stage 3: Phonetic collapsed substring scan ───────────────────────────────
+  // (PHONETIC_HARD_SUBSTRINGS — manually curated phonetic compound slurs)
   for (const slur of PHONETIC_HARD_SUBSTRINGS) {
     if (slur.length >= 4 && pCollapsed.includes(slur)) {
       return {
@@ -130,6 +173,25 @@ export function scan(rawMessage: string): DetectionResult | null {
             matchedTerm: `${core} (in "${token}")`,
             method: "compound",
             normalizedForm: token,
+          };
+        }
+      }
+    }
+
+    // 4c — Phonetic compound: does the PHONETIC form of this token contain a phonetic core?
+    // Catches leet/phonetic variants embedded inside a larger word.
+    // e.g. "phuckinghell" → token "phuckinghell" → phonetic → "fukinghel" → contains "fuking" ✓
+    // e.g. "totalphuck"   → token "totalphuck"   → phonetic → "totalfuk"  → contains "fuk" (skipped, 3 chars)
+    // e.g. "wankerfest"   → token "wankerfest"   → phonetic → "wankerfest" → contains "wanker" ✓
+    if (token.length > 4) {
+      const pToken = phonetic(token);
+      for (const pCore of PHONETIC_SUBSTRING_CORES) {
+        if (pToken.includes(pCore)) {
+          return {
+            flagged: true,
+            matchedTerm: `${pCore} (phonetic in "${token}")`,
+            method: "compound",
+            normalizedForm: pToken,
           };
         }
       }

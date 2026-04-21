@@ -207,8 +207,11 @@ export const EXACT_WORDS: ReadonlySet<string> = new Set([
   "nigga", "nigger", "nigg", "nig",
   "niggaz", "niggas", "niggers",
   "niglet", "nigglet",
-  "nigguh",
+  "nigguh", "niggah",
   "niqqer", "niqqa",
+  // Normalized (post-leet) forms that q→k produces — stored both ways so they
+  // match whether the normalizer has already run or not.
+  "nikker", "nikka",
   "nigro",
   "wigger", "wigga",
   "nagger",
@@ -566,15 +569,16 @@ export const PHONETIC_WORDS: ReadonlySet<string> = new Set([
 
 // ─── TIER 4 — REGEX PATTERNS ─────────────────────────────────────────────────
 export const REGEX_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
-  // ── N-word: n + separator + i/1/! + gg + a/e (nigga / nigger separator bypass)
+  // ── N-word: n + separator + i/1/! + gg/qq/kk + a/e (nigga / niqqer separator bypass)
+  // [gqk] catches: gg (normal), qq (niqqer), kk (nikker after normalizer q→k)
   {
-    pattern: /(?<![a-z])n[\W_]{0,2}[i1!][\W_]{0,2}g[\W_]{0,2}g[\W_]{0,2}[ae@4](?![a-z])/i,
-    label: "n-word nigga (separator bypass)",
+    pattern: /(?<![a-z])n[\W_]{0,2}[i1!][\W_]{0,2}[gqk][\W_]{0,2}[gqk][\W_]{0,2}[ae@4](?![a-z])/i,
+    label: "n-word nigga (separator/q-k bypass)",
   },
-  // ── N-word: nigger with e-r ending
+  // ── N-word: nigger / niqqer / nikker with e-r ending
   {
-    pattern: /(?<![a-z])n[\W_]{0,2}[i1!][\W_]{0,2}g[\W_]{0,2}g[\W_]{0,2}[e3][\W_]{0,2}r(?![a-z])/i,
-    label: "n-word nigger (separator bypass)",
+    pattern: /(?<![a-z])n[\W_]{0,2}[i1!][\W_]{0,2}[gqk][\W_]{0,2}[gqk][\W_]{0,2}[e3][\W_]{0,2}r(?![a-z])/i,
+    label: "n-word nigger (separator/q-k bypass)",
   },
   // ── F**k / f*ck / f-u-c-k / fvck
   {
@@ -752,6 +756,7 @@ export const SUBSTRING_CORES: ReadonlyArray<string> = [
 
   // ── 6-char ────────────────────────────────────────────────────────────────
   "nigger",
+  "nikker",     // post-leet normalized form of "niqqer"
   "faggot",
   "retard",
   "wanker",
