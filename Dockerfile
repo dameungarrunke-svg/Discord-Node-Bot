@@ -1,12 +1,30 @@
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 
-COPY artifacts/discord-bot/package.json ./package.json
+ENV PNPM_HOME=/usr/local/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV NODE_ENV=production
 
-RUN npm install
+RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 
-COPY artifacts/discord-bot/src ./src
-COPY artifacts/discord-bot/tsconfig.json ./tsconfig.json
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 
-CMD ["npx", "tsx", "src/index.ts"]
+COPY artifacts/discord-bot/package.json ./artifacts/discord-bot/
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+COPY artifacts/mockup-sandbox/package.json ./artifacts/mockup-sandbox/
+COPY lib/api-client-react/package.json ./lib/api-client-react/
+COPY lib/api-spec/package.json ./lib/api-spec/
+COPY lib/api-zod/package.json ./lib/api-zod/
+COPY lib/db/package.json ./lib/db/
+COPY scripts/package.json ./scripts/
+
+RUN pnpm install --frozen-lockfile --filter "@workspace/discord-bot..."
+
+COPY artifacts/discord-bot ./artifacts/discord-bot
+
+EXPOSE 3000
+
+WORKDIR /app/artifacts/discord-bot
+
+CMD ["pnpm", "run", "start"]
