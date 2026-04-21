@@ -107,6 +107,7 @@ import {
   executeStopCensor,
 } from "./moderation/commands.js";
 import { handleModerationMessage } from "./moderation/monitor.js";
+import { scan } from "./moderation/detector.js";
 
 const token = process.env.DISCORD_BOT_TOKEN ?? process.env.DISCORD_TOKEN;
 if (!token) {
@@ -303,6 +304,52 @@ client.once(Events.ClientReady, async (readyClient) => {
     console.log("[READY] Kill leaderboard refreshed.");
   } catch (err) {
     console.error("[ERROR] Failed to refresh kill leaderboard:", err);
+  }
+
+  // ── Censor self-test ──────────────────────────────────────────────────────
+  // Runs every startup to confirm the scanner correctly catches known bypasses.
+  {
+    const MUST_FLAG: [string, string][] = [
+      ["Niggeer",   "extended vowel (ee)"],
+      ["Niggerrr",  "extended consonant (rrr)"],
+      ["Fuckslang", "compound: fuck prefix"],
+      ["Fuckface",  "compound: fuck prefix"],
+      ["Choicefuck","compound: fuck suffix"],
+      ["Assfuck",   "compound: fuck suffix"],
+      ["Lotffuck",  "compound: fuck suffix"],
+      ["Retarded",  "exact slur"],
+      ["niqqer",    "q-for-g bypass"],
+      ["nikker",    "k-for-g bypass"],
+      ["n.i.g.g.e.r","separator bypass"],
+      ["phuck",     "ph→f bypass"],
+      ["f.u.c.k.i.n.g", "separator bypass: fucking"],
+    ];
+    const MUST_PASS: string[] = [
+      "Niger", "Nigeria", "snicker", "trigger", "flicker", "ticker",
+    ];
+    let passed = 0;
+    let failed = 0;
+    for (const [word, desc] of MUST_FLAG) {
+      const result = scan(word);
+      if (result) {
+        console.log(`[SCAN-TEST] ✅ CAUGHT   "${word}" (${desc}) via ${result.method}: ${result.matchedTerm}`);
+        passed++;
+      } else {
+        console.error(`[SCAN-TEST] ❌ MISSED   "${word}" (${desc}) — bypass NOT detected`);
+        failed++;
+      }
+    }
+    for (const word of MUST_PASS) {
+      const result = scan(word);
+      if (!result) {
+        console.log(`[SCAN-TEST] ✅ ALLOWED  "${word}" (safe word, correctly not flagged)`);
+        passed++;
+      } else {
+        console.error(`[SCAN-TEST] ⚠️ FALSE+   "${word}" was incorrectly flagged as "${result.matchedTerm}" (${result.method})`);
+        failed++;
+      }
+    }
+    console.log(`[SCAN-TEST] Result: ${passed} passed, ${failed} failed.`);
   }
 
   // Start weekly XP reset scheduler
