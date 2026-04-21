@@ -278,10 +278,10 @@ client.once(Events.ClientReady, async (readyClient) => {
   }
 
   try {
-    await rest.put(Routes.applicationCommands(readyClient.user.id), { body: commands });
-    console.log(`[READY] Registered ${commands.length} global application commands (enables "Supports Commands" badge).`);
+    await rest.put(Routes.applicationCommands(readyClient.user.id), { body: [] });
+    console.log("[READY] Cleared all global application commands (using guild-only registration).");
   } catch (err) {
-    console.error("[ERROR] Failed to register global commands:", err);
+    console.error("[ERROR] Failed to clear global commands:", err);
   }
 
   const PRIMARY_GUILD_ID = "1479910330669990025";
