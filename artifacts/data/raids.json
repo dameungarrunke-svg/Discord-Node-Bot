@@ -193,7 +193,20 @@
       "timestamp": "2026-04-20T13:54:38.120Z",
       "guildId": "1479910330669990025",
       "raidNumber": 30
+    },
+    {
+      "id": "1776748696142",
+      "clanName": "ge",
+      "opponentClan": "ge",
+      "result": "victory",
+      "topPerformers": "jeeu",
+      "notes": "eheh",
+      "endedBy": "galaxyg7a",
+      "endedById": "1368619589692293203",
+      "timestamp": "2026-04-21T05:18:16.142Z",
+      "guildId": "1479910330669990025",
+      "raidNumber": 31
     }
   ],
-  "counter": 30
+  "counter": 31
 }
