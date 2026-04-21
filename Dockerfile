@@ -1,5 +1,10 @@
 FROM node:22-bookworm-slim
 
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends fonts-dejavu-core fontconfig \
+ && rm -rf /var/lib/apt/lists/* \
+ && fc-cache -f
+
 WORKDIR /app
 
 ENV PNPM_HOME=/usr/local/pnpm
