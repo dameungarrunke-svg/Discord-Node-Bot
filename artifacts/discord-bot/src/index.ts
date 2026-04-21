@@ -284,12 +284,19 @@ client.once(Events.ClientReady, async (readyClient) => {
     console.error("[ERROR] Failed to register global commands:", err);
   }
 
+  const PRIMARY_GUILD_ID = "1479910330669990025";
+
   for (const [guildId] of readyClient.guilds.cache) {
     try {
-      await rest.put(Routes.applicationGuildCommands(readyClient.user.id, guildId), { body: [] });
-      console.log(`[READY] Cleared guild-scoped commands for: ${guildId} (now using globals).`);
+      if (guildId === PRIMARY_GUILD_ID) {
+        await rest.put(Routes.applicationGuildCommands(readyClient.user.id, guildId), { body: commands });
+        console.log(`[READY] Registered ${commands.length} commands instantly to primary guild: ${guildId}`);
+      } else {
+        await rest.put(Routes.applicationGuildCommands(readyClient.user.id, guildId), { body: [] });
+        console.log(`[READY] Cleared guild-scoped commands for: ${guildId} (now using globals).`);
+      }
     } catch (err) {
-      console.error(`[ERROR] Failed to clear guild commands for ${guildId}:`, err);
+      console.error(`[ERROR] Failed to set guild commands for ${guildId}:`, err);
     }
 
     try {
