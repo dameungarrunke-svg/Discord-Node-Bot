@@ -278,14 +278,19 @@ client.once(Events.ClientReady, async (readyClient) => {
   }
 
   try {
-    await rest.put(Routes.applicationCommands(readyClient.user.id), { body: [] });
-    console.log("[READY] Cleared global application commands.");
+    await rest.put(Routes.applicationCommands(readyClient.user.id), { body: commands });
+    console.log(`[READY] Registered ${commands.length} global application commands (enables "Supports Commands" badge).`);
   } catch (err) {
-    console.error("[ERROR] Failed to clear global commands:", err);
+    console.error("[ERROR] Failed to register global commands:", err);
   }
 
   for (const [guildId] of readyClient.guilds.cache) {
-    await registerCommandsForGuild(guildId);
+    try {
+      await rest.put(Routes.applicationGuildCommands(readyClient.user.id, guildId), { body: [] });
+      console.log(`[READY] Cleared guild-scoped commands for: ${guildId} (now using globals).`);
+    } catch (err) {
+      console.error(`[ERROR] Failed to clear guild commands for ${guildId}:`, err);
+    }
 
     try {
       const guild = await readyClient.guilds.fetch(guildId);
@@ -361,7 +366,14 @@ client.once(Events.ClientReady, async (readyClient) => {
 });
 
 client.on(Events.GuildCreate, async (guild) => {
-  await registerCommandsForGuild(guild.id);
+  try {
+    const me = await guild.members.fetchMe();
+    if (me.displayName !== BOT_DISPLAY_NAME) {
+      await me.setNickname(BOT_DISPLAY_NAME);
+    }
+  } catch (err) {
+    console.error(`[ERROR] Failed to set nickname for new guild ${guild.id}:`, err);
+  }
 });
 
 // Log gateway disconnects/reconnects so we know if the WebSocket drops
