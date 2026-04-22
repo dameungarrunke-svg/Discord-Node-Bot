@@ -24,28 +24,30 @@ const C = {
 
 const S = 2;
 
-const CW         = 820;
-const CRAD       = 16;
-const PAD_X      = 30;
-const PAD_TOP    = 34;
-const TITLE_FS   = 34;
-const TITLE_MB   = 30;
+const CW         = 900;
+const CRAD       = 18;
+const PAD_X      = 36;
+const PAD_TOP    = 40;
+const TITLE_FS   = 40;
+const TITLE_MB   = 38;
 
-const ROW_H      = 70;
-const ROW_GAP    = 14;
+const ROW_H      = 84;
+const ROW_GAP    = 22;
 
-const AV_SIZE    = 50;
-const AV_RAD     = 10;
+const AV_SIZE    = 60;
+const AV_RAD     = 12;
 
-const RANK_W     = 60;
-const RANK_FS    = 26;
-const NAME_FS    = 24;
-const STAT_FS    = 21;
+const RANK_W     = 72;
+const RANK_FS    = 30;
+const NAME_FS    = 28;
+const STAT_FS    = 23;
 
-const FOOTER_H   = 40;
-const FOOTER_FS  = 14;
+const ROW_INNER_GAP = 22;
 
-const SEP        = "  •  ";
+const FOOTER_H   = 44;
+const FOOTER_FS  = 15;
+
+const SEP        = "   •   ";
 
 export async function generateBlockLeaderboardCard(
   title: string,
@@ -94,7 +96,7 @@ export async function generateBlockLeaderboardCard(
     await drawAvatar(ctx, e.avatarURL, p(avX), p(avY), p(AV_SIZE), p(AV_RAD));
 
     // Username + stats inline
-    let curX = p(avX + AV_SIZE + 14);
+    let curX = p(avX + AV_SIZE + ROW_INNER_GAP);
 
     ctx.font      = `bold ${p(NAME_FS)}px sans-serif`;
     ctx.fillStyle = C.white;
