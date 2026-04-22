@@ -11,10 +11,10 @@ export interface BlockEntry {
 }
 
 const C = {
-  cardBg:  "#2b2d31",
-  rowBg:   "#1e2124",
+  panel:   "#2b2d31",
   white:   "#ffffff",
   muted:   "#b9bbbe",
+  sep:     "#5d6068",
   footer:  "#72767d",
   rank1:   "#f0a832",
   rank2:   "#c8ccd0",
@@ -24,30 +24,28 @@ const C = {
 
 const S = 2;
 
-const CW         = 760;
-const CRAD       = 18;
+const CW         = 720;
+const CRAD       = 14;
 const PAD_X      = 22;
-const PAD_TOP    = 30;
-const TITLE_FS   = 36;
-const TITLE_MB   = 26;
+const PAD_TOP    = 26;
+const TITLE_FS   = 30;
+const TITLE_MB   = 22;
 
-const ROW_H      = 110;
-const ROW_GAP    = 14;
-const ROW_PADX   = 4;
-const ROW_RAD    = 14;
+const ROW_H      = 50;
+const ROW_GAP    = 6;
 
-const AV_SIZE    = 78;
-const AV_RAD     = 14;
-const AV_MX      = 18;
-const AV_GAP     = 22;
+const AV_SIZE    = 38;
+const AV_RAD     = 8;
 
-const RANK_FS    = 26;
-const NAME_FS    = 24;
-const STAT_FS    = 22;
-const LINE_GAP   = 12;
+const RANK_W     = 46;
+const RANK_FS    = 22;
+const NAME_FS    = 20;
+const STAT_FS    = 19;
 
-const FOOTER_H   = 44;
-const FOOTER_FS  = 14;
+const FOOTER_H   = 36;
+const FOOTER_FS  = 13;
+
+const SEP        = "  •  ";
 
 export async function generateBlockLeaderboardCard(
   title: string,
@@ -63,36 +61,23 @@ export async function generateBlockLeaderboardCard(
   const ctx    = canvas.getContext("2d");
   const p = (v: number) => v * S;
 
-  // ── Outer card ─────────────────────────────────────────────────────────────
-  ctx.fillStyle = C.cardBg;
+  // Outer dark panel only — no row containers
+  ctx.fillStyle = C.panel;
   rrect(ctx, 0, 0, p(CW), p(CH), p(CRAD));
   ctx.fill();
 
-  // ── Title ──────────────────────────────────────────────────────────────────
+  // Title
   ctx.fillStyle = C.white;
   ctx.font      = `bold ${p(TITLE_FS)}px sans-serif`;
-  ctx.fillText(title, p(PAD_X + ROW_PADX), p(PAD_TOP + TITLE_FS));
+  ctx.fillText(title, p(PAD_X), p(PAD_TOP + TITLE_FS));
 
-  // ── Rows ───────────────────────────────────────────────────────────────────
+  // Rows — flat, no boxes
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
     const rowY = titleSection + i * (ROW_H + ROW_GAP);
+    const baselineY = p(rowY + ROW_H / 2 + STAT_FS * 0.36);
 
-    // Row container
-    ctx.fillStyle = C.rowBg;
-    rrect(ctx, p(PAD_X), p(rowY), p(CW - PAD_X * 2), p(ROW_H), p(ROW_RAD));
-    ctx.fill();
-
-    // Avatar (vertically centred)
-    const avX = PAD_X + ROW_PADX + AV_MX;
-    const avY = rowY + (ROW_H - AV_SIZE) / 2;
-    await drawAvatar(ctx, e.avatarURL, p(avX), p(avY), p(AV_SIZE), p(AV_RAD));
-
-    const textX = avX + AV_SIZE + AV_GAP;
-    const blockH = NAME_FS + LINE_GAP + STAT_FS;
-    const topY = rowY + (ROW_H - blockH) / 2 + NAME_FS;
-
-    // Top line: #rank  @username
+    // Rank
     const rankColor =
       e.rank === 1 ? C.rank1 :
       e.rank === 2 ? C.rank2 :
@@ -101,42 +86,36 @@ export async function generateBlockLeaderboardCard(
     ctx.font      = `bold ${p(RANK_FS)}px sans-serif`;
     ctx.fillStyle = rankColor;
     const rankStr = `#${e.rank}`;
-    ctx.fillText(rankStr, p(textX), p(topY));
-    let curX = p(textX) + ctx.measureText(rankStr).width + p(14);
+    ctx.fillText(rankStr, p(PAD_X), baselineY);
+
+    // Avatar
+    const avX = PAD_X + RANK_W;
+    const avY = rowY + (ROW_H - AV_SIZE) / 2;
+    await drawAvatar(ctx, e.avatarURL, p(avX), p(avY), p(AV_SIZE), p(AV_RAD));
+
+    // Username + stats inline
+    let curX = p(avX + AV_SIZE + 14);
 
     ctx.font      = `bold ${p(NAME_FS)}px sans-serif`;
     ctx.fillStyle = C.white;
     const nameStr = `@${e.username}`;
-    const nameMaxW = p(CW) - curX - p(PAD_X + ROW_PADX + AV_MX);
-    ctx.fillText(ellipsis(ctx, nameStr, nameMaxW), curX, p(topY));
+    ctx.fillText(nameStr, curX, baselineY);
+    curX += ctx.measureText(nameStr).width;
 
-    // Bottom line: LVL: +X    XP: +Y
-    const bottomY = topY + LINE_GAP + STAT_FS;
-    ctx.font      = `${p(STAT_FS)}px sans-serif`;
-    ctx.fillStyle = C.muted;
-    const labelLvl = `${e.col1Label}: `;
-    const labelXp  = `   ${e.col2Label}: `;
+    ctx.font      = `${p(NAME_FS)}px sans-serif`;
+    ctx.fillStyle = C.sep;
+    ctx.fillText(SEP, curX, baselineY);
+    curX += ctx.measureText(SEP).width;
 
-    let bx = p(textX);
-    ctx.fillText(labelLvl, bx, p(bottomY));
-    bx += ctx.measureText(labelLvl).width;
-
+    // Stats
     ctx.font      = `bold ${p(STAT_FS)}px sans-serif`;
     ctx.fillStyle = C.white;
-    ctx.fillText(e.col1Value, bx, p(bottomY));
-    bx += ctx.measureText(e.col1Value).width;
-
-    ctx.font      = `${p(STAT_FS)}px sans-serif`;
-    ctx.fillStyle = C.muted;
-    ctx.fillText(labelXp, bx, p(bottomY));
-    bx += ctx.measureText(labelXp).width;
-
-    ctx.font      = `bold ${p(STAT_FS)}px sans-serif`;
-    ctx.fillStyle = C.white;
-    ctx.fillText(e.col2Value, bx, p(bottomY));
+    const statsStr = `${e.col1Label}: ${e.col1Value}  ${e.col2Label}: ${e.col2Value}`;
+    const maxW = p(CW) - curX - p(PAD_X);
+    ctx.fillText(ellipsis(ctx, statsStr, maxW), curX, baselineY);
   }
 
-  // ── Footer ─────────────────────────────────────────────────────────────────
+  // Footer
   const footerY = titleSection + Math.max(0, rowsSection) + PAD_TOP;
   const dateStr = new Date().toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric",
@@ -145,7 +124,7 @@ export async function generateBlockLeaderboardCard(
   ctx.fillStyle = C.footer;
   ctx.fillText(
     `Last Stand Management  ·  ${dateStr}`,
-    p(PAD_X + ROW_PADX),
+    p(PAD_X),
     p(footerY + FOOTER_H * 0.65),
   );
 
