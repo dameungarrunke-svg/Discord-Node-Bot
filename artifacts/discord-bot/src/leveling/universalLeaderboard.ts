@@ -142,7 +142,7 @@ async function renderPayload(
 
   const embed = new EmbedBuilder()
     .setColor(0x2b2d31)
-    .setDescription(`${HEADER_LINE}\n\u200B`)
+    .setAuthor({ name: "LAST STAND  |  AS  |  IND" })
     .setFooter({ text: `Last Stand Management  ·  ${meta.label}` });
 
   const files: AttachmentBuilder[] = [];
@@ -160,7 +160,7 @@ async function renderPayload(
   }
 
   return {
-    content: HEADER_LINE,
+    content: "",
     embeds: [embed],
     files,
     components: [buildSelectRow(category)],

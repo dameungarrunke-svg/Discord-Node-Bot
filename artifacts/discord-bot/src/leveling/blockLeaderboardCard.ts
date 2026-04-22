@@ -24,26 +24,26 @@ const C = {
 
 const S = 2;
 
-const CW         = 720;
-const CRAD       = 14;
-const PAD_X      = 22;
-const PAD_TOP    = 26;
-const TITLE_FS   = 30;
-const TITLE_MB   = 22;
+const CW         = 820;
+const CRAD       = 16;
+const PAD_X      = 30;
+const PAD_TOP    = 34;
+const TITLE_FS   = 34;
+const TITLE_MB   = 30;
 
-const ROW_H      = 50;
-const ROW_GAP    = 6;
+const ROW_H      = 70;
+const ROW_GAP    = 14;
 
-const AV_SIZE    = 38;
-const AV_RAD     = 8;
+const AV_SIZE    = 50;
+const AV_RAD     = 10;
 
-const RANK_W     = 46;
-const RANK_FS    = 22;
-const NAME_FS    = 20;
-const STAT_FS    = 19;
+const RANK_W     = 60;
+const RANK_FS    = 26;
+const NAME_FS    = 24;
+const STAT_FS    = 21;
 
-const FOOTER_H   = 36;
-const FOOTER_FS  = 13;
+const FOOTER_H   = 40;
+const FOOTER_FS  = 14;
 
 const SEP        = "  •  ";
 
@@ -107,10 +107,10 @@ export async function generateBlockLeaderboardCard(
     ctx.fillText(SEP, curX, baselineY);
     curX += ctx.measureText(SEP).width;
 
-    // Stats
-    ctx.font      = `bold ${p(STAT_FS)}px sans-serif`;
-    ctx.fillStyle = C.white;
-    const statsStr = `${e.col1Label}: ${e.col1Value}  ${e.col2Label}: ${e.col2Value}`;
+    // Stats — visually secondary
+    ctx.font      = `${p(STAT_FS)}px sans-serif`;
+    ctx.fillStyle = C.muted;
+    const statsStr = `${e.col1Label}: ${e.col1Value}   ${e.col2Label}: ${e.col2Value}`;
     const maxW = p(CW) - curX - p(PAD_X);
     ctx.fillText(ellipsis(ctx, statsStr, maxW), curX, baselineY);
   }
