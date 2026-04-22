@@ -12,9 +12,10 @@ export interface BlockEntry {
 
 const C = {
   panel:   "#2b2d31",
+  rowBg:   "#232428",
   white:   "#ffffff",
   text:    "#e6e7e9",
-  sep:     "#4f545c",
+  sep:     "#5d6068",
   footer:  "#72767d",
   rank1:   "#f0a832",
   rank2:   "#c8ccd0",
@@ -22,31 +23,34 @@ const C = {
   rankDef: "#dcddde",
 };
 
-const S = 2;
+// Render at ~Discord embed width with high DPI so text stays crisp at 1:1.
+const S = 3;
 
-const CW         = 960;
-const CRAD       = 18;
-const PAD_X      = 36;
-const PAD_TOP    = 40;
-const TITLE_FS   = 44;
-const TITLE_MB   = 44;
+const CW         = 620;
+const CRAD       = 14;
+const PAD_X      = 18;
+const PAD_TOP    = 22;
+const TITLE_FS   = 28;
+const TITLE_MB   = 18;
 
-const ROW_H      = 96;
-const ROW_GAP    = 28;
+const ROW_H      = 56;
+const ROW_GAP    = 10;
+const ROW_RAD    = 10;
 
-const AV_SIZE    = 70;
-const AV_RAD     = 12;
-const AV_GAP     = 26;
+const AV_SIZE    = 40;
+const AV_RAD     = 8;
+const AV_MX      = 12;
+const AV_GAP     = 14;
 
-const RANK_W     = 80;
-const RANK_FS    = 32;
-const NAME_FS    = 32;
-const STAT_FS    = 26;
+const RANK_W     = 40;
+const RANK_FS    = 22;
+const NAME_FS    = 22;
+const STAT_FS    = 19;
 
-const FOOTER_H   = 50;
-const FOOTER_FS  = 16;
+const FOOTER_H   = 32;
+const FOOTER_FS  = 12;
 
-const SEP        = "   •   ";
+const SEP        = "  •  ";
 
 export async function generateBlockLeaderboardCard(
   title: string,
@@ -56,18 +60,16 @@ export async function generateBlockLeaderboardCard(
   const rowsSection  = entries.length * (ROW_H + ROW_GAP) - ROW_GAP;
   const CH = titleSection + Math.max(0, rowsSection) + PAD_TOP + FOOTER_H;
 
-  const cw = CW * S;
-  const ch = CH * S;
-  const canvas = createCanvas(cw, ch);
+  const canvas = createCanvas(CW * S, CH * S);
   const ctx    = canvas.getContext("2d");
   const p = (v: number) => v * S;
 
-  // Outer panel only — no row containers
+  // Outer panel
   ctx.fillStyle = C.panel;
   rrect(ctx, 0, 0, p(CW), p(CH), p(CRAD));
   ctx.fill();
 
-  // Title
+  // Title — large + heavy
   ctx.fillStyle = C.white;
   ctx.font      = `900 ${p(TITLE_FS)}px sans-serif`;
   ctx.fillText(title, p(PAD_X), p(PAD_TOP + TITLE_FS));
@@ -77,8 +79,13 @@ export async function generateBlockLeaderboardCard(
     const rowY = titleSection + i * (ROW_H + ROW_GAP);
     const baselineY = p(rowY + ROW_H / 2 + STAT_FS * 0.36);
 
-    // Avatar (first position, like Arcane)
-    const avX = PAD_X;
+    // Subtle row container — like Arcane's gentle row tint
+    ctx.fillStyle = C.rowBg;
+    rrect(ctx, p(PAD_X - 4), p(rowY), p(CW - (PAD_X - 4) * 2), p(ROW_H), p(ROW_RAD));
+    ctx.fill();
+
+    // Avatar (first)
+    const avX = PAD_X - 4 + AV_MX;
     const avY = rowY + (ROW_H - AV_SIZE) / 2;
     await drawAvatar(ctx, e.avatarURL, p(avX), p(avY), p(AV_SIZE), p(AV_RAD));
 
@@ -115,7 +122,7 @@ export async function generateBlockLeaderboardCard(
     ctx.fillText(SEP, curX, baselineY);
     curX += ctx.measureText(SEP).width;
 
-    // Stats — readable but secondary
+    // Stats — bold, slightly lighter color
     ctx.font      = `bold ${p(STAT_FS)}px sans-serif`;
     ctx.fillStyle = C.text;
     const statsStr = `${e.col1Label}: ${e.col1Value}${SEP}${e.col2Label}: ${e.col2Value}`;
