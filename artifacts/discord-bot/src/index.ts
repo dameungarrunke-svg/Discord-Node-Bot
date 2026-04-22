@@ -81,7 +81,6 @@ import {
   universalLeaderboardData,
   executeUniversalLeaderboard,
   handleUniversalLeaderboardSelect,
-  handleUniversalLeaderboardButton,
 } from "./leveling/universalLeaderboard.js";
 import { startWeeklyResetScheduler } from "./leveling/weekly.js";
 import { startTrainingData, executeStartTraining, endTrainingData, executeEndTraining } from "./training/index.js";
@@ -551,32 +550,6 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     const btn = interaction as ButtonInteraction;
     const t0 = Date.now();
     console.log(`[INTERACTION] button:${btn.customId} received`);
-
-    // ── Universal leaderboard pagination buttons ──────────────────────────────
-    if (btn.customId.startsWith("ulb_prev") || btn.customId.startsWith("ulb_next")) {
-      try {
-        await btn.deferUpdate();
-      } catch (err) {
-        console.error(`[INTERACTION] button:${btn.customId} — deferUpdate failed`, err);
-        return;
-      }
-      handleUniversalLeaderboardButton(btn).catch(async (err) => {
-        console.error(`[ERROR] universal leaderboard button [${btn.customId}]:`, err);
-        try {
-          await btn.followUp({
-            content: "❌ Leaderboard error: " + (err instanceof Error ? err.message : String(err)),
-            flags: MessageFlags.Ephemeral,
-          });
-        } catch { /* ignore */ }
-      });
-      return;
-    }
-
-    // Disabled page-indicator button — silently acknowledge to avoid "interaction failed"
-    if (btn.customId === "ulb_page_indicator") {
-      try { await btn.deferUpdate(); } catch { /* ignore */ }
-      return;
-    }
 
     // ── Dashboard buttons use deferUpdate (update the panel in-place) ─────────
     if (btn.customId.startsWith("dash_")) {
