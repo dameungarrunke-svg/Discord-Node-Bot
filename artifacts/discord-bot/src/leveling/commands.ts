@@ -309,6 +309,46 @@ export async function executeSetXp(i: ChatInputCommandInteraction): Promise<void
   await i.editReply({ embeds: [embed] });
 }
 
+// ─── /exportdata ──────────────────────────────────────────────────────────────
+
+export const exportDataData = new SlashCommandBuilder()
+  .setName("exportdata")
+  .setDescription("Export the bot's full leveling/censor data as files. (Admin)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+
+export async function executeExportData(i: ChatInputCommandInteraction): Promise<void> {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const url = await import("node:url");
+
+  const __filename = url.fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const dataDir = path.join(__dirname, "../../data");
+
+  const files: AttachmentBuilder[] = [];
+  try {
+    for (const name of fs.readdirSync(dataDir)) {
+      const full = path.join(dataDir, name);
+      if (fs.statSync(full).isFile()) {
+        files.push(new AttachmentBuilder(full, { name }));
+      }
+    }
+  } catch (err) {
+    await i.editReply({ content: `Failed to read data directory: ${(err as Error).message}` });
+    return;
+  }
+
+  if (files.length === 0) {
+    await i.editReply({ content: "No data files found." });
+    return;
+  }
+
+  await i.editReply({
+    content: `Exported ${files.length} data file(s) — current container state.`,
+    files,
+  });
+}
+
 // ─── /resetxp ─────────────────────────────────────────────────────────────────
 
 export const resetXpData = new SlashCommandBuilder()
