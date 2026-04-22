@@ -218,9 +218,15 @@ importers:
       '@napi-rs/canvas':
         specifier: ^0.1.99
         version: 0.1.99
+      '@types/pg':
+        specifier: ^8.18.0
+        version: 8.18.0
       discord.js:
         specifier: ^14.19.3
         version: 14.26.2
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

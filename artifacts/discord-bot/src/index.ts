@@ -12,6 +12,7 @@ import {
   REST,
 } from "discord.js";
 import http from "http";
+import { initPersistence, flushAll } from "./persistence.js";
 
 import { data as setupPanelData, execute as setupPanelExecute } from "./commands/setupChallengePanel.js";
 import { handleCreateTicket } from "./tickets/ticketFlow.js";
@@ -639,4 +640,25 @@ process.on("uncaughtException", (err) => {
   console.error("[PROCESS] Uncaught exception — bot may need restart:", err);
 });
 
-client.login(token);
+async function bootstrap(): Promise<void> {
+  try {
+    await initPersistence();
+  } catch (err) {
+    console.error("[BOOT] Persistence init failed:", err);
+  }
+  await client.login(token);
+}
+
+for (const sig of ["SIGTERM", "SIGINT"] as const) {
+  process.on(sig, async () => {
+    console.log(`[PROCESS] Received ${sig}, flushing data to Postgres...`);
+    try {
+      await flushAll();
+    } catch (err) {
+      console.error("[PROCESS] Flush on shutdown failed:", err);
+    }
+    process.exit(0);
+  });
+}
+
+bootstrap();
