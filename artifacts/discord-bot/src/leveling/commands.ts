@@ -16,7 +16,7 @@ import {
   modifyUserXp,
   resetUser,
 } from "./db.js";
-import { computeLevel, progressBar, xpForLevel } from "./engine.js";
+import { computeLevel, progressBar, xpForLevel, handleLevelUp } from "./engine.js";
 import { generateLeaderboardCard, LeaderboardEntry } from "../leaderboardCard.js";
 
 // ─── /rank ────────────────────────────────────────────────────────────────────
@@ -194,8 +194,25 @@ export async function executeAddXp(i: ChatInputCommandInteraction): Promise<void
   const amount = i.options.getInteger("amount", true);
   const guildId = i.guildId!;
 
+  const before = getUser(guildId, target.id);
+  const oldLevel = computeLevel(before.totalXp).level;
+
   const updated = modifyUserXp(guildId, target.id, amount, "add");
+  updated.weeklyXp = (updated.weeklyXp || 0) + amount;
   const { level } = computeLevel(updated.totalXp);
+
+  if (level > oldLevel) {
+    try {
+      const member = await i.guild!.members.fetch(target.id);
+      const config = getGuildConfig(guildId);
+      await handleLevelUp(member, oldLevel, level, config, i.client, guildId, {
+        tag: i.user.tag,
+        command: "addxp",
+      });
+    } catch (err) {
+      console.error("[ADDXP] Failed to trigger level-up handler:", err);
+    }
+  }
 
   const embed = new EmbedBuilder()
     .setColor(0x57f287)
@@ -260,8 +277,24 @@ export async function executeSetXp(i: ChatInputCommandInteraction): Promise<void
   const amount = i.options.getInteger("amount", true);
   const guildId = i.guildId!;
 
+  const before = getUser(guildId, target.id);
+  const oldLevel = computeLevel(before.totalXp).level;
+
   const updated = modifyUserXp(guildId, target.id, amount, "set");
   const { level } = computeLevel(updated.totalXp);
+
+  if (level > oldLevel) {
+    try {
+      const member = await i.guild!.members.fetch(target.id);
+      const config = getGuildConfig(guildId);
+      await handleLevelUp(member, oldLevel, level, config, i.client, guildId, {
+        tag: i.user.tag,
+        command: "setxp",
+      });
+    } catch (err) {
+      console.error("[SETXP] Failed to trigger level-up handler:", err);
+    }
+  }
 
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
