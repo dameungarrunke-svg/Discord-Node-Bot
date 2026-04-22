@@ -435,7 +435,7 @@ export const EXACT_WORDS: ReadonlySet<string> = new Set([
   "behanchood", "bhenchood",
 
   // ── gand family (ass/butt — vulgar) ───────────────────────────────────────
-  "gand", "gaand", "gandu", "gaandu", "gande", "gaande",
+  "gaand", "gandu", "gaandu", "gande", "gaande",
   "gandmaro", "gandmarao", "gandmaar", "gaandmaro",
 
   // ── bhosda / bhosdi family (vagina — very vulgar) ─────────────────────────
@@ -799,7 +799,6 @@ export const SUBSTRING_CORES: ReadonlyArray<string> = [
   // "grand".includes("gand") = FALSE (grand has 'r' after 'g'), so "gand" is safe
   "chod",          // core Hindi slur (fuck)
   "chud",          // past-tense variant
-  "gand",          // ass/vulgar
   "gaand",         // alternate spelling
   "gandu",         // asshole
   "bhosda",        // very vulgar slur
