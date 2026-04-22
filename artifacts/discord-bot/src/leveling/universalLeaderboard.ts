@@ -140,28 +140,24 @@ async function renderPayload(
   const ranked = rankUsers(guildId, category);
   const meta = CATEGORY_META[category];
 
-  const embed = new EmbedBuilder()
-    .setColor(0x2b2d31)
-    .setAuthor({ name: "LAST STAND  |  AS  |  IND" })
-    .setFooter({ text: `Last Stand Management  ·  ${meta.label}` });
-
   const files: AttachmentBuilder[] = [];
 
   if (ranked.length === 0) {
-    embed.addFields({
-      name: meta.title,
-      value: "No data yet for this category. Once members start earning XP it will appear here.",
-    });
-  } else {
-    const entries = await buildEntries(interaction, ranked, category);
-    const buf = await generateBlockLeaderboardCard(meta.title, entries);
-    files.push(new AttachmentBuilder(buf, { name: "leaderboard.png" }));
-    embed.setImage("attachment://leaderboard.png");
+    return {
+      content: `**LAST STAND  |  AS  |  IND**\n\n_No data yet for **${meta.label}**. Once members start earning XP it will appear here._`,
+      embeds: [],
+      files: [],
+      components: [buildSelectRow(category)],
+    };
   }
 
+  const entries = await buildEntries(interaction, ranked, category);
+  const buf = await generateBlockLeaderboardCard(meta.title, entries);
+  files.push(new AttachmentBuilder(buf, { name: "leaderboard.png" }));
+
   return {
-    content: "",
-    embeds: [embed],
+    content: "**LAST STAND  |  AS  |  IND**",
+    embeds: [],
     files,
     components: [buildSelectRow(category)],
   };

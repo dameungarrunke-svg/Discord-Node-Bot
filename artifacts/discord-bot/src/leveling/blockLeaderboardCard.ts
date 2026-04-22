@@ -23,32 +23,31 @@ const C = {
   rankDef: "#dcddde",
 };
 
-// Render at ~Discord embed width with high DPI so text stays crisp at 1:1.
 const S = 3;
 
-const CW         = 620;
-const CRAD       = 14;
-const PAD_X      = 18;
-const PAD_TOP    = 22;
-const TITLE_FS   = 28;
-const TITLE_MB   = 18;
+const CW         = 760;
+const CRAD       = 16;
+const PAD_X      = 22;
+const PAD_TOP    = 24;
+const TITLE_FS   = 32;
+const TITLE_MB   = 22;
 
-const ROW_H      = 56;
+const ROW_H      = 64;
 const ROW_GAP    = 10;
 const ROW_RAD    = 10;
 
-const AV_SIZE    = 40;
+const AV_SIZE    = 46;
 const AV_RAD     = 8;
-const AV_MX      = 12;
-const AV_GAP     = 14;
+const AV_MX      = 14;
+const AV_GAP     = 16;
 
-const RANK_W     = 40;
-const RANK_FS    = 22;
-const NAME_FS    = 22;
-const STAT_FS    = 19;
+const RANK_W     = 46;
+const RANK_FS    = 24;
+const NAME_FS    = 24;
+const STAT_FS    = 21;
 
-const FOOTER_H   = 32;
-const FOOTER_FS  = 12;
+const FOOTER_H   = 30;
+const FOOTER_FS  = 13;
 
 const SEP        = "  •  ";
 
@@ -71,7 +70,7 @@ export async function generateBlockLeaderboardCard(
 
   // Title — large + heavy
   ctx.fillStyle = C.white;
-  ctx.font      = `900 ${p(TITLE_FS)}px sans-serif`;
+  ctx.font      = `bold ${p(TITLE_FS)}px sans-serif`;
   ctx.fillText(title, p(PAD_X), p(PAD_TOP + TITLE_FS));
 
   for (let i = 0; i < entries.length; i++) {
