@@ -799,7 +799,6 @@ export const SUBSTRING_CORES: ReadonlyArray<string> = [
   // "grand".includes("gand") = FALSE (grand has 'r' after 'g'), so "gand" is safe
   "chod",          // core Hindi slur (fuck)
   "chud",          // past-tense variant
-  "gaand",         // alternate spelling
   "gandu",         // asshole
   "bhosda",        // very vulgar slur
   "bhosdi",
