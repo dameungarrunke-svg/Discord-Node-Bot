@@ -1,0 +1,449 @@
+{
+  "configs": {
+    "1479910330669990025": {
+      "enabled": true,
+      "xpMin": 15,
+      "xpMax": 25,
+      "cooldown": 60,
+      "levelUpChannelId": "1479912007414054935",
+      "announcements": true,
+      "pingOnLevelUp": true,
+      "keepOldRoles": true,
+      "blacklistedChannels": [],
+      "whitelistedChannels": [],
+      "serverMultiplier": 1,
+      "roleMultipliers": {},
+      "eventMultiplier": 1
+    }
+  },
+  "users": {
+    "1479910330669990025": {
+      "1368619589692293203": {
+        "xp": 1317,
+        "level": 15,
+        "totalXp": 13142,
+        "weeklyXp": 3142,
+        "lastMessageAt": 1776778156810,
+        "lastMessageContent": "Yes add mine ones feel outdated"
+      },
+      "1144836847571324928": {
+        "xp": 114,
+        "level": 3,
+        "totalXp": 589,
+        "weeklyXp": 589,
+        "lastMessageAt": 1776618106905,
+        "lastMessageContent": "i legit play at 10 times the ping u play on"
+      },
+      "962263230451957780": {
+        "xp": 3,
+        "level": 9,
+        "totalXp": 3723,
+        "weeklyXp": 3723,
+        "lastMessageAt": 1776775902282,
+        "lastMessageContent": "beef. anyway he can join back if he wants to"
+      },
+      "1277329984398299288": {
+        "xp": 66,
+        "level": 3,
+        "totalXp": 541,
+        "weeklyXp": 541,
+        "lastMessageAt": 1776771739681,
+        "lastMessageContent": "Give me ps+"
+      },
+      "1246735947018539019": {
+        "xp": 19,
+        "level": 0,
+        "totalXp": 19,
+        "weeklyXp": 19,
+        "lastMessageAt": 1776601212485,
+        "lastMessageContent": "Nah nahing nah nah dudie"
+      },
+      "944162887323250710": {
+        "xp": 27,
+        "level": 1,
+        "totalXp": 127,
+        "weeklyXp": 127,
+        "lastMessageAt": 1776676111756,
+        "lastMessageContent": "<@1368619589692293203>"
+      },
+      "919565774539096096": {
+        "xp": 333,
+        "level": 4,
+        "totalXp": 1103,
+        "weeklyXp": 1103,
+        "lastMessageAt": 1776775824015,
+        "lastMessageContent": "WE R WIPING"
+      },
+      "1110334940983328858": {
+        "xp": 40,
+        "level": 5,
+        "totalXp": 1190,
+        "weeklyXp": 1190,
+        "lastMessageAt": 1776713422207,
+        "lastMessageContent": "<@885163208367825037> have you heard yogiri takato"
+      },
+      "1461079679711838221": {
+        "xp": 109,
+        "level": 5,
+        "totalXp": 1259,
+        "weeklyXp": 1259,
+        "lastMessageAt": 1776699310324,
+        "lastMessageContent": "Trala"
+      },
+      "1116405995271364628": {
+        "xp": 69,
+        "level": 7,
+        "totalXp": 2274,
+        "weeklyXp": 2274,
+        "lastMessageAt": 1776772894873,
+        "lastMessageContent": "Beu"
+      },
+      "1487500945066692689": {
+        "xp": 876,
+        "level": 9,
+        "totalXp": 4596,
+        "weeklyXp": 4596,
+        "lastMessageAt": 1776777422304,
+        "lastMessageContent": "guys someone want clipsss?"
+      },
+      "992294944893055006": {
+        "xp": 374,
+        "level": 4,
+        "totalXp": 1144,
+        "weeklyXp": 1144,
+        "lastMessageAt": 1776777275468,
+        "lastMessageContent": "\"The only thing we have to fear is fear itself.\""
+      },
+      "1490267522757296239": {
+        "xp": 53,
+        "level": 3,
+        "totalXp": 528,
+        "weeklyXp": 528,
+        "lastMessageAt": 1776755791136,
+        "lastMessageContent": "Yep"
+      },
+      "907670076021436498": {
+        "xp": 59,
+        "level": 0,
+        "totalXp": 59,
+        "weeklyXp": 59,
+        "lastMessageAt": 1776763802930,
+        "lastMessageContent": "why he left?"
+      },
+      "1353364003828531311": {
+        "xp": 40,
+        "level": 1,
+        "totalXp": 140,
+        "weeklyXp": 140,
+        "lastMessageAt": 1776686000188,
+        "lastMessageContent": "lemon gives you life"
+      },
+      "1392606557476225176": {
+        "xp": 173,
+        "level": 7,
+        "totalXp": 2378,
+        "weeklyXp": 2378,
+        "lastMessageAt": 1776773286280,
+        "lastMessageContent": "Stop pinging everyone so many times raid ping is like everyone"
+      },
+      "1416026002781638757": {
+        "xp": 40,
+        "level": 0,
+        "totalXp": 40,
+        "weeklyXp": 40,
+        "lastMessageAt": 1776606233555,
+        "lastMessageContent": "Fast"
+      },
+      "1123212289554792538": {
+        "xp": 348,
+        "level": 4,
+        "totalXp": 1118,
+        "weeklyXp": 1118,
+        "lastMessageAt": 1776778048587,
+        "lastMessageContent": "lol"
+      },
+      "1352643041059668110": {
+        "xp": 59,
+        "level": 1,
+        "totalXp": 159,
+        "weeklyXp": 159,
+        "lastMessageAt": 1776751468099,
+        "lastMessageContent": "@everyone"
+      },
+      "1100394861858922627": {
+        "xp": 237,
+        "level": 8,
+        "totalXp": 3137,
+        "weeklyXp": 3137,
+        "lastMessageAt": 1776778137877,
+        "lastMessageContent": "im adding more cat emojies"
+      },
+      "1401196081676554340": {
+        "xp": 165,
+        "level": 2,
+        "totalXp": 420,
+        "weeklyXp": 420,
+        "lastMessageAt": 1776615014713,
+        "lastMessageContent": "son u were asking me \"how to get good with side dashes and m1s with saitama bro\" yesterday"
+      },
+      "1430454550564700213": {
+        "xp": 73,
+        "level": 1,
+        "totalXp": 173,
+        "weeklyXp": 173,
+        "lastMessageAt": 1776777236019,
+        "lastMessageContent": "come fast guysss"
+      },
+      "1454895579086983329": {
+        "xp": 80,
+        "level": 3,
+        "totalXp": 555,
+        "weeklyXp": 555,
+        "lastMessageAt": 1776618398927,
+        "lastMessageContent": "10 GRAPHICS SO BOOTIFUL"
+      },
+      "1434202215018397978": {
+        "xp": 0,
+        "level": 0,
+        "totalXp": 0,
+        "weeklyXp": 0,
+        "lastMessageAt": 0,
+        "lastMessageContent": ""
+      },
+      "1073810875363901490": {
+        "xp": 95,
+        "level": 6,
+        "totalXp": 1720,
+        "weeklyXp": 1720,
+        "lastMessageAt": 1776775636003,
+        "lastMessageContent": "oh mb"
+      },
+      "1122801297570156544": {
+        "xp": 189,
+        "level": 4,
+        "totalXp": 959,
+        "weeklyXp": 959,
+        "lastMessageAt": 1776699052274,
+        "lastMessageContent": "PATTY U TOOK MY SPOT"
+      },
+      "1129338322507022356": {
+        "xp": 169,
+        "level": 3,
+        "totalXp": 644,
+        "weeklyXp": 644,
+        "lastMessageAt": 1776778063710,
+        "lastMessageContent": "how i even get levels"
+      },
+      "1385648204120592416": {
+        "xp": 245,
+        "level": 4,
+        "totalXp": 1015,
+        "weeklyXp": 1015,
+        "lastMessageAt": 1776777805911,
+        "lastMessageContent": "yh we won"
+      },
+      "926904741626265641": {
+        "xp": 277,
+        "level": 3,
+        "totalXp": 752,
+        "weeklyXp": 752,
+        "lastMessageAt": 1776777394294,
+        "lastMessageContent": "he said ego games"
+      },
+      "1495505445605867638": {
+        "xp": 57,
+        "level": 0,
+        "totalXp": 57,
+        "weeklyXp": 57,
+        "lastMessageAt": 1776754735482,
+        "lastMessageContent": "Is there any one online in tsb"
+      },
+      "1162701938354303139": {
+        "xp": 83,
+        "level": 0,
+        "totalXp": 83,
+        "weeklyXp": 83,
+        "lastMessageAt": 1776681288703,
+        "lastMessageContent": "xero"
+      },
+      "719864008303312908": {
+        "xp": 78,
+        "level": 0,
+        "totalXp": 78,
+        "weeklyXp": 78,
+        "lastMessageAt": 1776685729408,
+        "lastMessageContent": "they have a hacker"
+      },
+      "985791728466419762": {
+        "xp": 43,
+        "level": 4,
+        "totalXp": 813,
+        "weeklyXp": 813,
+        "lastMessageAt": 1776697724225,
+        "lastMessageContent": "That's js a scam...."
+      },
+      "1389154978853158913": {
+        "xp": 39,
+        "level": 0,
+        "totalXp": 39,
+        "weeklyXp": 39,
+        "lastMessageAt": 1776682680168,
+        "lastMessageContent": "Higga"
+      },
+      "944186274405822495": {
+        "xp": 17,
+        "level": 0,
+        "totalXp": 17,
+        "weeklyXp": 17,
+        "lastMessageAt": 1776683053211,
+        "lastMessageContent": "yall hosting training?"
+      },
+      "1330770688943853570": {
+        "xp": 146,
+        "level": 3,
+        "totalXp": 621,
+        "weeklyXp": 621,
+        "lastMessageAt": 1776695657224,
+        "lastMessageContent": "Douin what"
+      },
+      "1423621143855890534": {
+        "xp": 59,
+        "level": 0,
+        "totalXp": 59,
+        "weeklyXp": 59,
+        "lastMessageAt": 1776685710940,
+        "lastMessageContent": "BRO YALL JOIN"
+      },
+      "1451937848377999514": {
+        "xp": 48,
+        "level": 0,
+        "totalXp": 48,
+        "weeklyXp": 48,
+        "lastMessageAt": 1776771604561,
+        "lastMessageContent": "why u pinged unless for 1v1"
+      },
+      "1199378076585435230": {
+        "xp": 20,
+        "level": 1,
+        "totalXp": 120,
+        "weeklyXp": 120,
+        "lastMessageAt": 1776717313955,
+        "lastMessageContent": "Bro ur system is trash can't censor niggerrr word"
+      },
+      "869173968433737768": {
+        "xp": 46,
+        "level": 1,
+        "totalXp": 146,
+        "weeklyXp": 146,
+        "lastMessageAt": 1776771381550,
+        "lastMessageContent": "why is zody banned"
+      },
+      "1056463568771493888": {
+        "xp": 70,
+        "level": 2,
+        "totalXp": 325,
+        "weeklyXp": 325,
+        "lastMessageAt": 1776689573581,
+        "lastMessageContent": "NIW 😭"
+      },
+      "1367031795790385204": {
+        "xp": 40,
+        "level": 3,
+        "totalXp": 515,
+        "weeklyXp": 515,
+        "lastMessageAt": 1776777710840,
+        "lastMessageContent": "who pos 1?"
+      },
+      "986576150300098570": {
+        "xp": 20,
+        "level": 0,
+        "totalXp": 20,
+        "weeklyXp": 20,
+        "lastMessageAt": 1776693038108,
+        "lastMessageContent": "WHY DID YALL KICK ZODY"
+      },
+      "679381419759239179": {
+        "xp": 69,
+        "level": 0,
+        "totalXp": 69,
+        "weeklyXp": 69,
+        "lastMessageAt": 1776693540216,
+        "lastMessageContent": "wasnt the owner disrepectul to him back?\nand was zody the only one being disrespectful?"
+      },
+      "959311127890776135": {
+        "xp": 23,
+        "level": 0,
+        "totalXp": 23,
+        "weeklyXp": 23,
+        "lastMessageAt": 1776700956176,
+        "lastMessageContent": "Huh"
+      },
+      "885163208367825037": {
+        "xp": 77,
+        "level": 1,
+        "totalXp": 177,
+        "weeklyXp": 177,
+        "lastMessageAt": 1776713709952,
+        "lastMessageContent": "Anos lose"
+      },
+      "935517686467809281": {
+        "xp": 66,
+        "level": 0,
+        "totalXp": 66,
+        "weeklyXp": 66,
+        "lastMessageAt": 1776753765213,
+        "lastMessageContent": "im leaving"
+      },
+      "1489522718687629412": {
+        "xp": 44,
+        "level": 0,
+        "totalXp": 44,
+        "weeklyXp": 44,
+        "lastMessageAt": 1776778117521,
+        "lastMessageContent": "<:emoji_70:1487697342109843646>"
+      },
+      "796006213598052362": {
+        "xp": 77,
+        "level": 0,
+        "totalXp": 77,
+        "weeklyXp": 77,
+        "lastMessageAt": 1776777392434,
+        "lastMessageContent": "AM i late???"
+      },
+      "1481086721020919828": {
+        "xp": 21,
+        "level": 0,
+        "totalXp": 21,
+        "weeklyXp": 21,
+        "lastMessageAt": 1776773017541,
+        "lastMessageContent": "IM 1HIGH"
+      }
+    },
+    "1371028067627171880": {
+      "1368619589692293203": {
+        "xp": 0,
+        "level": 0,
+        "totalXp": 1000000000,
+        "weeklyXp": 0,
+        "lastMessageAt": 0,
+        "lastMessageContent": ""
+      }
+    }
+  },
+  "levelRoles": {
+    "1479910330669990025": {
+      "5": "Rookie",
+      "10": "Experienced",
+      "15": "Active",
+      "20": "Elite",
+      "25": "Elite Active",
+      "30": "Elite official member",
+      "35": "Monarch",
+      "40": "Divine general",
+      "45": "Mystic",
+      "50": "King 👑"
+    }
+  },
+  "lastWeeklyReset": 1776601102675,
+  "weeklyHistory": []
+}
