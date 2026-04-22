@@ -77,6 +77,12 @@ import {
   stopLsXpSystemData, executeStopLsXpSystem,
 } from "./leveling/commands.js";
 import { processMessage } from "./leveling/engine.js";
+import {
+  universalLeaderboardData,
+  executeUniversalLeaderboard,
+  handleUniversalLeaderboardSelect,
+  handleUniversalLeaderboardButton,
+} from "./leveling/universalLeaderboard.js";
 import { startWeeklyResetScheduler } from "./leveling/weekly.js";
 import { startTrainingData, executeStartTraining, endTrainingData, executeEndTraining } from "./training/index.js";
 import {
@@ -185,6 +191,7 @@ const commands = [
   startLsXpSystemData.toJSON(),
   stopLsXpSystemData.toJSON(),
   dashboardData.toJSON(),
+  universalLeaderboardData.toJSON(),
 ];
 
 // Defined once at startup — not recreated on every interaction
@@ -241,6 +248,7 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   startlsxpsystem: executeStartLsXpSystem,
   stoplsxpsystem: executeStopLsXpSystem,
   dashboard: executeDashboard,
+  leaderboard: executeUniversalLeaderboard,
 };
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
@@ -454,7 +462,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     const t0 = Date.now();
     console.log(`[INTERACTION] /${cmd.commandName} received`);
 
-    const PUBLIC_COMMANDS = new Set(["levellb", "weeklylb", "rank"]);
+    const PUBLIC_COMMANDS = new Set(["levellb", "weeklylb", "rank", "leaderboard"]);
     const isPublic = PUBLIC_COMMANDS.has(cmd.commandName);
     try {
       if (isPublic) {
@@ -496,6 +504,29 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     return;
   }
 
+  // ── Universal leaderboard select menu ───────────────────────────────────────
+  if (interaction.isStringSelectMenu()) {
+    const sel = interaction as StringSelectMenuInteraction;
+    if (sel.customId.startsWith("ulb_")) {
+      try {
+        await sel.deferUpdate();
+      } catch (err) {
+        console.error(`[INTERACTION] select:${sel.customId} — deferUpdate failed`, err);
+        return;
+      }
+      handleUniversalLeaderboardSelect(sel).catch(async (err) => {
+        console.error(`[ERROR] universal leaderboard select [${sel.customId}]:`, err);
+        try {
+          await sel.followUp({
+            content: "❌ Leaderboard error: " + (err instanceof Error ? err.message : String(err)),
+            flags: MessageFlags.Ephemeral,
+          });
+        } catch { /* ignore */ }
+      });
+      return;
+    }
+  }
+
   // ── Dashboard select menus (update the original message in-place) ───────────
   if (interaction.isStringSelectMenu()) {
     const sel = interaction as StringSelectMenuInteraction;
@@ -520,6 +551,32 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     const btn = interaction as ButtonInteraction;
     const t0 = Date.now();
     console.log(`[INTERACTION] button:${btn.customId} received`);
+
+    // ── Universal leaderboard pagination buttons ──────────────────────────────
+    if (btn.customId.startsWith("ulb_prev") || btn.customId.startsWith("ulb_next")) {
+      try {
+        await btn.deferUpdate();
+      } catch (err) {
+        console.error(`[INTERACTION] button:${btn.customId} — deferUpdate failed`, err);
+        return;
+      }
+      handleUniversalLeaderboardButton(btn).catch(async (err) => {
+        console.error(`[ERROR] universal leaderboard button [${btn.customId}]:`, err);
+        try {
+          await btn.followUp({
+            content: "❌ Leaderboard error: " + (err instanceof Error ? err.message : String(err)),
+            flags: MessageFlags.Ephemeral,
+          });
+        } catch { /* ignore */ }
+      });
+      return;
+    }
+
+    // Disabled page-indicator button — silently acknowledge to avoid "interaction failed"
+    if (btn.customId === "ulb_page_indicator") {
+      try { await btn.deferUpdate(); } catch { /* ignore */ }
+      return;
+    }
 
     // ── Dashboard buttons use deferUpdate (update the panel in-place) ─────────
     if (btn.customId.startsWith("dash_")) {
