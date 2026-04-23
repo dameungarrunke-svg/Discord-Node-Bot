@@ -82,6 +82,7 @@ import {
   executeUniversalLeaderboard,
   handleUniversalLeaderboardSelect,
 } from "./leveling/universalLeaderboard.js";
+import { FUN_COMMAND_DATA, FUN_HANDLERS, FUN_COMMAND_NAMES } from "./fun/commands.js";
 import { startWeeklyResetScheduler } from "./leveling/weekly.js";
 import { startTrainingData, executeStartTraining, endTrainingData, executeEndTraining } from "./training/index.js";
 import {
@@ -191,6 +192,7 @@ const commands = [
   stopLsXpSystemData.toJSON(),
   dashboardData.toJSON(),
   universalLeaderboardData.toJSON(),
+  ...FUN_COMMAND_DATA,
 ];
 
 // Defined once at startup — not recreated on every interaction
@@ -248,6 +250,7 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   stoplsxpsystem: executeStopLsXpSystem,
   dashboard: executeDashboard,
   leaderboard: executeUniversalLeaderboard,
+  ...FUN_HANDLERS,
 };
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
@@ -461,7 +464,10 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     const t0 = Date.now();
     console.log(`[INTERACTION] /${cmd.commandName} received`);
 
-    const PUBLIC_COMMANDS = new Set(["levellb", "weeklylb", "rank", "leaderboard"]);
+    const PUBLIC_COMMANDS = new Set([
+      "levellb", "weeklylb", "rank", "leaderboard",
+      ...FUN_COMMAND_NAMES,
+    ]);
     const isPublic = PUBLIC_COMMANDS.has(cmd.commandName);
     try {
       if (isPublic) {
