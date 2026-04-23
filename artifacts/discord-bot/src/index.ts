@@ -88,6 +88,9 @@ import { FUN_COMMAND_DATA, FUN_HANDLERS, FUN_COMMAND_NAMES } from "./fun/command
 import { isFunEnabled, setFunEnabled } from "./fun/toggle.js";
 import { helpData, executeHelp } from "./commands/help.js";
 import { handlePurgeCommand, purgeConfigData, executePurgeConfig } from "./moderation/purge.js";
+import { handleLowoCommand } from "./lowo/router.js";
+import { lowoEnableData, lowoDisableData, executeLowoEnable, executeLowoDisable } from "./lowo/slashCommands.js";
+import { isLowoEnabled } from "./lowo/toggle.js";
 import { startWeeklyResetScheduler } from "./leveling/weekly.js";
 import { startTrainingData, executeStartTraining, endTrainingData, executeEndTraining } from "./training/index.js";
 import {
@@ -209,10 +212,12 @@ const offMemeData = new SlashCommandBuilder()
   .setDescription("Hide the meme/fun command groups in this server")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
-const baseCommands = [...commands, onMemeData.toJSON(), offMemeData.toJSON(), helpData.toJSON(), purgeConfigData.toJSON()];
+const baseCommands = [...commands, onMemeData.toJSON(), offMemeData.toJSON(), helpData.toJSON(), purgeConfigData.toJSON(), lowoEnableData.toJSON(), lowoDisableData.toJSON()];
 
 function buildCommandList(): unknown[] {
-  return isFunEnabled() ? [...baseCommands, ...FUN_COMMAND_DATA] : baseCommands;
+  const list: unknown[] = [...baseCommands];
+  if (isFunEnabled()) list.push(...FUN_COMMAND_DATA);
+  return list;
 }
 
 // Defined once at startup — not recreated on every interaction
@@ -283,6 +288,8 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   },
   help: executeHelp,
   purgeconfig: executePurgeConfig,
+  lowoenable: (i) => executeLowoEnable(i, reregisterPrimaryGuild),
+  lowodisable: (i) => executeLowoDisable(i, reregisterPrimaryGuild),
 };
 
 const PRIMARY_GUILD_ID = "1479910330669990025";
@@ -490,6 +497,14 @@ client.on(Events.MessageCreate, async (message: Message) => {
       console.error("[PURGE] Unhandled error:", err)
     );
     return;
+  }
+
+  // lowo OwO-style game system
+  if (content.toLowerCase().startsWith("lowo") && isLowoEnabled()) {
+    handleLowoCommand(message).then((handled) => {
+      if (handled) return;
+    }).catch((err) => console.error("[LOWO] Unhandled error:", err));
+    if (content.toLowerCase().startsWith("lowo ") || content.toLowerCase() === "lowo") return;
   }
 
   if (content === "!ping") {

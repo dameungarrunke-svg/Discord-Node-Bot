@@ -8,7 +8,8 @@ async function actionCmd(message: Message, verb: string, gifKey: string, emoji: 
   if (target.id === message.author.id) { await message.reply(`You ${verb} yourself ${emoji}`); return; }
   const gif = await fetchAnimeGif(gifKey).catch(() => null);
   const txt = `${emoji} **${message.author.username}** ${verb}s **${target.username}** ${emoji}`;
-  if (gif) await message.channel.send({ content: txt, files: [gif] }).catch(() => message.reply(txt));
+  const ch = message.channel;
+  if (gif && "send" in ch) await ch.send({ content: txt, files: [gif] }).catch(() => message.reply(txt));
   else await message.reply(txt);
 }
 
