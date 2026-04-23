@@ -10,6 +10,8 @@ import {
   StringSelectMenuInteraction,
   MessageFlags,
   REST,
+  SlashCommandBuilder,
+  PermissionFlagsBits,
 } from "discord.js";
 import http from "http";
 import { initPersistence, flushAll } from "./persistence.js";
@@ -83,6 +85,7 @@ import {
   handleUniversalLeaderboardSelect,
 } from "./leveling/universalLeaderboard.js";
 import { FUN_COMMAND_DATA, FUN_HANDLERS, FUN_COMMAND_NAMES } from "./fun/commands.js";
+import { isFunEnabled, setFunEnabled } from "./fun/toggle.js";
 import { startWeeklyResetScheduler } from "./leveling/weekly.js";
 import { startTrainingData, executeStartTraining, endTrainingData, executeEndTraining } from "./training/index.js";
 import {
@@ -192,8 +195,23 @@ const commands = [
   stopLsXpSystemData.toJSON(),
   dashboardData.toJSON(),
   universalLeaderboardData.toJSON(),
-  ...FUN_COMMAND_DATA,
 ];
+
+const onMemeData = new SlashCommandBuilder()
+  .setName("onmeme")
+  .setDescription("Show the meme/fun command groups in this server")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
+
+const offMemeData = new SlashCommandBuilder()
+  .setName("offmeme")
+  .setDescription("Hide the meme/fun command groups in this server")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
+
+const baseCommands = [...commands, onMemeData.toJSON(), offMemeData.toJSON()];
+
+function buildCommandList(): unknown[] {
+  return isFunEnabled() ? [...baseCommands, ...FUN_COMMAND_DATA] : baseCommands;
+}
 
 // Defined once at startup — not recreated on every interaction
 const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<void>> = {
@@ -251,7 +269,31 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   dashboard: executeDashboard,
   leaderboard: executeUniversalLeaderboard,
   ...FUN_HANDLERS,
+  onmeme: async (i) => {
+    setFunEnabled(true);
+    await reregisterPrimaryGuild();
+    await i.editReply({ content: "✅ Meme commands are now **ON**. They'll appear in a moment." });
+  },
+  offmeme: async (i) => {
+    setFunEnabled(false);
+    await reregisterPrimaryGuild();
+    await i.editReply({ content: "🚫 Meme commands are now **OFF** and hidden." });
+  },
 };
+
+const PRIMARY_GUILD_ID = "1479910330669990025";
+
+async function reregisterPrimaryGuild(): Promise<void> {
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(client.user!.id, PRIMARY_GUILD_ID),
+      { body: buildCommandList() },
+    );
+    console.log(`[TOGGLE] Re-registered commands (fun=${isFunEnabled()})`);
+  } catch (err) {
+    console.error("[TOGGLE] Failed to re-register:", err);
+  }
+}
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
   create_challenge_ticket: handleCreateTicket,
@@ -262,7 +304,7 @@ const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = 
 async function registerCommandsForGuild(guildId: string): Promise<void> {
   try {
     await rest.put(Routes.applicationGuildCommands(client.user!.id, guildId), {
-      body: commands,
+      body: buildCommandList(),
     });
     console.log(`[READY] Commands registered for guild: ${guildId}`);
   } catch (err) {
@@ -298,13 +340,12 @@ client.once(Events.ClientReady, async (readyClient) => {
     console.error("[ERROR] Failed to clear global commands:", err);
   }
 
-  const PRIMARY_GUILD_ID = "1479910330669990025";
-
   for (const [guildId] of readyClient.guilds.cache) {
     try {
       if (guildId === PRIMARY_GUILD_ID) {
-        await rest.put(Routes.applicationGuildCommands(readyClient.user.id, guildId), { body: commands });
-        console.log(`[READY] Registered ${commands.length} commands instantly to primary guild: ${guildId}`);
+        const list = buildCommandList();
+        await rest.put(Routes.applicationGuildCommands(readyClient.user.id, guildId), { body: list });
+        console.log(`[READY] Registered ${list.length} commands instantly to primary guild: ${guildId} (fun=${isFunEnabled()})`);
       } else {
         await rest.put(Routes.applicationGuildCommands(readyClient.user.id, guildId), { body: [] });
         console.log(`[READY] Cleared guild-scoped commands for: ${guildId} (now using globals).`);
@@ -468,6 +509,9 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
       "levellb", "weeklylb", "rank", "leaderboard",
       ...FUN_COMMAND_NAMES,
     ]);
+    // /onmeme and /offmeme are admin-only and reply ephemerally
+    const ADMIN_EPHEMERAL = new Set(["onmeme", "offmeme"]);
+    if (ADMIN_EPHEMERAL.has(cmd.commandName)) PUBLIC_COMMANDS.delete(cmd.commandName);
     const isPublic = PUBLIC_COMMANDS.has(cmd.commandName);
     try {
       if (isPublic) {
