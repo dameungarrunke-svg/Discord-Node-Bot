@@ -1,11 +1,12 @@
 import {
   SlashCommandBuilder,
+  SlashCommandSubcommandBuilder,
   ChatInputCommandInteraction,
   EmbedBuilder,
   GuildMember,
   User,
 } from "discord.js";
-import { ALL_FUN_COMMANDS, FunCmd, SPECIAL_LISTS } from "./data.js";
+import { ALL_FUN_COMMANDS, FunCmd, CommandKind, SPECIAL_LISTS } from "./data.js";
 import { getAnimeGif } from "./gifService.js";
 
 const COOLDOWN_MS = 3000;
@@ -72,16 +73,48 @@ function fillTemplate(t: string, ctx: { user: User; target: User; pick?: string;
     .replace(/\{n\}/g, ctx.n != null ? String(ctx.n) : "");
 }
 
-function buildBuilder(cmd: FunCmd): SlashCommandBuilder {
-  const b = new SlashCommandBuilder().setName(cmd.name).setDescription(cmd.description);
+function buildSub(cmd: FunCmd): SlashCommandSubcommandBuilder {
+  const sb = new SlashCommandSubcommandBuilder()
+    .setName(cmd.name)
+    .setDescription(cmd.description);
   if (cmd.needsTarget || cmd.optionalTarget) {
-    b.addUserOption((o) =>
+    sb.addUserOption((o) =>
       o.setName("user")
        .setDescription("Target user")
        .setRequired(!!cmd.needsTarget && !cmd.optionalTarget),
     );
   }
-  return b;
+  return sb;
+}
+
+const PARENT_META: Record<CommandKind, { name: string; description: string }> = {
+  social:       { name: "social",       description: "Social actions: hug, kiss, pat, slap, …" },
+  troll:        { name: "troll",        description: "Trolling: roast, ratio, sus, expose, …" },
+  relationship: { name: "relationship", description: "Love stuff: ship, marry, crush, rizz, …" },
+  answer:       { name: "answer",       description: "Random replies: ask, 8ball, dare, advice, …" },
+  meme:         { name: "meme",         description: "Memes, jokes, copypastas, brainrot, …" },
+  game:         { name: "game",         description: "Mini games: dice, slots, fight, rps, …" },
+  ls:           { name: "ls",           description: "Last Stand: raidcall, clutch, warcry, …" },
+  bonus:        { name: "bonus",        description: "Aura, drip, NPC, main character, …" },
+};
+
+function buildParents(): SlashCommandBuilder[] {
+  const groups = new Map<CommandKind, FunCmd[]>();
+  for (const cmd of ALL_FUN_COMMANDS) {
+    const list = groups.get(cmd.kind) ?? [];
+    list.push(cmd);
+    groups.set(cmd.kind, list);
+  }
+  const parents: SlashCommandBuilder[] = [];
+  for (const [kind, cmds] of groups) {
+    const meta = PARENT_META[kind];
+    const parent = new SlashCommandBuilder()
+      .setName(meta.name)
+      .setDescription(meta.description);
+    for (const cmd of cmds) parent.addSubcommand(buildSub(cmd));
+    parents.push(parent);
+  }
+  return parents;
 }
 
 async function executeFun(cmd: FunCmd, interaction: ChatInputCommandInteraction): Promise<void> {
@@ -138,11 +171,28 @@ async function executeFun(cmd: FunCmd, interaction: ChatInputCommandInteraction)
 
 // ─── Public exports ────────────────────────────────────────────────────────────
 
-export const FUN_COMMAND_DATA = ALL_FUN_COMMANDS.map((c) => buildBuilder(c).toJSON());
+export const FUN_COMMAND_DATA = buildParents().map((b) => b.toJSON());
 
-export const FUN_COMMAND_NAMES: string[] = ALL_FUN_COMMANDS.map((c) => c.name);
+// Top-level parent command names (for PUBLIC_COMMANDS check)
+export const FUN_COMMAND_NAMES: string[] = Object.values(PARENT_META).map((p) => p.name);
+
+const FUN_BY_NAME: Record<string, FunCmd> = Object.fromEntries(
+  ALL_FUN_COMMANDS.map((c) => [c.name, c]),
+);
+
+async function dispatchFun(interaction: ChatInputCommandInteraction): Promise<void> {
+  const sub = interaction.options.getSubcommand(false);
+  if (!sub) {
+    await interaction.editReply({ content: "Pick a subcommand." });
+    return;
+  }
+  const cmd = FUN_BY_NAME[sub];
+  if (!cmd) {
+    await interaction.editReply({ content: `Unknown subcommand: ${sub}` });
+    return;
+  }
+  await executeFun(cmd, interaction);
+}
 
 export const FUN_HANDLERS: Record<string, (i: ChatInputCommandInteraction) => Promise<void>> =
-  Object.fromEntries(
-    ALL_FUN_COMMANDS.map((cmd) => [cmd.name, (i: ChatInputCommandInteraction) => executeFun(cmd, i)]),
-  );
+  Object.fromEntries(FUN_COMMAND_NAMES.map((name) => [name, dispatchFun]));
