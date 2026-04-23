@@ -86,6 +86,7 @@ import {
 } from "./leveling/universalLeaderboard.js";
 import { FUN_COMMAND_DATA, FUN_HANDLERS, FUN_COMMAND_NAMES } from "./fun/commands.js";
 import { isFunEnabled, setFunEnabled } from "./fun/toggle.js";
+import { helpData, executeHelp } from "./commands/help.js";
 import { startWeeklyResetScheduler } from "./leveling/weekly.js";
 import { startTrainingData, executeStartTraining, endTrainingData, executeEndTraining } from "./training/index.js";
 import {
@@ -207,7 +208,7 @@ const offMemeData = new SlashCommandBuilder()
   .setDescription("Hide the meme/fun command groups in this server")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
-const baseCommands = [...commands, onMemeData.toJSON(), offMemeData.toJSON()];
+const baseCommands = [...commands, onMemeData.toJSON(), offMemeData.toJSON(), helpData.toJSON()];
 
 function buildCommandList(): unknown[] {
   return isFunEnabled() ? [...baseCommands, ...FUN_COMMAND_DATA] : baseCommands;
@@ -279,6 +280,7 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
     await reregisterPrimaryGuild();
     await i.editReply({ content: "🚫 Meme commands are now **OFF** and hidden." });
   },
+  help: executeHelp,
 };
 
 const PRIMARY_GUILD_ID = "1479910330669990025";
@@ -323,6 +325,22 @@ client.once(Events.ClientReady, async (readyClient) => {
     } catch (err) {
       console.error("[ERROR] Failed to update bot username:", err);
     }
+  }
+
+  // Set the bot's "About Me" / application description (visible in profile popup)
+  try {
+    const app = await readyClient.application.fetch();
+    const desiredDescription =
+      "Last Stand Management Bot — leveling, leaderboards, raids, training, " +
+      "moderation, tournaments, and 80+ fun & meme commands.\n\n" +
+      "Type /help to see everything you can do.\n" +
+      "Staff: /help admin:true for the full admin command list.";
+    if (app.description !== desiredDescription) {
+      await readyClient.application.edit({ description: desiredDescription });
+      console.log("[READY] Bot description updated.");
+    }
+  } catch (err) {
+    console.error("[ERROR] Failed to update bot description:", err);
   }
 
   // Pre-warm the REST connection to Discord so the first interaction ack is fast
@@ -506,7 +524,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     console.log(`[INTERACTION] /${cmd.commandName} received`);
 
     const PUBLIC_COMMANDS = new Set([
-      "levellb", "weeklylb", "rank", "leaderboard",
+      "levellb", "weeklylb", "rank", "leaderboard", "help",
       ...FUN_COMMAND_NAMES,
     ]);
     // /onmeme and /offmeme are admin-only and reply ephemerally
