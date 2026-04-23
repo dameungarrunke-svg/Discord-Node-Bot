@@ -87,6 +87,7 @@ import {
 import { FUN_COMMAND_DATA, FUN_HANDLERS, FUN_COMMAND_NAMES } from "./fun/commands.js";
 import { isFunEnabled, setFunEnabled } from "./fun/toggle.js";
 import { helpData, executeHelp } from "./commands/help.js";
+import { handlePurgeCommand, purgeConfigData, executePurgeConfig } from "./moderation/purge.js";
 import { startWeeklyResetScheduler } from "./leveling/weekly.js";
 import { startTrainingData, executeStartTraining, endTrainingData, executeEndTraining } from "./training/index.js";
 import {
@@ -208,7 +209,7 @@ const offMemeData = new SlashCommandBuilder()
   .setDescription("Hide the meme/fun command groups in this server")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
-const baseCommands = [...commands, onMemeData.toJSON(), offMemeData.toJSON(), helpData.toJSON()];
+const baseCommands = [...commands, onMemeData.toJSON(), offMemeData.toJSON(), helpData.toJSON(), purgeConfigData.toJSON()];
 
 function buildCommandList(): unknown[] {
   return isFunEnabled() ? [...baseCommands, ...FUN_COMMAND_DATA] : baseCommands;
@@ -281,6 +282,7 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
     await i.editReply({ content: "🚫 Meme commands are now **OFF** and hidden." });
   },
   help: executeHelp,
+  purgeconfig: executePurgeConfig,
 };
 
 const PRIMARY_GUILD_ID = "1479910330669990025";
@@ -481,6 +483,14 @@ client.on(Events.MessageCreate, async (message: Message) => {
   );
 
   const content = message.content.trim();
+
+  // !purge family — handled in dedicated module, returns true if matched
+  if (content.toLowerCase().startsWith("!purge")) {
+    handlePurgeCommand(message).catch((err) =>
+      console.error("[PURGE] Unhandled error:", err)
+    );
+    return;
+  }
 
   if (content === "!ping") {
     await message.reply("Pong!");
