@@ -484,8 +484,8 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
   const content = message.content.trim();
 
-  // !purge family — handled in dedicated module, returns true if matched
-  if (content.toLowerCase().startsWith("!purge")) {
+  // *purge family — handled in dedicated module, returns true if matched
+  if (content.toLowerCase().startsWith("*purge")) {
     handlePurgeCommand(message).catch((err) =>
       console.error("[PURGE] Unhandled error:", err)
     );
