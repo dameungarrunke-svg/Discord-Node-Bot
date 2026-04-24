@@ -1,34 +1,64 @@
 import type { Message } from "discord.js";
 import { isLowoEnabled } from "./toggle.js";
-import { cmdCowoncy, cmdDaily, cmdGive, cmdVote } from "./economy.js";
+import { cmdCowoncy, cmdDaily, cmdGive, cmdVote, cmdRep, cmdTag } from "./economy.js";
 import { cmdHunt, cmdZoo, cmdSell, cmdSacrifice, cmdLowodex } from "./hunt.js";
 import { cmdTeam, cmdBattle, cmdCrate, cmdWeapon, cmdEquip } from "./battle.js";
 import { cmdSlots, cmdCoinflip, cmdBlackjack, cmdLottery } from "./gambling.js";
 import { cmdPiku, cmdPikuReset, cmdPet, cmdFeed } from "./minigames.js";
 import { cmdHug, cmdKiss, cmdSlap, cmdPat, cmdCuddle, cmdPoke, cmdPropose, cmdDivorce, cmdLowoify, cmdShip } from "./social.js";
-import { cmdShop, cmdBuy } from "./shop.js";
+import { cmdShop, cmdBuy, cmdSetBg } from "./shop.js";
 import * as Emotes from "./emotes.js";
 import * as Actions from "./actions.js";
 import * as Memes from "./memes.js";
 import * as Util from "./utility.js";
 import { cmdQuest, cmdChecklist } from "./quests.js";
-import { cmdProfile, cmdLevel, cmdAvatar, cmdWallpaper, cmdEmoji, cmdCookie, cmdPray, cmdCurse, cmdTop, cmdMy } from "./profile.js";
-import { cmdAutohunt, cmdLootbox, cmdInv, cmdRename, cmdDismantle, cmdBattlesetting } from "./extra.js";
+import { cmdProfile, cmdLevel, cmdAvatar, cmdWallpaper, cmdEmoji, cmdCookie, cmdPray, cmdCurse, cmdTop, cmdMy, cmdCard } from "./profile.js";
+import { cmdAutohunt, cmdLootbox, cmdBox, cmdInv, cmdRename, cmdDismantle, cmdBattlesetting } from "./extra.js";
+import { cmdSkills } from "./skills.js";
+import { cmdEvent } from "./events.js";
+import { setCensored, isCensored } from "./censor.js";
+import { PermissionFlagsBits } from "discord.js";
 
 type Handler = (m: Message, args: string[]) => Promise<void>;
 
+async function cmdCensor(message: Message, args: string[]): Promise<void> {
+  const sub = args[0]?.toLowerCase();
+  if (!message.guildId) { await message.reply("❌ Server-only command."); return; }
+  if (!sub) {
+    const on = isCensored(message.guildId);
+    await message.reply(`🤫 Lowo censor on this server: **${on ? "ON" : "OFF"}**\n_Usage: \`lowo censor on|off\` (admin)_`);
+    return;
+  }
+  const member = message.member;
+  if (!member?.permissions.has(PermissionFlagsBits.ManageGuild)) {
+    await message.reply("❌ You need **Manage Server** permission.");
+    return;
+  }
+  if (sub === "on" || sub === "enable") {
+    setCensored(message.guildId, true);
+    await message.reply("🤫 Censor **enabled** — `lewd, kill, bully, slap, punch, bite, curse` are blocked here.");
+  } else if (sub === "off" || sub === "disable") {
+    setCensored(message.guildId, false);
+    await message.reply("✅ Censor **disabled** — all commands allowed.");
+  } else {
+    await message.reply("Usage: `lowo censor on|off`");
+  }
+}
+
 const HANDLERS: Record<string, Handler> = {
   // economy
-  cowoncy: cmdCowoncy, bal: cmdCowoncy, balance: cmdCowoncy,
-  daily: cmdDaily, give: cmdGive, vote: cmdVote,
+  cowoncy: cmdCowoncy, bal: cmdCowoncy, balance: cmdCowoncy, money: cmdCowoncy,
+  daily: cmdDaily, d: cmdDaily, give: cmdGive, send: cmdGive, vote: cmdVote,
+  rep: cmdRep, tag: cmdTag,
   // hunt / inventory
   hunt: cmdHunt, h: cmdHunt,
   zoo: cmdZoo, z: cmdZoo,
   sell: cmdSell, sacrifice: cmdSacrifice, sac: cmdSacrifice,
   lowodex: cmdLowodex, dex: cmdLowodex,
   // battle
-  team: cmdTeam, battle: cmdBattle, b: cmdBattle,
-  crate: cmdCrate, weapon: cmdWeapon, weapons: cmdWeapon, equip: cmdEquip,
+  team: cmdTeam, t: cmdTeam, battle: cmdBattle, b: cmdBattle,
+  crate: cmdCrate, weapon: cmdWeapon, weapons: cmdWeapon, w: cmdWeapon,
+  equip: cmdEquip, eq: cmdEquip,
   // gambling
   slots: cmdSlots, slot: cmdSlots, coinflip: cmdCoinflip, cf: cmdCoinflip,
   blackjack: cmdBlackjack, bj: cmdBlackjack, lottery: cmdLottery,
@@ -39,16 +69,24 @@ const HANDLERS: Record<string, Handler> = {
   propose: cmdPropose, marry: cmdPropose, divorce: cmdDivorce,
   lowoify: cmdLowoify, ship: cmdShip,
   // shop
-  shop: cmdShop, buy: cmdBuy,
+  shop: cmdShop, s: cmdShop, buy: cmdBuy, setbg: cmdSetBg, background: cmdSetBg,
   // quests
-  quest: cmdQuest, quests: cmdQuest, checklist: cmdChecklist,
+  quest: cmdQuest, quests: cmdQuest, q: cmdQuest, checklist: cmdChecklist, cl: cmdChecklist,
   // profile / rankings
-  profile: cmdProfile, p: cmdProfile, my: cmdMy, top: cmdTop,
+  profile: cmdProfile, p: cmdProfile, my: cmdMy, top: cmdTop, leaderboard: cmdTop, lb: cmdTop,
   level: cmdLevel, lvl: cmdLevel, avatar: cmdAvatar, av: cmdAvatar,
   wallpaper: cmdWallpaper, emoji: cmdEmoji, cookie: cmdCookie, pray: cmdPray, curse: cmdCurse,
+  card: cmdCard, c: cmdCard,
   // extra inventory / battle
-  autohunt: cmdAutohunt, lootbox: cmdLootbox, inv: cmdInv, inventory: cmdInv,
-  rename: cmdRename, dismantle: cmdDismantle, battlesetting: cmdBattlesetting,
+  autohunt: cmdAutohunt, ah: cmdAutohunt,
+  lootbox: cmdLootbox, lb2: cmdLootbox,
+  box: cmdBox, boxes: cmdBox, open: cmdBox,
+  inv: cmdInv, inventory: cmdInv, i: cmdInv,
+  rename: cmdRename, dismantle: cmdDismantle, battlesetting: cmdBattlesetting, bs: cmdBattlesetting,
+  // skills + events + censor
+  skills: cmdSkills, skill: cmdSkills, sk: cmdSkills,
+  event: cmdEvent, events: cmdEvent, ev: cmdEvent,
+  censor: cmdCensor,
   // utility
   "8b": Util.cmd8ball, "8ball": Util.cmd8ball, roll: Util.cmdRoll, choose: Util.cmdChoose,
   define: Util.cmdDefine, gif: Util.cmdGif, pic: Util.cmdPic, translate: Util.cmdTranslate,
@@ -76,56 +114,24 @@ const HANDLERS: Record<string, Handler> = {
 const HELP_TEXT = [
   "🦊 **Lowo Commands** *(prefix: `lowo`)*",
   "",
-  "**💰 Economy**",
-  "`lowo cowoncy [@user]` • `lowo daily` • `lowo give @user <amt>` • `lowo vote`",
-  "",
-  "**🎯 Collection**",
-  "`lowo hunt` • `lowo zoo [@user]` • `lowo sell <id> [count|all]`",
-  "`lowo sacrifice <id> [count|all]` • `lowo lowodex`",
-  "",
-  "**⚔️ Battle**",
-  "`lowo team add|remove|view <id>` • `lowo battle [@user]`",
-  "`lowo crate` • `lowo weapon` • `lowo equip <animalId> <weaponIdx>`",
-  "",
-  "**🎲 Gambling**",
-  "`lowo slots <amt>` • `lowo coinflip h|t <amt>`",
-  "`lowo blackjack <amt>` • `lowo lottery info|buy <n>`",
-  "",
-  "**🌱 Pets & Garden**",
-  "`lowo piku` • `lowo pikureset` • `lowo pet` • `lowo feed`",
-  "",
-  "**💕 Social**",
-  "`lowo hug|kiss|slap|pat|cuddle|poke @user`",
-  "`lowo propose @user` • `lowo divorce` • `lowo ship @a [@b]`",
-  "`lowo lowoify <text>`",
-  "",
-  "**🛒 Shop**",
-  "`lowo shop` • `lowo buy <itemId>`",
-  "",
-  "**📜 Quests & Profile**",
-  "`lowo quest` • `lowo checklist` • `lowo profile [@user]` • `lowo level` • `lowo top [cowoncy|essence|dex|animals]`",
-  "`lowo my` • `lowo avatar [@user]` • `lowo wallpaper` • `lowo emoji <e>`",
-  "",
-  "**🎒 Extras**",
-  "`lowo inv [@user]` • `lowo autohunt` • `lowo lootbox` • `lowo rename <wIdx> <name>`",
-  "`lowo dismantle <wIdx>` • `lowo battlesetting`",
-  "",
-  "**🎲 Utility**",
-  "`lowo 8b <q>` • `lowo roll [NdM|N]` • `lowo choose a, b, c` • `lowo define <word>`",
-  "`lowo gif <q>` • `lowo pic [cat|dog]` • `lowo math <expr>` • `lowo color [hex]`",
-  "`lowo ping` • `lowo stats` • `lowo bell` • `lowo translate`",
-  "",
-  "**😊 Emotes (self)**",
-  "`blush cry dance lewd pout shrug sleepy smile smug thumbsup wag`",
-  "`thinking triggered teehee deredere thonking scoff happy grin`",
-  "",
-  "**🤝 Actions (@user)**",
-  "`lick nom stare highfive bite greet punch handholding tickle kill`",
-  "`hold pats wave boop snuggle bully cookie pray curse`",
-  "",
-  "**😂 Memes**",
-  "`spongebobchicken | slapcar | isthisa | drake | distractedbf`",
-  "`communismcat | eject | emergencymeeting | headpat | tradeoffer | waddle`",
+  "**💰 Economy** — `cowoncy` `daily` `give @u <amt>` `vote` `rep @u` `tag <text>`",
+  "**🎯 Collection** — `hunt`(h) `zoo`(z) `sell <id> [n]` `sacrifice <id> [n]` `lowodex`(dex)",
+  "**⚔️ Battle** — `team add|remove|view <id>` `battle`(b) `crate` `weapon`(w) `weapon rr <i>` `equip <id> <i>`",
+  "**🌟 Skills** — `skills [animalId]` *(per-animal XP, perks at Lv 3/5/7/10)*",
+  "**🎁 Boxes** — `box bronze|silver|gold` (open) • Buy via `lowo buy bronze|silver|gold`",
+  "**🌍 Events** — `event` *(check active global event)*",
+  "**🎲 Gambling** — `slots <amt>` `coinflip h|t <amt>` `blackjack <amt>` `lottery info|buy <n>`",
+  "**🌱 Pets/Garden** — `piku` `pikureset` `pet` `feed`",
+  "**💕 Social** — `hug|kiss|slap|pat|cuddle|poke @u` `propose @u` `divorce` `ship @a [@b]` `lowoify <text>`",
+  "**🛒 Shop** — `shop` `buy <id>` `setbg <id>`",
+  "**📜 Quests** — `quest`(q) `checklist`(cl) — *resets daily 00:00 UTC*",
+  "**👤 Profile** — `profile`(p) `card`(c) `level` `top [cowoncy|essence|dex|animals|rep|streak]` `avatar`",
+  "**🎒 Extras** — `inv`(i) `autohunt`(ah) `lootbox` `rename <i> <name>` `dismantle <i>` `battlesetting instant`",
+  "**🤫 Mod** — `censor on|off` *(server admin)*",
+  "**🎲 Utility** — `8b <q>` `roll [NdM]` `choose a, b, c` `define <w>` `gif <q>` `pic [cat|dog]` `math <expr>` `color [hex]` `ping` `stats`",
+  "**😊 Emotes** — `blush cry dance lewd pout shrug sleepy smile smug thumbsup wag thinking triggered teehee deredere thonking scoff happy grin`",
+  "**🤝 Actions** — `lick nom stare highfive bite greet punch handholding tickle kill hold pats wave boop snuggle bully`",
+  "**😂 Memes** — `spongebobchicken slapcar isthisa drake distractedbf communismcat eject emergencymeeting headpat tradeoffer waddle`",
 ].join("\n");
 
 export async function handleLowoCommand(message: Message): Promise<boolean> {
@@ -140,7 +146,7 @@ export async function handleLowoCommand(message: Message): Promise<boolean> {
   const sub = parts.shift()?.toLowerCase();
   const args = parts;
 
-  if (!sub || sub === "help") {
+  if (!sub || sub === "help" || sub === "?") {
     await message.reply(HELP_TEXT.slice(0, 1900));
     return true;
   }

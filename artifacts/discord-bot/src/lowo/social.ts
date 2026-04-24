@@ -1,8 +1,13 @@
 import type { Message } from "discord.js";
 import { fetchAnimeGif } from "../fun/gifService.js";
 import { getUser, updateUser } from "./storage.js";
+import { isCensored } from "./censor.js";
 
-async function actionCmd(message: Message, verb: string, gifKey: string, emoji: string): Promise<void> {
+async function actionCmd(message: Message, verb: string, gifKey: string, emoji: string, censorKey?: string): Promise<void> {
+  if (censorKey && isCensored(message.guildId)) {
+    await message.reply(`🤫 \`lowo ${censorKey}\` is censored on this server.`);
+    return;
+  }
   const target = message.mentions.users.first();
   if (!target) { await message.reply(`Usage: \`lowo ${verb} @user\``); return; }
   if (target.id === message.author.id) { await message.reply(`You ${verb} yourself ${emoji}`); return; }
@@ -13,12 +18,12 @@ async function actionCmd(message: Message, verb: string, gifKey: string, emoji: 
   else await message.reply(txt);
 }
 
-export const cmdHug = (m: Message) => actionCmd(m, "hug", "hug", "🤗");
-export const cmdKiss = (m: Message) => actionCmd(m, "kiss", "kiss", "💋");
-export const cmdSlap = (m: Message) => actionCmd(m, "slap", "slap", "🖐️");
-export const cmdPat = (m: Message) => actionCmd(m, "pat", "pat", "🫶");
+export const cmdHug    = (m: Message) => actionCmd(m, "hug",    "hug",    "🤗");
+export const cmdKiss   = (m: Message) => actionCmd(m, "kiss",   "kiss",   "💋");
+export const cmdSlap   = (m: Message) => actionCmd(m, "slap",   "slap",   "🖐️", "slap");
+export const cmdPat    = (m: Message) => actionCmd(m, "pat",    "pat",    "🫶");
 export const cmdCuddle = (m: Message) => actionCmd(m, "cuddle", "cuddle", "🥰");
-export const cmdPoke = (m: Message) => actionCmd(m, "poke", "poke", "👉");
+export const cmdPoke   = (m: Message) => actionCmd(m, "poke",   "poke",   "👉");
 
 export async function cmdPropose(message: Message): Promise<void> {
   const target = message.mentions.users.first();
@@ -27,9 +32,10 @@ export async function cmdPropose(message: Message): Promise<void> {
   if (target.bot) { await message.reply("❌ Bots can't marry."); return; }
   const me = getUser(message.author.id);
   if (me.marriedTo) { await message.reply("❌ You're already married."); return; }
+  if ((me.rings ?? 0) <= 0) { await message.reply("❌ You need a 💍 Wedding Ring. Buy via `lowo buy ring`."); return; }
   const them = getUser(target.id);
   if (them.marriedTo) { await message.reply(`❌ ${target.username} is already married.`); return; }
-  updateUser(message.author.id, (x) => { x.marriedTo = target.id; });
+  updateUser(message.author.id, (x) => { x.marriedTo = target.id; x.rings -= 1; });
   updateUser(target.id, (x) => { x.marriedTo = message.author.id; });
   await message.reply(`💍 **${message.author.username}** proposed to **${target.username}** — they're now married! 💕`);
 }
@@ -60,7 +66,6 @@ export async function cmdLowoify(message: Message, args: string[]): Promise<void
   await message.reply(lowoify(text).slice(0, 1900));
 }
 
-// ─── Meme generators (text-only for now; image canvas optional later) ──────────
 export async function cmdShip(message: Message): Promise<void> {
   const a = message.mentions.users.first();
   const b = message.mentions.users.at(1) ?? message.author;

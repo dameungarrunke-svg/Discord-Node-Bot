@@ -10,22 +10,38 @@ const FILE = join(DATA_DIR, "lowo.json");
 export interface UserData {
   cowoncy: number;
   essence: number;
-  zoo: Record<string, number>; // animalId -> count
+  zoo: Record<string, number>;
   weapons: Array<{ id: string; rarity: string; mods: { atk: number; def: number; mag: number } }>;
-  team: string[]; // animal ids
-  equipped: Record<string, string>; // animalId -> weaponIndex (string)
+  team: string[];
+  equipped: Record<string, string>;
   lastDaily: number;
   lastHunt: number;
   marriedTo: string | null;
   pet: { lastFed: number; streak: number };
   piku: { harvested: number; lastHarvest: number };
-  dex: string[]; // unique animal ids ever caught
+  dex: string[];
   lotteryTickets: number;
+  // ── new fields ──
+  dailyStreak: number;            // consecutive days claimed
+  lastBattle: number;             // ms timestamp of last battle
+  lastRep: number;                // ms timestamp of last given rep
+  rep: number;                    // reputation points received
+  pity: number;                   // hunts since last legendary
+  tag: string | null;             // profile tag (short text)
+  background: string | null;      // owned background id
+  instantBattle: boolean;         // skip animated battle log
+  carrots: number;                // magic-carrot inventory
+  rings: number;                  // wedding-ring inventory
+  petfood: number;                // pet-food inventory
+  claimedQuests: { date: string; ids: string[] };  // YYYY-MM-DD + claimed quest ids
+  animalXp: Record<string, number>;                // animalId -> total XP
+  boxes: Record<string, number>;                   // boxId -> count
 }
 
 interface Store {
   users: Record<string, UserData>;
   lottery: { pot: number; tickets: Array<{ userId: string; count: number }>; lastDraw: number };
+  event: { id: string | null; until: number };  // active global event
 }
 
 function defaultUser(): UserData {
@@ -35,6 +51,11 @@ function defaultUser(): UserData {
     pet: { lastFed: 0, streak: 0 },
     piku: { harvested: 0, lastHarvest: 0 },
     dex: [], lotteryTickets: 0,
+    dailyStreak: 0, lastBattle: 0, lastRep: 0, rep: 0,
+    pity: 0, tag: null, background: null, instantBattle: false,
+    carrots: 0, rings: 0, petfood: 0,
+    claimedQuests: { date: "", ids: [] },
+    animalXp: {}, boxes: {},
   };
 }
 
@@ -47,10 +68,11 @@ function load(): Store {
       cache = JSON.parse(readFileSync(FILE, "utf-8")) as Store;
       if (!cache.users) cache.users = {};
       if (!cache.lottery) cache.lottery = { pot: 0, tickets: [], lastDraw: 0 };
+      if (!cache.event) cache.event = { id: null, until: 0 };
       return cache;
     }
   } catch { /* fallthrough */ }
-  cache = { users: {}, lottery: { pot: 0, tickets: [], lastDraw: 0 } };
+  cache = { users: {}, lottery: { pot: 0, tickets: [], lastDraw: 0 }, event: { id: null, until: 0 } };
   return cache;
 }
 
@@ -94,6 +116,19 @@ export function getLottery() {
 export function updateLottery(fn: (l: Store["lottery"]) => void): void {
   fn(load().lottery);
   save();
+}
+
+export function getEvent() {
+  return load().event;
+}
+
+export function updateEvent(fn: (e: Store["event"]) => void): void {
+  fn(load().event);
+  save();
+}
+
+export function allUsers(): Record<string, UserData> {
+  return load().users;
 }
 
 export function flush(): void {

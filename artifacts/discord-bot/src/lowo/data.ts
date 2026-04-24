@@ -92,14 +92,89 @@ export function rollWeapon(): { id: string; rarity: WeaponRarity; mods: { atk: n
   };
 }
 
+// ─── Loot Boxes (tiered weapon crates) ────────────────────────────────────────
+export type BoxTier = "bronze" | "silver" | "gold";
+export const BOX_DEFS: Record<BoxTier, { name: string; emoji: string; price: number; rolls: number; floor: WeaponRarity }> = {
+  bronze: { name: "Bronze Crate", emoji: "🟫", price: 1500, rolls: 1, floor: "common" },
+  silver: { name: "Silver Crate", emoji: "⬜", price: 5000, rolls: 2, floor: "uncommon" },
+  gold:   { name: "Gold Crate",   emoji: "🟨", price: 15000, rolls: 3, floor: "rare" },
+};
+
+export function rollWeaponFromBox(tier: BoxTier): ReturnType<typeof rollWeapon> {
+  const floors: Record<WeaponRarity, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, mythic: 4 };
+  const floorN = floors[BOX_DEFS[tier].floor];
+  // Reroll until rarity meets the floor (at most 8 attempts)
+  for (let i = 0; i < 8; i++) {
+    const w = rollWeapon();
+    if (floors[w.rarity] >= floorN) return w;
+  }
+  return rollWeapon();
+}
+
+// ─── Profile Backgrounds ──────────────────────────────────────────────────────
+export interface Background { id: string; name: string; price: number; gradient: [string, string]; accent: string }
+export const BACKGROUNDS: Background[] = [
+  { id: "bg_dark",   name: "Midnight",   price: 0,     gradient: ["#0f1117", "#1a1d26"], accent: "#5865f2" },
+  { id: "bg_sakura", name: "Sakura",     price: 8000,  gradient: ["#3a1c2e", "#7a3a52"], accent: "#ff7eb6" },
+  { id: "bg_ocean",  name: "Ocean",      price: 8000,  gradient: ["#0a1f3a", "#1f4d7a"], accent: "#4dd0e1" },
+  { id: "bg_forest", name: "Forest",     price: 8000,  gradient: ["#10261a", "#2a5c3d"], accent: "#7ed957" },
+  { id: "bg_royal",  name: "Royal",      price: 25000, gradient: ["#1a0f3a", "#5c2eb3"], accent: "#ffd700" },
+  { id: "bg_lava",   name: "Lava",       price: 25000, gradient: ["#2a0808", "#8a1f1f"], accent: "#ff7043" },
+];
+export const BACKGROUND_BY_ID: Record<string, Background> = Object.fromEntries(BACKGROUNDS.map(b => [b.id, b]));
+
+// ─── Animal Skill Tree (per-animal XP perks) ──────────────────────────────────
+// XP gained: 5 per hunt of that species, 25 per battle win when on team.
+// Each level = +5% atk/def/mag (capped at level 10 = +50%).
+export const ANIMAL_LEVEL_CAP = 10;
+export function animalLevelFromXp(xp: number): number {
+  // 100 XP for L1, then +50 per level. Cumulative: L = floor((sqrt(1+8*xp/50)-1)/2) ish.
+  // Simple curve: level n requires 100 + (n-1)*50 cumulative? Use thresholds array.
+  const thresholds = [0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000];
+  for (let i = thresholds.length - 1; i >= 0; i--) {
+    if (xp >= thresholds[i]) return Math.min(i, ANIMAL_LEVEL_CAP);
+  }
+  return 0;
+}
+export function animalLevelMultiplier(xp: number): number {
+  return 1 + 0.05 * animalLevelFromXp(xp);
+}
+export function animalXpToNext(xp: number): { current: number; needed: number; level: number } {
+  const thresholds = [0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000];
+  const lvl = animalLevelFromXp(xp);
+  if (lvl >= ANIMAL_LEVEL_CAP) return { current: xp - thresholds[lvl], needed: 0, level: lvl };
+  return { current: xp - thresholds[lvl], needed: thresholds[lvl + 1] - thresholds[lvl], level: lvl };
+}
+
+// ─── Global Events ────────────────────────────────────────────────────────────
+export interface LowoEvent { id: string; name: string; emoji: string; description: string; durationMs: number }
+export const EVENTS: LowoEvent[] = [
+  { id: "double_hunt", name: "Double Hunt", emoji: "🎯", description: "Hunt drops 2 animals at once", durationMs: 60 * 60 * 1000 },
+  { id: "rare_rush",   name: "Rare Rush",   emoji: "💎", description: "Rare+ drop chance ×3 on hunt",  durationMs: 60 * 60 * 1000 },
+  { id: "essence_storm", name: "Essence Storm", emoji: "✨", description: "Sacrifices yield ×2 essence", durationMs: 90 * 60 * 1000 },
+  { id: "battle_frenzy", name: "Battle Frenzy", emoji: "⚔️", description: "Battle rewards ×2 cowoncy",  durationMs: 60 * 60 * 1000 },
+];
+export const EVENT_BY_ID: Record<string, LowoEvent> = Object.fromEntries(EVENTS.map(e => [e.id, e]));
+
+// ─── Pity System ──────────────────────────────────────────────────────────────
+// Guarantees a legendary at exactly 200 hunts without one.
+export const PITY_THRESHOLD = 200;
+
 // ─── Shop items ───────────────────────────────────────────────────────────────
 export interface ShopItem { id: string; name: string; emoji: string; price: number; description: string }
 export const SHOP_ITEMS: ShopItem[] = [
-  { id: "ring", name: "Wedding Ring", emoji: "💍", price: 5000, description: "Required to use `lowo propose`" },
-  { id: "crate", name: "Weapon Crate", emoji: "📦", price: 2500, description: "Buy a crate then use `lowo crate`" },
-  { id: "carrot", name: "Magic Carrot", emoji: "🥕", price: 200, description: "Boosts your next piku harvest" },
-  { id: "lottery", name: "Lottery Ticket", emoji: "🎟️", price: 500, description: "Daily lottery — winner takes the pot" },
-  { id: "background", name: "Profile Background", emoji: "🖼️", price: 10000, description: "Cosmetic flex" },
-  { id: "petfood", name: "Pet Food", emoji: "🍖", price: 100, description: "Feed your Lowo Pet" },
+  { id: "ring",     name: "Wedding Ring",     emoji: "💍", price: 5000,  description: "Required to use `lowo propose`" },
+  { id: "crate",    name: "Weapon Crate",     emoji: "📦", price: 2500,  description: "Stored — open with `lowo crate`" },
+  { id: "bronze",   name: "Bronze Crate",     emoji: "🟫", price: 1500,  description: "1 weapon roll — open with `lowo box bronze`" },
+  { id: "silver",   name: "Silver Crate",     emoji: "⬜", price: 5000,  description: "2 weapon rolls (uncommon+ floor) — `lowo box silver`" },
+  { id: "gold",     name: "Gold Crate",       emoji: "🟨", price: 15000, description: "3 weapon rolls (rare+ floor) — `lowo box gold`" },
+  { id: "carrot",   name: "Magic Carrot",     emoji: "🥕", price: 200,   description: "Boosts your next piku harvest" },
+  { id: "lottery",  name: "Lottery Ticket",   emoji: "🎟️", price: 500,   description: "Daily lottery — winner takes the pot" },
+  { id: "petfood",  name: "Pet Food",         emoji: "🍖", price: 100,   description: "Feed your Lowo Pet" },
+  // Backgrounds (price = 0 ones are free defaults; > 0 ones are purchaseable)
+  ...BACKGROUNDS.filter(b => b.price > 0).map<ShopItem>(b => ({
+    id: b.id, name: `BG: ${b.name}`, emoji: "🖼️", price: b.price,
+    description: `Profile background — set with \`lowo setbg ${b.id}\``,
+  })),
 ];
 export const SHOP_BY_ID: Record<string, ShopItem> = Object.fromEntries(SHOP_ITEMS.map(i => [i.id, i]));

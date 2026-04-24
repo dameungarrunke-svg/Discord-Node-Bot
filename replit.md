@@ -37,6 +37,12 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Kill leaderboard stage options are: Stage 2 High Strong, Stage 2 High Stable, Stage 2 High Weak, Stage 2 Mid Strong, Stage 2 Mid Stable, and Stage 2 Mid Weak.
 - `/tournament` creates a polished Last Stand / TSB tournament announcement with role ping, highlighted prize section, participant counter, and no public buttons. `/closetournamey` closes an existing tournament by ID, updates the embed status to Closed, and removes any old button components. Tournament data is stored at `artifacts/discord-bot/data/tournaments.json`.
 
+## Lowo Subsystem (`artifacts/discord-bot/src/lowo/`)
+- OwO-bot-style game system, prefix `lowo`. Toggled via `/lowoenable` / `/lowodisable`. Storage: `data/lowo.json` (debounced writes, auto-backfilled fields).
+- Modules: `storage`, `data` (animals/weapons/boxes/backgrounds/events/skill-curve), `economy` (cowoncy/daily/streak/rep/tag), `hunt` (cooldown, pity, event boosts), `battle` (cooldown, instant toggle, animal-XP scaling, crits), `skills` (per-animal XP & perks at Lv 3/5/7/10), `shop` (items + tiered crates + backgrounds), `extra` (autohunt, lootbox, box opener, inventory, dismantle, battlesetting), `quests` (per-day claim guard), `social/actions/emotes` (gif-based, censor-aware), `profile` (text + canvas card), `profileCard` (`@napi-rs/canvas` PNG card), `events` (active global event), `cron` (lottery draw + event scheduler), `censor` (per-guild block list), `toggle`, `slashCommands`, `router`.
+- Cron is started inside the existing `Events.ClientReady` handler in `index.ts` (next to the weekly XP scheduler) — does NOT modify the bootstrap block.
+- New persisted files (auto-synced via `persistence.ts` data-dir watcher): `data/lowo_censor.json` (per-guild censor flag).
+
 ## Mobile Leaderboard
 
 A completely separate leaderboard for mobile players, stored in `artifacts/discord-bot/data/mobile-leaderboard.json`.

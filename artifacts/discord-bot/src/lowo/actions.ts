@@ -1,7 +1,12 @@
 import type { Message } from "discord.js";
 import { fetchAnimeGif } from "../fun/gifService.js";
+import { isCensored } from "./censor.js";
 
-async function actionCmd(message: Message, verb: string, gifKey: string, emoji: string, selfText?: string): Promise<void> {
+async function actionCmd(message: Message, verb: string, gifKey: string, emoji: string, selfText?: string, censorKey?: string): Promise<void> {
+  if (censorKey && isCensored(message.guildId)) {
+    await message.reply(`🤫 \`lowo ${censorKey}\` is censored on this server.`);
+    return;
+  }
   const target = message.mentions.users.first();
   if (!target) { await message.reply(`Usage: \`lowo ${verb} @user\``); return; }
   if (target.id === message.author.id) { await message.reply(selfText ?? `You ${verb} yourself ${emoji}`); return; }
@@ -12,19 +17,19 @@ async function actionCmd(message: Message, verb: string, gifKey: string, emoji: 
   else await message.reply(txt);
 }
 
-export const cmdLick = (m: Message) => actionCmd(m, "lick", "lick", "👅");
-export const cmdNom = (m: Message) => actionCmd(m, "nom", "bite", "😋");
-export const cmdStare = (m: Message) => actionCmd(m, "stare", "stare", "👀");
-export const cmdHighfive = (m: Message) => actionCmd(m, "highfive", "highfive", "🙏");
-export const cmdBite = (m: Message) => actionCmd(m, "bite", "bite", "🦷");
-export const cmdGreet = (m: Message) => actionCmd(m, "greet", "wave", "👋");
-export const cmdPunch = (m: Message) => actionCmd(m, "punch", "punch", "🥊");
+export const cmdLick        = (m: Message) => actionCmd(m, "lick",        "lick",       "👅");
+export const cmdNom         = (m: Message) => actionCmd(m, "nom",         "bite",       "😋");
+export const cmdStare       = (m: Message) => actionCmd(m, "stare",       "stare",      "👀");
+export const cmdHighfive    = (m: Message) => actionCmd(m, "highfive",    "highfive",   "🙏");
+export const cmdBite        = (m: Message) => actionCmd(m, "bite",        "bite",       "🦷", undefined, "bite");
+export const cmdGreet       = (m: Message) => actionCmd(m, "greet",       "wave",       "👋");
+export const cmdPunch       = (m: Message) => actionCmd(m, "punch",       "punch",      "🥊", undefined, "punch");
 export const cmdHandholding = (m: Message) => actionCmd(m, "hold hands with", "handhold", "🤝");
-export const cmdTickle = (m: Message) => actionCmd(m, "tickle", "tickle", "🤭");
-export const cmdKill = (m: Message) => actionCmd(m, "kill", "kill", "🔪");
-export const cmdHold = (m: Message) => actionCmd(m, "hold", "cuddle", "🫂");
-export const cmdPats = (m: Message) => actionCmd(m, "pat", "pat", "🫶");
-export const cmdWave = (m: Message) => actionCmd(m, "wave at", "wave", "👋");
-export const cmdBoop = (m: Message) => actionCmd(m, "boop", "poke", "👉");
-export const cmdSnuggle = (m: Message) => actionCmd(m, "snuggle", "cuddle", "🥰");
-export const cmdBully = (m: Message) => actionCmd(m, "bully", "slap", "😈");
+export const cmdTickle      = (m: Message) => actionCmd(m, "tickle",      "tickle",     "🤭");
+export const cmdKill        = (m: Message) => actionCmd(m, "kill",        "kill",       "🔪", undefined, "kill");
+export const cmdHold        = (m: Message) => actionCmd(m, "hold",        "cuddle",     "🫂");
+export const cmdPats        = (m: Message) => actionCmd(m, "pat",         "pat",        "🫶");
+export const cmdWave        = (m: Message) => actionCmd(m, "wave at",     "wave",       "👋");
+export const cmdBoop        = (m: Message) => actionCmd(m, "boop",        "poke",       "👉");
+export const cmdSnuggle     = (m: Message) => actionCmd(m, "snuggle",     "cuddle",     "🥰");
+export const cmdBully       = (m: Message) => actionCmd(m, "bully",       "slap",       "😈", undefined, "bully");

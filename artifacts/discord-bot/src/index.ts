@@ -91,6 +91,7 @@ import { handlePurgeCommand, purgeConfigData, executePurgeConfig } from "./moder
 import { handleLowoCommand } from "./lowo/router.js";
 import { lowoEnableData, lowoDisableData, executeLowoEnable, executeLowoDisable } from "./lowo/slashCommands.js";
 import { isLowoEnabled } from "./lowo/toggle.js";
+import { startLowoCron } from "./lowo/cron.js";
 import { startWeeklyResetScheduler } from "./leveling/weekly.js";
 import { startTrainingData, executeStartTraining, endTrainingData, executeEndTraining } from "./training/index.js";
 import {
@@ -448,6 +449,9 @@ client.once(Events.ClientReady, async (readyClient) => {
 
   // Start weekly XP reset scheduler
   startWeeklyResetScheduler(readyClient);
+
+  // Start Lowo cron (lottery draw + global event scheduler)
+  try { startLowoCron(readyClient); } catch (err) { console.error("[LOWO CRON] start failed:", err); }
 
   if (readyClient.guilds.cache.size === 0) {
     console.warn("[WARN] No guilds in cache — bot may not be in any server.");
