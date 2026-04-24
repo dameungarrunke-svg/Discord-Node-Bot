@@ -33,3 +33,4 @@ export const cmdWave        = (m: Message) => actionCmd(m, "wave at",     "wave"
 export const cmdBoop        = (m: Message) => actionCmd(m, "boop",        "poke",       "👉");
 export const cmdSnuggle     = (m: Message) => actionCmd(m, "snuggle",     "cuddle",     "🥰");
 export const cmdBully       = (m: Message) => actionCmd(m, "bully",       "slap",       "😈", undefined, "bully");
+export const cmdFuck        = (m: Message) => actionCmd(m, "f\\*\\*\\*s up", "punch",   "💢", "You f\\*\\*\\* yourself up 💢", "fuck");

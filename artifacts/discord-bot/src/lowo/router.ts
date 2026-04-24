@@ -36,7 +36,7 @@ async function cmdCensor(message: Message, args: string[]): Promise<void> {
   }
   if (sub === "on" || sub === "enable") {
     setCensored(message.guildId, true);
-    await message.reply("🤫 Censor **enabled** — `lewd, kill, bully, slap, punch, bite, curse` are blocked here.");
+    await message.reply("🤫 Censor **enabled** — `lewd, kill, bully, slap, punch, bite, curse, fuck` are blocked here.");
   } else if (sub === "off" || sub === "disable") {
     setCensored(message.guildId, false);
     await message.reply("✅ Censor **disabled** — all commands allowed.");
@@ -104,6 +104,7 @@ const HANDLERS: Record<string, Handler> = {
   handholding: Actions.cmdHandholding, tickle: Actions.cmdTickle, kill: Actions.cmdKill,
   hold: Actions.cmdHold, pats: Actions.cmdPats, wave: Actions.cmdWave, boop: Actions.cmdBoop,
   snuggle: Actions.cmdSnuggle, bully: Actions.cmdBully,
+  fuck: Actions.cmdFuck, frick: Actions.cmdFuck, fk: Actions.cmdFuck,
   // memes
   spongebobchicken: Memes.cmdSpongebobChicken, slapcar: Memes.cmdSlapcar, isthisa: Memes.cmdIsthisa,
   drake: Memes.cmdDrake, distractedbf: Memes.cmdDistractedbf, communismcat: Memes.cmdCommunismcat,
@@ -130,7 +131,7 @@ const HELP_TEXT = [
   "**🤫 Mod** — `censor on|off` *(server admin)*",
   "**🎲 Utility** — `8b <q>` `roll [NdM]` `choose a, b, c` `define <w>` `gif <q>` `pic [cat|dog]` `math <expr>` `color [hex]` `ping` `stats`",
   "**😊 Emotes** — `blush cry dance lewd pout shrug sleepy smile smug thumbsup wag thinking triggered teehee deredere thonking scoff happy grin`",
-  "**🤝 Actions** — `lick nom stare highfive bite greet punch handholding tickle kill hold pats wave boop snuggle bully`",
+  "**🤝 Actions** — `lick nom stare highfive bite greet punch handholding tickle kill hold pats wave boop snuggle bully fuck`",
   "**😂 Memes** — `spongebobchicken slapcar isthisa drake distractedbf communismcat eject emergencymeeting headpat tradeoffer waddle`",
 ].join("\n");
 
