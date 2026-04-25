@@ -59,14 +59,14 @@ export async function cmdBuy(message: Message, args: string[]): Promise<void> {
   // Premium item path (Lowo Cash)
   if (item.lowoCashPrice && item.lowoCashPrice > 0) {
     if (u.lowoCash < item.lowoCashPrice) {
-      await message.reply(`❌ Need **${item.lowoCashPrice}** 💎 Lowo Cash *(you have ${u.lowoCash})*. Earn 1 every 50 hunts.`);
+      await message.reply(`${emoji("fail")} Need **${item.lowoCashPrice}** ${emoji("lowoCash")} Lowo Cash *(you have ${u.lowoCash})*. Earn 1 every 50 hunts.`);
       return;
     }
     await applyPurchase(message, item, true, cost);
     return;
   }
   if (u.cowoncy < cost) {
-    await message.reply(`❌ Need **${cost.toLocaleString()}** cowoncy.`);
+    await message.reply(`${emoji("fail")} Need **${cost.toLocaleString()}** ${emoji("cowoncy")} cowoncy.`);
     return;
   }
   await applyPurchase(message, item, false, cost);
@@ -78,7 +78,7 @@ async function applyPurchase(message: Message, item: typeof SHOP_ITEMS[number], 
     const ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
     updateUser(message.author.id, (x) => { x.lowoCash -= item.lowoCashPrice ?? 0; });
     updateEvent((e) => { e.id = ev.id; e.until = Date.now() + ev.durationMs; });
-    await message.reply(`🌍 **Global Event Triggered:** ${ev.emoji} **${ev.name}** — ${ev.description} *(${Math.round(ev.durationMs / 60000)}m)*. *(−${item.lowoCashPrice} 💎)*`);
+    await message.reply(`${emoji("globe")} **Global Event Triggered:** ${ev.emoji} **${ev.name}** — ${ev.description} *(${Math.round(ev.durationMs / 60000)}m)*. *(−${item.lowoCashPrice} ${emoji("lowoCash")})*`);
     return;
   }
   if (item.id === "event_scroll") {
@@ -117,7 +117,7 @@ async function applyPurchase(message: Message, item: typeof SHOP_ITEMS[number], 
       x.cowoncy -= cost;
       x.shieldUntil = Math.max(x.shieldUntil ?? 0, Date.now()) + 20 * 60 * 1000;
     });
-    await message.reply(`🛡️ Drank a **Shield Potion** — pet DEF +20% for **20m** in battle.`);
+    await message.reply(`${emoji("shield")} Drank a **Shield Potion** — pet DEF +20% for **20m** in battle.`);
     return;
   }
   if (item.id === "mythic_crate") {
@@ -128,7 +128,7 @@ async function applyPurchase(message: Message, item: typeof SHOP_ITEMS[number], 
       x.lowoCash -= item.lowoCashPrice ?? 0;
       x.weapons.push({ id: w.id, rarity: w.rarity, mods: w.mods });
     });
-    await message.reply(`💎📦 **Mythic Crate opened!** ${w.emoji} **${w.name}** *(mythic)* — ATK +${w.mods.atk}, DEF +${w.mods.def}, MAG +${w.mods.mag}`);
+    await message.reply(`${emoji("lowoCash")}${emoji("crate")} **Mythic Crate opened!** ${w.emoji} **${w.name}** *(mythic)* — ATK +${w.mods.atk}, DEF +${w.mods.def}, MAG +${w.mods.mag}`);
     return;
   }
   if (item.id === "perm_border") {
@@ -136,7 +136,7 @@ async function applyPurchase(message: Message, item: typeof SHOP_ITEMS[number], 
       x.lowoCash -= item.lowoCashPrice ?? 0;
       x.boxes["perm_border"] = 1;
     });
-    await message.reply(`🪙 **Permanent Border** equipped — your profile card now flexes premium status.`);
+    await message.reply(`${emoji("border")} **Permanent Border** equipped — your profile card now flexes premium status.`);
     return;
   }
   if (item.id === "rod") {
@@ -159,7 +159,7 @@ async function applyPurchase(message: Message, item: typeof SHOP_ITEMS[number], 
   // Skill purchases (`skill_<id>` + premium `skill_legendary` → arcues_judgment)
   if (item.id.startsWith("skill_")) {
     const skillId = item.id === "skill_legendary" ? "arcues_judgment" : item.id.slice("skill_".length);
-    if (!ACTIVE_SKILLS[skillId]) { await message.reply(`❌ Unknown skill \`${skillId}\`.`); return; }
+    if (!ACTIVE_SKILLS[skillId]) { await message.reply(`${emoji("fail")} Unknown skill \`${skillId}\`.`); return; }
     updateUser(message.author.id, (x) => {
       if (premium) x.lowoCash -= item.lowoCashPrice ?? 0;
       else x.cowoncy -= cost;
@@ -208,8 +208,8 @@ async function applyPurchase(message: Message, item: typeof SHOP_ITEMS[number], 
       x.boxes[`bg:${item.id}`] = 1;
     }
   });
-  const costStr = premium ? `${item.lowoCashPrice} 💎 Lowo Cash` : `${cost.toLocaleString()} cowoncy`;
-  await message.reply(`🛍️ Bought ${item.emoji} **${item.name}** for ${costStr}.`);
+  const costStr = premium ? `${item.lowoCashPrice} ${emoji("lowoCash")} Lowo Cash` : `${cost.toLocaleString()} ${emoji("cowoncy")} cowoncy`;
+  await message.reply(`${emoji("shop")} Bought ${item.emoji} **${item.name}** for ${costStr}.`);
 }
 
 // Apply an owned background to your profile
@@ -220,10 +220,10 @@ export async function cmdSetBg(message: Message, args: string[]): Promise<void> 
     const u = getUser(message.author.id);
     for (const b of BACKGROUNDS) if (u.boxes[`bg:${b.id}`]) owned.push(b.id);
     await message.reply([
-      "🖼️ **Backgrounds**",
-      ...BACKGROUNDS.map((b) => `${owned.includes(b.id) ? "✅" : "🔒"} \`${b.id}\` — **${b.name}** ${b.price > 0 ? `(${b.price.toLocaleString()} cowoncy)` : "*(default)*"}`),
+      `${emoji("frame")} **Backgrounds**`,
+      ...BACKGROUNDS.map((b) => `${owned.includes(b.id) ? emoji("ok") : emoji("locked")} \`${b.id}\` — **${b.name}** ${b.price > 0 ? `(${b.price.toLocaleString()} ${emoji("cowoncy")} cowoncy)` : "*(default)*"}`),
       "",
-      "Apply with: `lowo setbg <id>`. Buy locked ones via `lowo buy <id>`.",
+      `${emoji("info")} Apply with: \`lowo setbg <id>\`. Buy locked ones via \`lowo buy <id>\`.`,
     ].join("\n"));
     return;
   }
