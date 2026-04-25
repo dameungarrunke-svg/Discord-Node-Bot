@@ -16,6 +16,7 @@ import { cmdProfile, cmdLevel, cmdAvatar, cmdWallpaper, cmdEmoji, cmdCookie, cmd
 import { cmdAutohunt, cmdLootbox, cmdBox, cmdInv, cmdRename, cmdDismantle, cmdBattlesetting } from "./extra.js";
 import { cmdSkills } from "./skills.js";
 import { cmdEvent } from "./events.js";
+import { cmdTrade } from "./trade.js";
 import { setCensored, isCensored } from "./censor.js";
 import { PermissionFlagsBits } from "discord.js";
 
@@ -87,6 +88,8 @@ const HANDLERS: Record<string, Handler> = {
   skills: cmdSkills, skill: cmdSkills, sk: cmdSkills,
   event: cmdEvent, events: cmdEvent, ev: cmdEvent,
   censor: cmdCensor,
+  // trading
+  trade: cmdTrade, tr: cmdTrade,
   // utility
   "8b": Util.cmd8ball, "8ball": Util.cmd8ball, roll: Util.cmdRoll, choose: Util.cmdChoose,
   define: Util.cmdDefine, gif: Util.cmdGif, pic: Util.cmdPic, translate: Util.cmdTranslate,
@@ -125,6 +128,7 @@ const HELP_TEXT = [
   "**🌱 Pets/Garden** — `piku` `pikureset` `pet` `feed`",
   "**💕 Social** — `hug|kiss|slap|pat|cuddle|poke @u` `propose @u` `divorce` `ship @a [@b]` `lowoify <text>`",
   "**🛒 Shop** — `shop` `buy <id>` `setbg <id>`",
+  "**🤝 Trade** — `trade @u` → `trade add cowoncy|essence|animal|weapon …` → both `trade confirm` *(60s timeout, resets on edit)*",
   "**📜 Quests** — `quest`(q) `checklist`(cl) — *resets daily 00:00 UTC*",
   "**👤 Profile** — `profile`(p) `card`(c) `level` `top [cowoncy|essence|dex|animals|rep|streak]` `avatar`",
   "**🎒 Extras** — `inv`(i) `autohunt`(ah) `lootbox` `rename <i> <name>` `dismantle <i>` `battlesetting instant`",
