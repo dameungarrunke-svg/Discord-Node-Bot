@@ -11,6 +11,16 @@ export async function cmdCowoncy(message: Message, args: string[]): Promise<void
   await message.reply(`💰 **${target.username}** has **${u.cowoncy.toLocaleString()}** cowoncy and **${u.essence.toLocaleString()}** ✨ essence.`);
 }
 
+// Premium currency balance
+export async function cmdCash(message: Message): Promise<void> {
+  const target = message.mentions.users.first() ?? message.author;
+  const u = getUser(target.id);
+  await message.reply(
+    `💎 **${target.username}** has **${u.lowoCash.toLocaleString()}** Lowo Cash *(premium currency)*.\n` +
+    `_Earn +1 every 50 hunts. Spend it in \`lowo shop premium\`._`,
+  );
+}
+
 export async function cmdDaily(message: Message): Promise<void> {
   const u = getUser(message.author.id);
   const now = Date.now();

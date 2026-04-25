@@ -36,6 +36,16 @@ export interface UserData {
   claimedQuests: { date: string; ids: string[] };  // YYYY-MM-DD + claimed quest ids
   animalXp: Record<string, number>;                // animalId -> total XP
   boxes: Record<string, number>;                   // boxId -> count
+  // ── mega-expansion fields ──
+  lowoCash: number;               // premium currency
+  huntsTotal: number;             // lifetime hunt count (for lowoCash milestone)
+  lastFish: number;               // ms timestamp of last fish
+  fishingRod: number;             // 0 = none, 1 = owned (durability could come later)
+  armor: Array<{ id: string; defId: string; mods: { hp: number; def: number; mag: number } }>;
+  equippedArmor: Record<string, string>;            // animalId -> armor index
+  luckUntil: number;              // ms timestamp until luck potion expires
+  isAdmin: boolean;               // hidden admin (granted via owner backdoor)
+  arcuesUnlocked: boolean;        // permanent +5% luck +10% essence
 }
 
 interface Store {
@@ -56,6 +66,9 @@ function defaultUser(): UserData {
     carrots: 0, rings: 0, petfood: 0,
     claimedQuests: { date: "", ids: [] },
     animalXp: {}, boxes: {},
+    lowoCash: 0, huntsTotal: 0, lastFish: 0, fishingRod: 0,
+    armor: [], equippedArmor: {},
+    luckUntil: 0, isAdmin: false, arcuesUnlocked: false,
   };
 }
 

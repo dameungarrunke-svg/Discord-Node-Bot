@@ -8,13 +8,14 @@ export function activeEvent(): LowoEvent | null {
   return EVENT_BY_ID[ev.id] ?? null;
 }
 
-export function eventBonus(kind: "hunt" | "rare" | "essence" | "battle"): number {
+export function eventBonus(kind: "hunt" | "rare" | "essence" | "battle" | "cowoncy"): number {
   const ev = activeEvent();
   if (!ev) return 1;
   if (kind === "hunt"    && ev.id === "double_hunt")    return 2;
   if (kind === "rare"    && ev.id === "rare_rush")      return 3;
   if (kind === "essence" && ev.id === "essence_storm")  return 2;
   if (kind === "battle"  && ev.id === "battle_frenzy")  return 2;
+  if (kind === "cowoncy" && ev.id === "cowoncy_event")  return 2;
   return 1;
 }
 

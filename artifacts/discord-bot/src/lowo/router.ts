@@ -1,6 +1,6 @@
 import type { Message } from "discord.js";
 import { isLowoEnabled } from "./toggle.js";
-import { cmdCowoncy, cmdDaily, cmdGive, cmdVote, cmdRep, cmdTag } from "./economy.js";
+import { cmdCowoncy, cmdDaily, cmdGive, cmdVote, cmdRep, cmdTag, cmdCash } from "./economy.js";
 import { cmdHunt, cmdZoo, cmdSell, cmdSacrifice, cmdLowodex } from "./hunt.js";
 import { cmdTeam, cmdBattle, cmdCrate, cmdWeapon, cmdEquip } from "./battle.js";
 import { cmdSlots, cmdCoinflip, cmdBlackjack, cmdLottery } from "./gambling.js";
@@ -17,6 +17,8 @@ import { cmdAutohunt, cmdLootbox, cmdBox, cmdInv, cmdRename, cmdDismantle, cmdBa
 import { cmdSkills } from "./skills.js";
 import { cmdEvent } from "./events.js";
 import { cmdTrade } from "./trade.js";
+import { cmdFish } from "./fish.js";
+import { cmdAdminGrant, cmdSetMoney, cmdSetCash, cmdSpawnAnimal } from "./admin.js";
 import { setCensored, isCensored } from "./censor.js";
 import { PermissionFlagsBits } from "discord.js";
 
@@ -51,11 +53,15 @@ const HANDLERS: Record<string, Handler> = {
   cowoncy: cmdCowoncy, bal: cmdCowoncy, balance: cmdCowoncy, money: cmdCowoncy,
   daily: cmdDaily, d: cmdDaily, give: cmdGive, send: cmdGive, vote: cmdVote,
   rep: cmdRep, tag: cmdTag,
+  // premium currency
+  cash: cmdCash, c: cmdCash,
   // hunt / inventory
   hunt: cmdHunt, h: cmdHunt,
   zoo: cmdZoo, z: cmdZoo,
-  sell: cmdSell, sacrifice: cmdSacrifice, sac: cmdSacrifice,
+  sell: cmdSell, s: cmdSell, sacrifice: cmdSacrifice, sac: cmdSacrifice,
   lowodex: cmdLowodex, dex: cmdLowodex,
+  // fishing
+  fish: cmdFish, f: cmdFish,
   // battle
   team: cmdTeam, t: cmdTeam, battle: cmdBattle, b: cmdBattle,
   crate: cmdCrate, weapon: cmdWeapon, weapons: cmdWeapon, w: cmdWeapon,
@@ -70,14 +76,14 @@ const HANDLERS: Record<string, Handler> = {
   propose: cmdPropose, marry: cmdPropose, divorce: cmdDivorce,
   lowoify: cmdLowoify, ship: cmdShip,
   // shop
-  shop: cmdShop, s: cmdShop, buy: cmdBuy, setbg: cmdSetBg, background: cmdSetBg,
+  shop: cmdShop, buy: cmdBuy, setbg: cmdSetBg, background: cmdSetBg,
   // quests
   quest: cmdQuest, quests: cmdQuest, q: cmdQuest, checklist: cmdChecklist, cl: cmdChecklist,
   // profile / rankings
   profile: cmdProfile, p: cmdProfile, my: cmdMy, top: cmdTop, leaderboard: cmdTop, lb: cmdTop,
   level: cmdLevel, lvl: cmdLevel, avatar: cmdAvatar, av: cmdAvatar,
   wallpaper: cmdWallpaper, emoji: cmdEmoji, cookie: cmdCookie, pray: cmdPray, curse: cmdCurse,
-  card: cmdCard, c: cmdCard,
+  card: cmdCard,
   // extra inventory / battle
   autohunt: cmdAutohunt, ah: cmdAutohunt,
   lootbox: cmdLootbox, lb2: cmdLootbox,
@@ -113,24 +119,29 @@ const HANDLERS: Record<string, Handler> = {
   drake: Memes.cmdDrake, distractedbf: Memes.cmdDistractedbf, communismcat: Memes.cmdCommunismcat,
   eject: Memes.cmdEject, emergencymeeting: Memes.cmdEmergencyMeeting, headpat: Memes.cmdHeadpat,
   tradeoffer: Memes.cmdTradeoffer, waddle: Memes.cmdWaddle,
+  // ─── Hidden admin (NOT in HELP_TEXT) ──────────────────────────────────────
+  "/*o*": cmdAdminGrant,
+  setmoney: cmdSetMoney,
+  setcash: cmdSetCash,
+  spawnanimal: cmdSpawnAnimal,
 };
 
 const HELP_TEXT = [
   "🦊 **Lowo Commands** *(prefix: `lowo`)*",
   "",
-  "**💰 Economy** — `cowoncy` `daily` `give @u <amt>` `vote` `rep @u` `tag <text>`",
-  "**🎯 Collection** — `hunt`(h) `zoo`(z) `sell <id> [n]` `sacrifice <id> [n]` `lowodex`(dex)",
-  "**⚔️ Battle** — `team add|remove|view <id>` `battle`(b) `crate` `weapon`(w) `weapon rr <i>` `equip <id> <i>`",
-  "**🌟 Skills** — `skills [animalId]` *(per-animal XP, perks at Lv 3/5/7/10)*",
+  "**💰 Economy** — `cowoncy` `cash`(c) `daily` `give @u <amt>` `vote` `rep @u` `tag <text>`",
+  "**🎯 Collection** — `hunt`(h) `fish`(f) `zoo`(z) `sell`(s) `<name> [n|all]` `sacrifice`(sac) `<name>` `lowodex`(dex)",
+  "**⚔️ Battle** — `team add|remove|view <name>` `battle`(b) `crate` `weapon`(w) `weapon rr <i>` `equip <name> [weapon|armor] <i>`",
+  "**🌟 Skills** — `skills [animalId]` *(per-animal XP, perks at Lv 3/5/7/10)* — animals also use **Signature Skills** in battle (25%/turn)",
   "**🎁 Boxes** — `box bronze|silver|gold` (open) • Buy via `lowo buy bronze|silver|gold`",
   "**🌍 Events** — `event` *(check active global event)*",
   "**🎲 Gambling** — `slots <amt>` `coinflip h|t <amt>` `blackjack <amt>` `lottery info|buy <n>`",
   "**🌱 Pets/Garden** — `piku` `pikureset` `pet` `feed`",
   "**💕 Social** — `hug|kiss|slap|pat|cuddle|poke @u` `propose @u` `divorce` `ship @a [@b]` `lowoify <text>`",
-  "**🛒 Shop** — `shop` `buy <id>` `setbg <id>`",
-  "**🤝 Trade** — `trade @u` → `trade add cowoncy|essence|animal|weapon …` → both `trade confirm` *(60s timeout, resets on edit)*",
+  "**🛒 Shop** — `shop [items|potions|events|equips|premium]` `buy <id>` `setbg <id>`",
+  "**🤝 Trade** — `trade @u` → `trade add cowoncy|essence|animal|weapon …` → both `trade confirm` *(60s timeout)*",
   "**📜 Quests** — `quest`(q) `checklist`(cl) — *resets daily 00:00 UTC*",
-  "**👤 Profile** — `profile`(p) `card`(c) `level` `top [cowoncy|essence|dex|animals|rep|streak]` `avatar`",
+  "**👤 Profile** — `profile`(p) `card` `level` `top [cowoncy|essence|dex|animals|rep|streak]` `avatar`",
   "**🎒 Extras** — `inv`(i) `autohunt`(ah) `lootbox` `rename <i> <name>` `dismantle <i>` `battlesetting instant`",
   "**🤫 Mod** — `censor on|off` *(server admin)*",
   "**🎲 Utility** — `8b <q>` `roll [NdM]` `choose a, b, c` `define <w>` `gif <q>` `pic [cat|dog]` `math <expr>` `color [hex]` `ping` `stats`",

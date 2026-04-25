@@ -1,19 +1,57 @@
 import type { Message } from "discord.js";
 import { getUser, updateUser } from "./storage.js";
-import { ANIMALS, ANIMAL_BY_ID, RARITY_COLOR, rollAnimal, PITY_THRESHOLD, type Rarity } from "./data.js";
+import {
+  ANIMALS, ANIMAL_BY_ID, RARITY_COLOR, RARITY_ORDER, HUNT_POOL,
+  rollAnimal, luckMultiplier, essenceArcuesMultiplier, PITY_THRESHOLD, type Rarity,
+} from "./data.js";
 import { onHuntCaught, bestHuntCdMultiplier, sellMultiplier, essenceMultiplier } from "./skills.js";
 import { eventBonus, activeEvent } from "./events.js";
 
 const BASE_HUNT_COOLDOWN_MS = 15_000;
+const HUNTS_PER_LOWOCASH = 50;
 
-function rollWithRareRush(): ReturnType<typeof rollAnimal> {
-  // If "rare_rush" event is active, multiply rare+ weights ×3 by rolling 3 times
-  // and picking the highest-rarity result. Simple, effective, OwO-style.
+// ─── Tolerant animal lookup (multi-word + case/punct-insensitive) ─────────────
+const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const ANIMAL_LOOKUP: Record<string, string> = (() => {
+  const map: Record<string, string> = {};
+  for (const a of ANIMALS) {
+    map[norm(a.id)] = a.id;
+    map[norm(a.name)] = a.id;
+  }
+  return map;
+})();
+function resolveAnimalId(query: string): string | null {
+  if (!query) return null;
+  return ANIMAL_LOOKUP[norm(query)] ?? null;
+}
+
+/**
+ * Parses `<name...> [count|all]` from args.
+ * - Joins all args with spaces, then peels off a trailing number or "all" as count.
+ * - Falls back to count=1 if not present.
+ * - Returns the resolved animal id (or null).
+ */
+function parseAnimalAndCount(args: string[], owned: number | null): { id: string | null; count: number; name: string } {
+  if (args.length === 0) return { id: null, count: 1, name: "" };
+  const last = args[args.length - 1].toLowerCase();
+  let nameTokens = args;
+  let count = 1;
+  if (last === "all") {
+    nameTokens = args.slice(0, -1);
+    count = owned ?? 1;
+  } else if (/^\d+$/.test(last)) {
+    nameTokens = args.slice(0, -1);
+    count = Math.max(1, parseInt(last, 10));
+  }
+  const name = nameTokens.join(" ").trim();
+  return { id: resolveAnimalId(name), count, name };
+}
+
+function rollWithRareRush(luck: number): ReturnType<typeof rollAnimal> {
   const boost = eventBonus("rare");
-  if (boost <= 1) return rollAnimal();
-  const rolls = Array.from({ length: boost }, () => rollAnimal());
-  const order: Rarity[] = ["legendary", "mythic", "epic", "rare", "uncommon", "common"];
-  rolls.sort((a, b) => order.indexOf(a.rarity) - order.indexOf(b.rarity));
+  if (boost <= 1) return rollAnimal(luck);
+  const rolls = Array.from({ length: boost }, () => rollAnimal(luck));
+  rolls.sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity));
   return rolls[0];
 }
 
@@ -28,30 +66,37 @@ export async function cmdHunt(message: Message): Promise<void> {
     return;
   }
 
-  // Determine drop count (Double Hunt event = 2)
   const drops = eventBonus("hunt"); // 1 or 2
+  const luck = luckMultiplier(u.arcuesUnlocked, u.luckUntil);
   const caught: Array<ReturnType<typeof rollAnimal>> = [];
   let pityTriggered = false;
 
   for (let i = 0; i < drops; i++) {
-    let a = rollWithRareRush();
-    // Pity: if pity counter is at threshold, force a legendary
+    let a = rollWithRareRush(luck);
     const currentPity = (u.pity ?? 0) + caught.filter((c) => c.rarity !== "legendary").length;
     if (currentPity >= PITY_THRESHOLD) {
-      const legendaries = ANIMALS.filter((x) => x.rarity === "legendary");
+      const legendaries = HUNT_POOL.filter((x) => x.rarity === "legendary");
       if (legendaries.length) { a = legendaries[Math.floor(Math.random() * legendaries.length)]; pityTriggered = true; }
     }
     caught.push(a);
   }
 
+  let cashGained = 0;
+  let arcuesJustUnlocked = false;
   updateUser(message.author.id, (x) => {
     x.lastHunt = now;
+    x.huntsTotal = (x.huntsTotal ?? 0) + caught.length;
+    // Lowo Cash milestone: +1 per HUNTS_PER_LOWOCASH hunts crossed
+    const before = (x.huntsTotal - caught.length);
+    const newMilestones = Math.floor(x.huntsTotal / HUNTS_PER_LOWOCASH) - Math.floor(before / HUNTS_PER_LOWOCASH);
+    if (newMilestones > 0) { x.lowoCash += newMilestones; cashGained = newMilestones; }
     for (const a of caught) {
       x.zoo[a.id] = (x.zoo[a.id] ?? 0) + 1;
       if (!x.dex.includes(a.id)) x.dex.push(a.id);
-      // Update pity
       if (a.rarity === "legendary") x.pity = 0;
       else x.pity = (x.pity ?? 0) + 1;
+      // Arcues unlock — permanent +5% luck +10% essence
+      if (a.id === "arcues" && !x.arcuesUnlocked) { x.arcuesUnlocked = true; arcuesJustUnlocked = true; }
     }
   });
   for (const a of caught) onHuntCaught(message.author.id, a.id);
@@ -59,13 +104,15 @@ export async function cmdHunt(message: Message): Promise<void> {
   const ev = activeEvent();
   const evNote = ev ? `\n${ev.emoji} *${ev.name} active*` : "";
   const pityNote = pityTriggered ? "\n🌟 **PITY!** Guaranteed legendary triggered!" : "";
+  const cashNote = cashGained > 0 ? `\n💎 **+${cashGained}** Lowo Cash *(50-hunt milestone!)*` : "";
+  const arcuesNote = arcuesJustUnlocked ? `\n🌠 **ARCUES UNLOCKED!** Permanent **+5% Luck** & **+10% Essence** on sacrifices!` : "";
 
   if (caught.length === 1) {
     const a = caught[0];
-    await message.reply(`🎯 **${message.author.username}** went hunting and caught a ${RARITY_COLOR[a.rarity]} **${a.name}** ${a.emoji} *(${a.rarity})*${evNote}${pityNote}`);
+    await message.reply(`🎯 **${message.author.username}** went hunting and caught a ${RARITY_COLOR[a.rarity]} **${a.name}** ${a.emoji} *(${a.rarity})*${evNote}${pityNote}${cashNote}${arcuesNote}`);
   } else {
-    const list = caught.map(a => `${RARITY_COLOR[a.rarity]} ${a.emoji} **${a.name}** *(${a.rarity})*`).join(" + ");
-    await message.reply(`🎯 **${message.author.username}** went hunting and caught **${caught.length}** animals!\n${list}${evNote}${pityNote}`);
+    const list = caught.map((a) => `${RARITY_COLOR[a.rarity]} ${a.emoji} **${a.name}** *(${a.rarity})*`).join(" + ");
+    await message.reply(`🎯 **${message.author.username}** went hunting and caught **${caught.length}** animals!\n${list}${evNote}${pityNote}${cashNote}${arcuesNote}`);
   }
 }
 
@@ -75,50 +122,64 @@ export async function cmdZoo(message: Message): Promise<void> {
   const entries = Object.entries(u.zoo).filter(([, c]) => c > 0);
   if (entries.length === 0) { await message.reply(`📭 **${target.username}** has no animals yet. Try \`lowo hunt\`!`); return; }
 
-  const grouped: Record<Rarity, string[]> = { common: [], uncommon: [], rare: [], epic: [], mythic: [], legendary: [] };
+  const grouped: Partial<Record<Rarity, string[]>> = {};
   for (const [id, count] of entries) {
     const a = ANIMAL_BY_ID[id]; if (!a) continue;
-    grouped[a.rarity].push(`${a.emoji} ${a.name} ×${count}`);
+    (grouped[a.rarity] ??= []).push(`${a.emoji} ${a.name} ×${count}`);
   }
   const lines: string[] = [`🦊 **${target.username}'s Zoo**`];
-  for (const r of ["legendary", "mythic", "epic", "rare", "uncommon", "common"] as Rarity[]) {
-    if (grouped[r].length) lines.push(`\n${RARITY_COLOR[r]} **${r.toUpperCase()}**\n${grouped[r].join(", ")}`);
+  for (const r of RARITY_ORDER) {
+    const arr = grouped[r];
+    if (arr && arr.length) lines.push(`\n${RARITY_COLOR[r]} **${r.toUpperCase()}**\n${arr.join(", ")}`);
   }
   await message.reply(lines.join("\n").slice(0, 1900));
 }
 
 export async function cmdSell(message: Message, args: string[]): Promise<void> {
-  const id = args[0]?.toLowerCase();
-  const a = id ? ANIMAL_BY_ID[id] : null;
-  if (!a) { await message.reply("Usage: `lowo sell <animalId> [count|all]` — e.g. `lowo sell puppy 5`"); return; }
   const u = getUser(message.author.id);
-  const owned = u.zoo[a.id] ?? 0;
+  // Peek-resolve to know `owned` for "all" parsing
+  const peek = parseAnimalAndCount(args, null);
+  const owned = peek.id ? (u.zoo[peek.id] ?? 0) : 0;
+  const { id, count: rawCount, name } = parseAnimalAndCount(args, owned);
+  if (!id) {
+    await message.reply(`Usage: \`lowo sell <name> [count|all]\` — e.g. \`lowo sell Lowo King\` or \`lowo s puppy 5\`. *(Got: \`${name || "(empty)"}\`)*`);
+    return;
+  }
+  const a = ANIMAL_BY_ID[id];
   if (owned <= 0) { await message.reply(`❌ You don't own any ${a.emoji} ${a.name}.`); return; }
-  const arg2 = args[1]?.toLowerCase();
-  const count = !arg2 ? 1 : arg2 === "all" ? owned : Math.max(1, Math.min(owned, parseInt(arg2, 10) || 1));
+  const count = Math.max(1, Math.min(owned, rawCount));
   const sellMult = sellMultiplier(message.author.id, a.id);
-  const total = Math.floor(count * a.sellPrice * sellMult);
+  const cowoncyMult = eventBonus("cowoncy");
+  const total = Math.floor(count * a.sellPrice * sellMult * cowoncyMult);
   updateUser(message.author.id, (x) => { x.zoo[a.id] -= count; x.cowoncy += total; });
-  const perkNote = sellMult > 1 ? ` *(Lv 3 perk +25%)*` : "";
-  await message.reply(`💰 Sold ${count}× ${a.emoji} **${a.name}** for **${total.toLocaleString()}** cowoncy${perkNote}.`);
+  const tags: string[] = [];
+  if (sellMult > 1)     tags.push("Lv 3 perk +25%");
+  if (cowoncyMult > 1)  tags.push("💰 Cowoncy Event ×2");
+  const tag = tags.length ? ` *(${tags.join(", ")})*` : "";
+  await message.reply(`💰 Sold ${count}× ${a.emoji} **${a.name}** for **${total.toLocaleString()}** cowoncy${tag}.`);
 }
 
 export async function cmdSacrifice(message: Message, args: string[]): Promise<void> {
-  const id = args[0]?.toLowerCase();
-  const a = id ? ANIMAL_BY_ID[id] : null;
-  if (!a) { await message.reply("Usage: `lowo sacrifice <animalId> [count|all]`"); return; }
   const u = getUser(message.author.id);
-  const owned = u.zoo[a.id] ?? 0;
+  const peek = parseAnimalAndCount(args, null);
+  const owned = peek.id ? (u.zoo[peek.id] ?? 0) : 0;
+  const { id, count: rawCount, name } = parseAnimalAndCount(args, owned);
+  if (!id) {
+    await message.reply(`Usage: \`lowo sacrifice <name> [count|all]\` — e.g. \`lowo sac Lowo King\`. *(Got: \`${name || "(empty)"}\`)*`);
+    return;
+  }
+  const a = ANIMAL_BY_ID[id];
   if (owned <= 0) { await message.reply(`❌ You don't own any ${a.emoji} ${a.name}.`); return; }
-  const arg2 = args[1]?.toLowerCase();
-  const count = !arg2 ? 1 : arg2 === "all" ? owned : Math.max(1, Math.min(owned, parseInt(arg2, 10) || 1));
+  const count = Math.max(1, Math.min(owned, rawCount));
   const evMult = eventBonus("essence");
   const perkMult = essenceMultiplier(message.author.id, a.id);
-  const total = Math.floor(count * a.essence * evMult * perkMult);
+  const arcuesMult = essenceArcuesMultiplier(u.arcuesUnlocked);
+  const total = Math.floor(count * a.essence * evMult * perkMult * arcuesMult);
   updateUser(message.author.id, (x) => { x.zoo[a.id] -= count; x.essence += total; });
   const tags: string[] = [];
-  if (evMult > 1)   tags.push("✨ Essence Storm ×2");
-  if (perkMult > 1) tags.push("Lv 10 perk ×2");
+  if (evMult > 1)      tags.push("✨ Essence Storm ×2");
+  if (perkMult > 1)    tags.push("Lv 10 perk ×2");
+  if (arcuesMult > 1)  tags.push("🌠 Arcues +10%");
   const tag = tags.length ? ` *(${tags.join(", ")})*` : "";
   await message.reply(`✨ Sacrificed ${count}× ${a.emoji} **${a.name}** → +**${total.toLocaleString()}** essence${tag}.`);
 }
@@ -132,7 +193,10 @@ export async function cmdLowodex(message: Message): Promise<void> {
   const lines = [`📕 **${target.username}'s Lowodex** — ${owned}/${total} (${pct}%)`];
   for (const a of ANIMALS) {
     const got = u.dex.includes(a.id);
-    lines.push(`${got ? "✅" : "⬜"} ${a.emoji} ${a.name} \`${a.id}\` ${RARITY_COLOR[a.rarity]}`);
+    const tags: string[] = [];
+    if (a.aquatic)   tags.push("🐟");
+    if (a.eventOnly) tags.push("👾");
+    lines.push(`${got ? "✅" : "⬜"} ${a.emoji} ${a.name} \`${a.id}\` ${RARITY_COLOR[a.rarity]}${tags.length ? ` ${tags.join("")}` : ""}`);
   }
   await message.reply(lines.join("\n").slice(0, 1900));
 }
