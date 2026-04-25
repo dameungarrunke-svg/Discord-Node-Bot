@@ -1,10 +1,26 @@
 import type { Message } from "discord.js";
 import { getUser, updateUser, type UserData } from "./storage.js";
-import { ANIMAL_BY_ID, rollWeapon } from "./data.js";
+import { ANIMAL_BY_ID, ANIMALS, rollWeapon } from "./data.js";
 import { getAnimalMultiplier, onBattleWin, getAnimalPerk } from "./skills.js";
 import { eventBonus } from "./events.js";
 
 const BATTLE_COOLDOWN_MS = 30_000;
+
+// Tolerant animal lookup: accepts canonical id ("tRex", "lowoking") or display
+// name ("T-Rex", "Lowo King"), case- and punctuation-insensitive.
+const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const ANIMAL_LOOKUP: Record<string, string> = (() => {
+  const map: Record<string, string> = {};
+  for (const a of ANIMALS) {
+    map[norm(a.id)] = a.id;
+    map[norm(a.name)] = a.id;
+  }
+  return map;
+})();
+function resolveAnimalId(query: string): string | null {
+  if (!query) return null;
+  return ANIMAL_LOOKUP[norm(query)] ?? null;
+}
 
 interface CombatUnit {
   id: string;
@@ -69,24 +85,26 @@ export async function cmdTeam(message: Message, args: string[]): Promise<void> {
   const sub = args[0]?.toLowerCase();
   const u = getUser(message.author.id);
   if (!sub || sub === "view") {
-    if (u.team.length === 0) { await message.reply("👥 Team is empty. Use `lowo team add <animalId>`."); return; }
+    if (u.team.length === 0) { await message.reply("👥 Team is empty. Use `lowo team add <name>` (e.g. `lowo team add T-Rex`)."); return; }
     await message.reply(`👥 **Your Team:** ${u.team.map(id => { const a = ANIMAL_BY_ID[id]; return a ? `${a.emoji} ${a.name}` : id; }).join(" • ")}`);
     return;
   }
-  const id = args[1]?.toLowerCase();
+  const query = args.slice(1).join(" ").trim();
+  const id = resolveAnimalId(query);
   if (sub === "add") {
-    if (!id || !ANIMAL_BY_ID[id]) { await message.reply("Usage: `lowo team add <animalId>`"); return; }
-    if (!u.zoo[id] || u.zoo[id] <= 0) { await message.reply(`❌ You don't own that animal.`); return; }
-    if (u.team.includes(id)) { await message.reply(`❌ Already on team.`); return; }
+    if (!id) { await message.reply("Usage: `lowo team add <name>` — e.g. `lowo team add Lowo King` or `lowo team add tRex`. See `lowo lowodex` for valid names/ids."); return; }
+    if (!u.zoo[id] || u.zoo[id] <= 0) { await message.reply(`❌ You don't own ${ANIMAL_BY_ID[id].emoji} **${ANIMAL_BY_ID[id].name}**.`); return; }
+    if (u.team.includes(id)) { await message.reply(`❌ ${ANIMAL_BY_ID[id].emoji} **${ANIMAL_BY_ID[id].name}** is already on your team.`); return; }
     if (u.team.length >= 3) { await message.reply(`❌ Team full (3/3). Remove one first.`); return; }
     updateUser(message.author.id, (x) => { x.team.push(id); });
     await message.reply(`✅ Added ${ANIMAL_BY_ID[id].emoji} **${ANIMAL_BY_ID[id].name}** to team.`);
   } else if (sub === "remove") {
-    if (!id) { await message.reply("Usage: `lowo team remove <animalId>`"); return; }
+    if (!id) { await message.reply("Usage: `lowo team remove <name>` — e.g. `lowo team remove T-Rex`."); return; }
+    if (!u.team.includes(id)) { await message.reply(`❌ ${ANIMAL_BY_ID[id].emoji} **${ANIMAL_BY_ID[id].name}** isn't on your team.`); return; }
     updateUser(message.author.id, (x) => { x.team = x.team.filter(t => t !== id); delete x.equipped[id]; });
-    await message.reply(`✅ Removed.`);
+    await message.reply(`✅ Removed ${ANIMAL_BY_ID[id].emoji} **${ANIMAL_BY_ID[id].name}** from team.`);
   } else {
-    await message.reply("Usage: `lowo team add|remove|view <animalId>`");
+    await message.reply("Usage: `lowo team add|remove|view <name>`");
   }
 }
 
