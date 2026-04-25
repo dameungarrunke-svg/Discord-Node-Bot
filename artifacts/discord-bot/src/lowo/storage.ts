@@ -7,6 +7,14 @@ const __dirname = dirname(__filename);
 const DATA_DIR = resolve(__dirname, "../../data");
 const FILE = join(DATA_DIR, "lowo.json");
 
+export interface CraftedWeapon {
+  id: string;
+  recipeId: string;
+  name: string;
+  rarity: string;
+  mods: { atk: number; def: number; mag: number };
+}
+
 export interface UserData {
   cowoncy: number;
   essence: number;
@@ -21,37 +29,74 @@ export interface UserData {
   piku: { harvested: number; lastHarvest: number };
   dex: string[];
   lotteryTickets: number;
-  // ── new fields ──
-  dailyStreak: number;            // consecutive days claimed
-  lastBattle: number;             // ms timestamp of last battle
-  lastRep: number;                // ms timestamp of last given rep
-  rep: number;                    // reputation points received
-  pity: number;                   // hunts since last legendary
-  tag: string | null;             // profile tag (short text)
-  background: string | null;      // owned background id
-  instantBattle: boolean;         // skip animated battle log
-  carrots: number;                // magic-carrot inventory
-  rings: number;                  // wedding-ring inventory
-  petfood: number;                // pet-food inventory
-  claimedQuests: { date: string; ids: string[] };  // YYYY-MM-DD + claimed quest ids
-  animalXp: Record<string, number>;                // animalId -> total XP
-  boxes: Record<string, number>;                   // boxId -> count
-  // ── mega-expansion fields ──
-  lowoCash: number;               // premium currency
-  huntsTotal: number;             // lifetime hunt count (for lowoCash milestone)
-  lastFish: number;               // ms timestamp of last fish
-  fishingRod: number;             // 0 = none, 1 = owned (durability could come later)
+  // ── original expansion ──
+  dailyStreak: number;
+  lastBattle: number;
+  lastRep: number;
+  rep: number;
+  pity: number;
+  tag: string | null;
+  background: string | null;
+  instantBattle: boolean;
+  carrots: number;
+  rings: number;
+  petfood: number;
+  claimedQuests: { date: string; ids: string[] };
+  animalXp: Record<string, number>;
+  boxes: Record<string, number>;
+  lowoCash: number;
+  huntsTotal: number;
+  lastFish: number;
+  fishingRod: number;
   armor: Array<{ id: string; defId: string; mods: { hp: number; def: number; mag: number } }>;
-  equippedArmor: Record<string, string>;            // animalId -> armor index
-  luckUntil: number;              // ms timestamp until luck potion expires
-  isAdmin: boolean;               // hidden admin (granted via owner backdoor)
-  arcuesUnlocked: boolean;        // permanent +5% luck +10% essence
+  equippedArmor: Record<string, string>;
+  luckUntil: number;
+  isAdmin: boolean;
+  arcuesUnlocked: boolean;
+  // ── MEGA EXPANSION ──
+  // Areas
+  huntArea: "default" | "volcanic" | "space";
+  unlockedAreas: string[];
+  volcanicDex: string[];
+  spaceDex: string[];
+  fishDex: string[];
+  // Mining + crafting
+  hasPickaxe: boolean;
+  pickaxeTier: number;                         // 0/1/2/3 (basic / iron / gold / diamond)
+  lastMine: number;
+  minerals: Record<string, number>;
+  craftedWeapons: CraftedWeapon[];
+  // Pet active skill slots & owned skill catalog
+  petSkills: Record<string, string[]>;         // animalId -> array of length 5 (skillId or "")
+  ownedSkills: Record<string, number>;         // skillId -> count
+  // Accessory equip slot (3rd pet slot)
+  accessories: Array<{ id: string; defId: string; mods: { hp: number; atk: number; def: number; mag: number; crit?: number } }>;
+  equippedAccessory: Record<string, string>;
+  // Aquarium (separate from zoo)
+  aquarium: Record<string, number>;
+  // Skill battle session
+  sbInvite: { from: string; channelId: string; expiresAt: number } | null;
+  sbActive: { opponent: string; channelId: string; teamA: any[]; teamB: any[]; turn: "a" | "b"; cooldowns: Record<string, number>; round: number } | null;
+  // Boss damage tracking (per-boss totals; periodically pruned by bosses module)
+  bossDamage: Record<string, number>;
+  // Potion timers
+  megaLuckUntil: number;
+  hasteUntil: number;
+  shieldUntil: number;
+  // Tracks last hunt area to render area-aware messages
+  lastHuntArea: "default" | "volcanic" | "space";
+  // Pet active rate (cooldowns per skill across battles — kept simple per skill battle)
+  // The sbActive.cooldowns is per-active-session; not persisted long-term.
+  // Lifetime stats
+  bossKills: number;
+  sbWins: number;
+  sbLosses: number;
 }
 
 interface Store {
   users: Record<string, UserData>;
   lottery: { pot: number; tickets: Array<{ userId: string; count: number }>; lastDraw: number };
-  event: { id: string | null; until: number };  // active global event
+  event: { id: string | null; until: number };
 }
 
 function defaultUser(): UserData {
@@ -69,6 +114,26 @@ function defaultUser(): UserData {
     lowoCash: 0, huntsTotal: 0, lastFish: 0, fishingRod: 0,
     armor: [], equippedArmor: {},
     luckUntil: 0, isAdmin: false, arcuesUnlocked: false,
+    // mega-expansion
+    huntArea: "default",
+    unlockedAreas: ["default"],
+    volcanicDex: [],
+    spaceDex: [],
+    fishDex: [],
+    hasPickaxe: false,
+    pickaxeTier: 0,
+    lastMine: 0,
+    minerals: {},
+    craftedWeapons: [],
+    petSkills: {},
+    ownedSkills: { basic_strike: 1 },     // every user starts with the basic strike
+    accessories: [], equippedAccessory: {},
+    aquarium: {},
+    sbInvite: null, sbActive: null,
+    bossDamage: {},
+    megaLuckUntil: 0, hasteUntil: 0, shieldUntil: 0,
+    lastHuntArea: "default",
+    bossKills: 0, sbWins: 0, sbLosses: 0,
   };
 }
 
@@ -112,6 +177,10 @@ export function getUser(id: string): UserData {
   for (const k of Object.keys(def) as Array<keyof UserData>) {
     if ((u as any)[k] === undefined) (u as any)[k] = (def as any)[k];
   }
+  // Make sure existing users always have the basic skill available (free).
+  if (!u.ownedSkills) u.ownedSkills = {};
+  if (!u.ownedSkills.basic_strike) u.ownedSkills.basic_strike = 1;
+  if (!Array.isArray(u.unlockedAreas) || u.unlockedAreas.length === 0) u.unlockedAreas = ["default"];
   return u;
 }
 
