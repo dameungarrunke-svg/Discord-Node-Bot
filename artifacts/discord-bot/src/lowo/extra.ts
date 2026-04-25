@@ -2,9 +2,16 @@ import type { Message } from "discord.js";
 import { getUser, updateUser } from "./storage.js";
 import { ANIMAL_BY_ID, rollWeapon, BOX_DEFS, rollWeaponFromBox, type BoxTier } from "./data.js";
 
-const AUTOHUNT_INTERVAL_MS = 60 * 1000;
+// Auto-hunt nerf: now runs every 2 minutes (was 1) and luck is halved while
+// active (see luckMultiplier(...,autohuntActive=true) callers).
+const AUTOHUNT_INTERVAL_MS = 2 * 60 * 1000;
 const AUTOHUNT_DURATION_MS = 30 * 60 * 1000; // 30 min auto-hunt
 const autoHunters = new Map<string, NodeJS.Timeout>();
+
+/** Whether the given user currently has an autohunt loop running. */
+export function isAutohuntActive(userId: string): boolean {
+  return autoHunters.has(userId);
+}
 
 export async function cmdAutohunt(message: Message): Promise<void> {
   if (autoHunters.has(message.author.id)) {
@@ -14,7 +21,7 @@ export async function cmdAutohunt(message: Message): Promise<void> {
     await message.reply("🛑 Auto-hunt **disabled**.");
     return;
   }
-  await message.reply(`🤖 Auto-hunt **enabled** for 30 minutes (every minute). Run again to stop.`);
+  await message.reply(`🤖 Auto-hunt **enabled** for 30 minutes (every 2 minutes, ½ luck). Run again to stop.`);
   const ch = message.channel;
   const start = Date.now();
   const id = setInterval(() => {
@@ -82,11 +89,16 @@ export async function cmdInv(message: Message): Promise<void> {
     u.carrots  > 0 ? `🥕 Carrots: ${u.carrots}` : null,
     u.petfood  > 0 ? `🍖 Pet food: ${u.petfood}`: null,
   ].filter(Boolean);
+  const mineralCount = Object.values(u.minerals ?? {}).reduce((a, b) => a + b, 0);
+  const fishCount = Object.values(u.aquarium ?? {}).reduce((a, b) => a + b, 0);
   await message.reply([
     `🎒 **${target.username}'s Inventory**`,
-    `💰 ${u.cowoncy.toLocaleString()} cowoncy • ✨ ${u.essence.toLocaleString()} essence`,
+    `💰 ${u.cowoncy.toLocaleString()} cowoncy • ✨ ${u.essence.toLocaleString()} essence • 💎 ${u.lowoCash} Lowo Cash`,
     `🐾 ${animals} animals (${u.dex.length} unique) — see \`lowo zoo\``,
-    `🗡️ ${u.weapons.length} weapons — see \`lowo weapon\``,
+    `🐟 ${fishCount} fish in aquarium — see \`lowo aquarium\``,
+    `🗡️ ${u.weapons.length} weapons (${u.craftedWeapons?.length ?? 0} crafted) — see \`lowo weapon\``,
+    `⛏️ ${mineralCount} minerals${u.hasPickaxe ? ` (pickaxe tier ${u.pickaxeTier})` : ""} — see \`lowo minerals\``,
+    `🧿 ${u.accessories?.length ?? 0} accessories • 🛡️ ${u.armor.length} armor`,
     `🎟️ ${u.lotteryTickets} lottery tickets`,
     boxLines.length ? `📦 ${boxLines.join(" • ")}` : null,
     consum.length ? consum.join(" • ") : null,

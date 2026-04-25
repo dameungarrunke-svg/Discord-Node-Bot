@@ -1,15 +1,14 @@
-import { createCanvas, loadImage, GlobalFonts } from "@napi-rs/canvas";
+import { createCanvas, loadImage, GlobalFonts, type SKRSContext2D } from "@napi-rs/canvas";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 import type { User } from "discord.js";
 import { getUser } from "./storage.js";
-import { BACKGROUND_BY_ID } from "./data.js";
+import { BACKGROUND_BY_ID, type BgPattern } from "./data.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Register fonts once (safe — same fonts already used by leveling/card.ts)
 let fontsRegistered = false;
 function registerFonts(): void {
   if (fontsRegistered) return;
@@ -22,7 +21,7 @@ function registerFonts(): void {
   } catch { /* fonts optional */ }
 }
 
-function roundRect(ctx: any, x: number, y: number, w: number, h: number, r: number): void {
+function roundRect(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, r: number): void {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
@@ -30,6 +29,139 @@ function roundRect(ctx: any, x: number, y: number, w: number, h: number, r: numb
   ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
   ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+// ─── Background pattern overlays (deterministic, lightweight) ────────────────
+function drawPattern(ctx: SKRSContext2D, W: number, H: number, pat: BgPattern, accent: string): void {
+  ctx.save();
+  switch (pat) {
+    case "stars": {
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      // Pseudo-random but deterministic stars
+      for (let i = 0; i < 90; i++) {
+        const x = (i * 73 + 17) % W;
+        const y = (i * 137 + 29) % H;
+        const r = 0.5 + ((i * 41) % 10) / 10 * 1.4;
+        ctx.globalAlpha = 0.25 + ((i * 23) % 10) / 10 * 0.6;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    }
+    case "hex": {
+      ctx.strokeStyle = "rgba(255,255,255,0.07)";
+      ctx.lineWidth = 1;
+      const s = 22;
+      for (let row = -1; row * s * 1.5 < H + s; row++) {
+        for (let col = -1; col * s * Math.sqrt(3) < W + s; col++) {
+          const cx = col * s * Math.sqrt(3) + (row % 2 ? s * Math.sqrt(3) / 2 : 0);
+          const cy = row * s * 1.5;
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const a = (Math.PI / 3) * i + Math.PI / 6;
+            const px = cx + s * Math.cos(a);
+            const py = cy + s * Math.sin(a);
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.closePath(); ctx.stroke();
+        }
+      }
+      break;
+    }
+    case "waves": {
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.lineWidth = 1.5;
+      for (let y = 30; y < H; y += 28) {
+        ctx.beginPath();
+        for (let x = 0; x <= W; x += 6) {
+          const yy = y + Math.sin((x + y) * 0.05) * 6;
+          if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+        }
+        ctx.stroke();
+      }
+      break;
+    }
+    case "flames": {
+      for (let i = 0; i < 30; i++) {
+        const x = (i * 47 + 11) % W;
+        const baseY = H - ((i * 31) % 60);
+        const h = 30 + ((i * 13) % 50);
+        const grad = ctx.createLinearGradient(x, baseY, x, baseY - h);
+        grad.addColorStop(0, "rgba(255, 120, 30, 0.55)");
+        grad.addColorStop(0.6, "rgba(255, 200, 50, 0.18)");
+        grad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(x - 8, baseY);
+        ctx.quadraticCurveTo(x, baseY - h * 0.6, x, baseY - h);
+        ctx.quadraticCurveTo(x, baseY - h * 0.6, x + 8, baseY);
+        ctx.closePath(); ctx.fill();
+      }
+      break;
+    }
+    case "sakura": {
+      for (let i = 0; i < 60; i++) {
+        const x = (i * 89 + 23) % W;
+        const y = (i * 53 + 37) % H;
+        const r = 2 + ((i * 17) % 5);
+        ctx.fillStyle = `rgba(255, 175, 200, ${0.25 + ((i * 11) % 10) / 30})`;
+        for (let p = 0; p < 5; p++) {
+          const a = (Math.PI * 2 / 5) * p;
+          ctx.beginPath();
+          ctx.ellipse(x + Math.cos(a) * r, y + Math.sin(a) * r, r, r * 0.55, a, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
+    }
+    case "dots": {
+      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      for (let y = 12; y < H; y += 18) {
+        for (let x = 12 + (Math.floor(y / 18) % 2) * 9; x < W; x += 18) {
+          ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      break;
+    }
+    case "circuit": {
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.fillStyle = accent;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 25; i++) {
+        const x = (i * 67 + 7) % W;
+        const y = (i * 43 + 19) % H;
+        const len = 30 + ((i * 13) % 60);
+        ctx.beginPath();
+        ctx.moveTo(x, y); ctx.lineTo(x + len, y); ctx.lineTo(x + len, y + 20);
+        ctx.stroke();
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + len, y + 20, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      break;
+    }
+    case "aurora": {
+      for (let band = 0; band < 4; band++) {
+        const grad = ctx.createLinearGradient(0, band * 80, W, band * 80 + 100);
+        grad.addColorStop(0, "rgba(125, 240, 200, 0)");
+        grad.addColorStop(0.5, `rgba(125, 240, 200, ${0.12 + band * 0.04})`);
+        grad.addColorStop(1, "rgba(125, 240, 200, 0)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(0, band * 80 + 20);
+        for (let x = 0; x <= W; x += 8) {
+          const yy = band * 80 + 30 + Math.sin((x + band * 50) * 0.02) * 22;
+          ctx.lineTo(x, yy);
+        }
+        ctx.lineTo(W, band * 80 + 100); ctx.lineTo(0, band * 80 + 100);
+        ctx.closePath(); ctx.fill();
+      }
+      break;
+    }
+    case "none":
+    default: break;
+  }
+  ctx.restore();
 }
 
 export async function generateProfileCard(user: User): Promise<Buffer> {
@@ -50,10 +182,23 @@ export async function generateProfileCard(user: User): Promise<Buffer> {
   ctx.fillStyle = grad;
   roundRect(ctx, 0, 0, W, H, 22); ctx.fill();
 
+  // Pattern overlay
+  ctx.save();
+  roundRect(ctx, 0, 0, W, H, 22); ctx.clip();
+  drawPattern(ctx, W, H, bg.pattern, bg.accent);
+  ctx.restore();
+
   // Subtle inner border
   ctx.strokeStyle = "rgba(255,255,255,0.08)";
   ctx.lineWidth = 2;
   roundRect(ctx, 1, 1, W - 2, H - 2, 21); ctx.stroke();
+
+  // Permanent gold border (premium item)
+  if (u.boxes && u.boxes["perm_border"]) {
+    ctx.strokeStyle = "rgba(255, 215, 0, 0.85)";
+    ctx.lineWidth = 3;
+    roundRect(ctx, 3, 3, W - 6, H - 6, 19); ctx.stroke();
+  }
 
   // Accent bar (left)
   ctx.fillStyle = bg.accent;
@@ -63,7 +208,6 @@ export async function generateProfileCard(user: User): Promise<Buffer> {
   const avSize = 140;
   const avX = 30, avY = 30;
   const avCX = avX + avSize / 2, avCY = avY + avSize / 2;
-  // Avatar shadow / ring
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.5)";
   ctx.shadowBlur = 10;

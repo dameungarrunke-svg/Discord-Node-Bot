@@ -8,15 +8,30 @@ export function activeEvent(): LowoEvent | null {
   return EVENT_BY_ID[ev.id] ?? null;
 }
 
-export function eventBonus(kind: "hunt" | "rare" | "essence" | "battle" | "cowoncy"): number {
+// Map of eventId -> bonusKey -> numeric multiplier. Anything missing returns 1
+// so callers can safely chain `eventBonus("foo")` without checking event id first.
+const BONUS_MAP: Record<string, Record<string, number>> = {
+  double_hunt:    { hunt: 2 },
+  rare_rush:      { rare: 3 },
+  essence_storm:  { essence: 2 },
+  battle_frenzy:  { battle: 2 },
+  cowoncy_event:  { cowoncy: 2 },
+  mineral_rush:   { mineral_rush: 2 },
+  lucky_skies:    { luck: 1.5 },
+  blood_moon:     { blood_moon: 1.5, battle: 1.5 },
+  boss_invasion:  { boss_invasion: 4 },
+  crafting_surge: { crafting_surge: 2 },
+  skill_storm:    { skill_storm: 0.5 },
+  void_breach:    { void_breach: 4 },
+  secret_whisper: { secret_whisper: 100 },
+  shop_sale:      { shop_sale: 0.8 },
+  xp_bonanza:     { xp_bonanza: 2 },
+};
+
+export function eventBonus(kind: string): number {
   const ev = activeEvent();
   if (!ev) return 1;
-  if (kind === "hunt"    && ev.id === "double_hunt")    return 2;
-  if (kind === "rare"    && ev.id === "rare_rush")      return 3;
-  if (kind === "essence" && ev.id === "essence_storm")  return 2;
-  if (kind === "battle"  && ev.id === "battle_frenzy")  return 2;
-  if (kind === "cowoncy" && ev.id === "cowoncy_event")  return 2;
-  return 1;
+  return BONUS_MAP[ev.id]?.[kind] ?? 1;
 }
 
 export async function cmdEvent(message: Message): Promise<void> {

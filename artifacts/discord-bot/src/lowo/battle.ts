@@ -1,6 +1,6 @@
 import type { Message } from "discord.js";
 import { getUser, updateUser, type UserData } from "./storage.js";
-import { ANIMAL_BY_ID, ANIMALS, ARMOR_BY_ID, SIGNATURE_SKILLS, rollWeapon } from "./data.js";
+import { ANIMAL_BY_ID, ANIMALS, ARMOR_BY_ID, ACCESSORY_BY_ID, SIGNATURE_SKILLS, rollWeapon } from "./data.js";
 import { getAnimalMultiplier, onBattleWin, getAnimalPerk } from "./skills.js";
 import { eventBonus } from "./events.js";
 
@@ -26,21 +26,30 @@ interface CombatUnit {
   id: string;
   name: string; emoji: string;
   hp: number; maxHp: number; atk: number; def: number; mag: number;
-  crit: boolean;
+  crit: boolean; critChance: number;
   signatureSkill: string | null;
   stunned: boolean;
 }
 
 function buildTeam(u: UserData, ownerId: string | null): CombatUnit[] {
   const team: CombatUnit[] = [];
+  // Shield potion (defensive global buff) applied at team-build time.
+  const shieldOn = ownerId ? Date.now() < (u.shieldUntil ?? 0) : false;
   for (const id of u.team) {
     const a = ANIMAL_BY_ID[id]; if (!a) continue;
     let hp = a.hp, atk = a.atk, def = a.def, mag = a.mag;
+    let critChance = 0;
     // Weapon
     const widx = u.equipped[id];
     if (widx !== undefined) {
       const w = u.weapons[parseInt(widx, 10)];
       if (w) { atk += w.mods.atk; def += w.mods.def; mag += w.mods.mag; }
+    }
+    // Crafted weapon (separate slot via "c<idx>" prefix)
+    if (widx !== undefined && widx.startsWith("c")) {
+      const cidx = parseInt(widx.slice(1), 10);
+      const cw = u.craftedWeapons?.[cidx];
+      if (cw) { atk += cw.mods.atk; def += cw.mods.def; mag += cw.mods.mag; }
     }
     // Armor
     const aidx = u.equippedArmor[id];
@@ -48,16 +57,28 @@ function buildTeam(u: UserData, ownerId: string | null): CombatUnit[] {
       const ar = u.armor[parseInt(aidx, 10)];
       if (ar) { hp += ar.mods.hp; def += ar.mods.def; mag += ar.mods.mag; }
     }
+    // Accessory (3rd equip slot)
+    const xidx = u.equippedAccessory?.[id];
+    if (xidx !== undefined) {
+      const acc = u.accessories?.[parseInt(xidx, 10)];
+      if (acc) {
+        hp += acc.mods.hp; atk += acc.mods.atk; def += acc.mods.def; mag += acc.mods.mag;
+        if (acc.mods.crit) critChance += acc.mods.crit;
+      }
+    }
     // Animal-XP multiplier
     const mult = ownerId ? getAnimalMultiplier(ownerId, id) : 1;
     atk = Math.floor(atk * mult);
     def = Math.floor(def * mult);
     mag = Math.floor(mag * mult);
     hp = Math.floor(hp * mult);
-    const crit = ownerId ? !!getAnimalPerk(ownerId, id, "crit") : false;
+    if (shieldOn) def = Math.floor(def * 1.2);
+    const perkCrit = ownerId ? !!getAnimalPerk(ownerId, id, "crit") : false;
+    if (perkCrit) critChance += 0.18;
     team.push({
       id, name: a.name, emoji: a.emoji,
-      hp, maxHp: hp, atk, def, mag, crit,
+      hp, maxHp: hp, atk, def, mag,
+      crit: critChance > 0, critChance,
       signatureSkill: a.signatureSkill ?? null, stunned: false,
     });
   }
@@ -68,19 +89,20 @@ function damage(att: CombatUnit, def: CombatUnit, opts: { defReduce?: number; ig
   const base = Math.max(att.atk, att.mag * 0.9);
   const mit = opts.ignoreDef ? 0 : def.def * 0.6;
   const variance = 0.85 + Math.random() * 0.3;
-  const isCrit = att.crit && Math.random() < 0.18;
+  const isCrit = att.crit && Math.random() < att.critChance;
   let d = Math.max(1, Math.floor((base - mit) * variance));
   if (opts.mult) d = Math.floor(d * opts.mult);
   if (opts.bonus) d += Math.floor(opts.bonus);
   if (opts.defReduce) d = Math.floor(d * (1 - opts.defReduce));
   if (isCrit) d = Math.floor(d * 1.75);
+  // Blood Moon event: ×1.5 to ALL battle damage
+  const bm = eventBonus("blood_moon");
+  if (bm > 1) d = Math.floor(d * bm);
   return { d, crit: isCrit };
 }
 
 function aliveSum(t: CombatUnit[]): number { return t.reduce((s, u) => s + (u.hp > 0 ? u.hp : 0), 0); }
 
-// Skill phase: resolve attacker's signature skill (25% chance) before damage.
-// Returns damage modifiers + log line.
 function tryTriggerSkill(att: CombatUnit, def: CombatUnit, allies: CombatUnit[]): {
   defReduce?: number; ignoreDef?: boolean; mult?: number; bonus?: number; double?: boolean; healed?: number; stunNext?: boolean; lifestealPct?: number; logLine?: string;
 } {
@@ -168,6 +190,7 @@ export async function cmdTeam(message: Message, args: string[]): Promise<void> {
       x.team = x.team.filter((t) => t !== id);
       delete x.equipped[id];
       delete x.equippedArmor[id];
+      delete x.equippedAccessory[id];
     });
     await message.reply(`✅ Removed ${ANIMAL_BY_ID[id].emoji} **${ANIMAL_BY_ID[id].name}** from team.`);
   } else {
@@ -199,7 +222,7 @@ export async function cmdBattle(message: Message): Promise<void> {
       const a = ANIMAL_BY_ID[ids[Math.floor(Math.random() * ids.length)]];
       return {
         id: a.id, name: a.name, emoji: a.emoji, hp: a.hp, maxHp: a.hp,
-        atk: a.atk, def: a.def, mag: a.mag, crit: false,
+        atk: a.atk, def: a.def, mag: a.mag, crit: false, critChance: 0,
         signatureSkill: a.signatureSkill ?? null, stunned: false,
       };
     });
@@ -262,57 +285,77 @@ export async function cmdWeapon(message: Message, args: string[]): Promise<void>
   }
 
   const u = getUser(message.author.id);
-  if (u.weapons.length === 0) { await message.reply("🗡️ No weapons. Buy a crate with `lowo crate`."); return; }
+  if (u.weapons.length === 0 && (u.craftedWeapons?.length ?? 0) === 0) { await message.reply("🗡️ No weapons. Buy a crate with `lowo crate` or craft via `lowo craft`."); return; }
   const lines = u.weapons.map((w, i) => `\`${i}\` *(${w.rarity})* — ATK+${w.mods.atk} DEF+${w.mods.def} MAG+${w.mods.mag}`);
-  await message.reply(`🗡️ **Your Weapons** *(reroll mods: \`lowo weapon rr <idx>\`)*\n${lines.slice(0, 25).join("\n")}`);
+  if (u.craftedWeapons?.length) {
+    lines.push("");
+    lines.push("__Crafted (equip via `lowo equip <pet> weapon c<idx>`):__");
+    u.craftedWeapons.forEach((cw, i) => lines.push(`\`c${i}\` *(${cw.rarity})* 🛠️ ${cw.name} — ATK+${cw.mods.atk} DEF+${cw.mods.def} MAG+${cw.mods.mag}`));
+  }
+  await message.reply(`🗡️ **Your Weapons** *(reroll mods: \`lowo weapon rr <idx>\`)*\n${lines.slice(0, 30).join("\n")}`);
 }
 
 /**
- * `lowo equip <name...> [weapon|armor] <idx>`
+ * `lowo equip <name...> [weapon|armor|accessory] <idx>`
  *   – Backward compat: `lowo equip <name> <idx>` defaults to weapon slot.
  *   – Multi-word names supported (e.g. "Lowo King").
+ *   – Crafted weapons are addressed as `c<idx>` (e.g. `c0`).
  */
 export async function cmdEquip(message: Message, args: string[]): Promise<void> {
-  if (args.length < 2) { await message.reply("Usage: `lowo equip <name> [weapon|armor] <idx>`"); return; }
+  if (args.length < 2) { await message.reply("Usage: `lowo equip <name> [weapon|armor|accessory] <idx>`"); return; }
 
-  // Find slot keyword if present
-  let slot: "weapon" | "armor" = "weapon";
+  let slot: "weapon" | "armor" | "accessory" = "weapon";
   let idxStr: string | undefined;
   let nameTokens: string[] = [];
 
-  // Try last 2 tokens as `<slot> <idx>`
   const last = args[args.length - 1];
   const second = args[args.length - 2]?.toLowerCase();
-  if ((second === "weapon" || second === "armor") && /^\d+$/.test(last)) {
+  const isIdxToken = (s: string) => /^c?\d+$/.test(s);
+  if ((second === "weapon" || second === "armor" || second === "accessory") && isIdxToken(last)) {
     slot = second;
     idxStr = last;
     nameTokens = args.slice(0, -2);
-  } else if (/^\d+$/.test(last)) {
-    // Legacy: `<name> <idx>` → weapon
+  } else if (isIdxToken(last)) {
     idxStr = last;
     nameTokens = args.slice(0, -1);
   } else {
-    await message.reply("Usage: `lowo equip <name> [weapon|armor] <idx>`");
+    await message.reply("Usage: `lowo equip <name> [weapon|armor|accessory] <idx>`");
     return;
   }
 
   const animalId = resolveAnimalId(nameTokens.join(" "));
   if (!animalId) { await message.reply(`❌ Unknown animal \`${nameTokens.join(" ")}\`.`); return; }
-  const idx = parseInt(idxStr!, 10);
 
   const u = getUser(message.author.id);
   if (!u.zoo[animalId] || u.zoo[animalId] <= 0) { await message.reply(`❌ You don't own ${ANIMAL_BY_ID[animalId].emoji} ${ANIMAL_BY_ID[animalId].name}.`); return; }
 
   if (slot === "weapon") {
+    if (idxStr!.startsWith("c")) {
+      const cidx = parseInt(idxStr!.slice(1), 10);
+      if (isNaN(cidx) || !u.craftedWeapons?.[cidx]) { await message.reply("❌ Invalid crafted-weapon index. Try `lowo weapon`."); return; }
+      updateUser(message.author.id, (x) => { x.equipped[animalId] = `c${cidx}`; });
+      const cw = u.craftedWeapons[cidx];
+      await message.reply(`✅ Equipped crafted 🛠️ **${cw.name}** *(${cw.rarity})* to ${ANIMAL_BY_ID[animalId].emoji} ${ANIMAL_BY_ID[animalId].name}.`);
+      return;
+    }
+    const idx = parseInt(idxStr!, 10);
     if (isNaN(idx) || !u.weapons[idx]) { await message.reply("❌ Invalid weapon index."); return; }
     updateUser(message.author.id, (x) => { x.equipped[animalId] = String(idx); });
     const w = u.weapons[idx];
     await message.reply(`✅ Equipped weapon \`${idx}\` *(${w.rarity})* to ${ANIMAL_BY_ID[animalId].emoji} ${ANIMAL_BY_ID[animalId].name}.`);
-  } else {
+  } else if (slot === "armor") {
+    const idx = parseInt(idxStr!, 10);
     if (isNaN(idx) || !u.armor[idx]) { await message.reply("❌ Invalid armor index. Buy from `lowo shop equips`."); return; }
     updateUser(message.author.id, (x) => { x.equippedArmor[animalId] = String(idx); });
     const ar = u.armor[idx];
     const def = ARMOR_BY_ID[ar.defId];
     await message.reply(`✅ Equipped armor \`${idx}\` ${def?.emoji ?? "🛡️"} **${def?.name ?? "armor"}** to ${ANIMAL_BY_ID[animalId].emoji} ${ANIMAL_BY_ID[animalId].name}.`);
+  } else {
+    const idx = parseInt(idxStr!, 10);
+    if (isNaN(idx) || !u.accessories?.[idx]) { await message.reply("❌ Invalid accessory index. Buy from `lowo shop pets`."); return; }
+    updateUser(message.author.id, (x) => { x.equippedAccessory[animalId] = String(idx); });
+    const acc = u.accessories[idx];
+    const def = ACCESSORY_BY_ID[acc.defId];
+    await message.reply(`✅ Equipped accessory \`${idx}\` ${def?.emoji ?? "🧿"} **${def?.name ?? "accessory"}** to ${ANIMAL_BY_ID[animalId].emoji} ${ANIMAL_BY_ID[animalId].name}.`);
   }
 }
