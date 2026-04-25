@@ -5,7 +5,7 @@ import { ANIMAL_BY_ID, PITY_THRESHOLD, BACKGROUND_BY_ID } from "./data.js";
 import { generateProfileCard } from "./profileCard.js";
 import { isCensored } from "./censor.js";
 import { PermissionFlagsBits } from "discord.js";
-import { emoji, allEmojiKeys, isOverridden, saveOverrides, catalogKeys } from "./emojis.js";
+import { emoji, allEmojiKeys, isOverridden, saveOverrides, catalogKeys, mergeOverrides } from "./emojis.js";
 
 export async function cmdProfile(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
@@ -218,4 +218,105 @@ export async function cmdEmojiSync(message: Message): Promise<void> {
     `${emoji("info")} ${missing.length} catalog slot${missing.length === 1 ? "" : "s"} still on unicode fallback (run \`lowo emojis\` to see all).`,
     skipped.length > 0 ? `${emoji("dot")} ${skipped.length} server emoji${skipped.length === 1 ? "" : "s"} ignored (name didn't match a catalog key).` : "",
   ].filter(Boolean).join("\n"));
+}
+
+/**
+ * `lowo emojiupload` — drag-and-drop image attachments into Discord chat with
+ * this command. The bot uploads each image to your server as a custom emoji
+ * (filename stem becomes the emoji name) AND registers it in the catalog. One
+ * step, no Server Settings UI.
+ *
+ * Filename rules:
+ *   - `cowoncy.png` → uploads as `:cowoncy:` and maps the `cowoncy` catalog slot
+ *   - Stem must match a known catalog key (run `lowo emojis` to see all keys)
+ *   - PNG/JPG/GIF/WebP, ≤256 KB each (Discord limit)
+ *
+ * Restricted to bot owner or members with Manage Server. The bot itself needs
+ * the **Manage Expressions** permission in this server (grant it once via
+ * Server Settings → Roles → bot's role).
+ */
+export async function cmdEmojiUpload(message: Message): Promise<void> {
+  if (!message.guild) {
+    await message.reply(`${emoji("fail")} \`emojiupload\` must be used in a server.`);
+    return;
+  }
+  const isOwner = process.env.LOWO_OWNER_ID === message.author.id;
+  const isAdmin = message.member?.permissions.has(PermissionFlagsBits.ManageGuild) ?? false;
+  if (!isOwner && !isAdmin) {
+    await message.reply(`${emoji("locked")} Only the bot owner or members with **Manage Server** can run \`emojiupload\`.`);
+    return;
+  }
+
+  const me = message.guild.members.me;
+  if (!me?.permissions.has(PermissionFlagsBits.ManageGuildExpressions)) {
+    await message.reply([
+      `${emoji("fail")} I'm missing the **Manage Expressions** permission in this server, so I can't upload emojis.`,
+      `${emoji("info")} Fix: Server Settings → Roles → my role → enable **Manage Expressions**, then re-run.`,
+    ].join("\n"));
+    return;
+  }
+
+  if (message.attachments.size === 0) {
+    await message.reply([
+      `${emoji("info")} **How to use \`lowo emojiupload\`:**`,
+      `${emoji("dot")} Drag image files into Discord chat (PNG/JPG/GIF/WebP, ≤256 KB each).`,
+      `${emoji("dot")} Name the file after the catalog key — e.g. \`cowoncy.png\` becomes \`:cowoncy:\`.`,
+      `${emoji("dot")} Attach as many as you want in one message, then send with \`lowo emojiupload\` as the message text.`,
+      `${emoji("dot")} Repeat in multiple messages until done. Run \`lowo emojis\` to see all catalog keys.`,
+    ].join("\n"));
+    return;
+  }
+
+  const cat = new Set(catalogKeys());
+  const existingByName = new Map<string, { id: string; animated: boolean }>();
+  for (const e of message.guild.emojis.cache.values()) {
+    if (e.name) existingByName.set(e.name, { id: e.id, animated: !!e.animated });
+  }
+
+  const partial: Record<string, string> = {};
+  const uploaded: string[] = [];
+  const reused: string[] = [];
+  const skipped: string[] = [];
+
+  for (const att of message.attachments.values()) {
+    const filename = att.name ?? "file";
+    const stem = filename.replace(/\.[^.]+$/, "");
+    if (!cat.has(stem)) { skipped.push(`${filename} *(name not in catalog)*`); continue; }
+    const isImg = (att.contentType ?? "").startsWith("image/") || /\.(png|jpe?g|gif|webp)$/i.test(filename);
+    if (!isImg) { skipped.push(`${filename} *(not an image)*`); continue; }
+    if ((att.size ?? 0) > 256_000) { skipped.push(`${filename} *(>256 KB)*`); continue; }
+
+    const existing = existingByName.get(stem);
+    if (existing) {
+      partial[stem] = `<${existing.animated ? "a" : ""}:${stem}:${existing.id}>`;
+      reused.push(stem);
+      continue;
+    }
+    try {
+      const created = await message.guild.emojis.create({ attachment: att.url, name: stem });
+      partial[stem] = `<${created.animated ? "a" : ""}:${stem}:${created.id}>`;
+      uploaded.push(stem);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "upload failed";
+      skipped.push(`${filename} *(${msg.slice(0, 80)})*`);
+    }
+  }
+
+  if (Object.keys(partial).length > 0) mergeOverrides(partial);
+
+  const lines: string[] = [];
+  if (uploaded.length > 0) {
+    lines.push(`${emoji("success")} **Uploaded ${uploaded.length} new emoji${uploaded.length === 1 ? "" : "s"}** & registered in catalog ${emoji("sparkles")}`);
+    lines.push(uploaded.map((k) => `${emoji(k)} \`${k}\``).join("  "));
+  }
+  if (reused.length > 0) {
+    lines.push(`${emoji("ok")} **Re-used ${reused.length} existing server emoji${reused.length === 1 ? "" : "s"}** (already uploaded with the right name): ${reused.map((k) => `\`${k}\``).join(", ")}`);
+  }
+  if (skipped.length > 0) {
+    lines.push(`${emoji("warn")} **Skipped ${skipped.length}:**`);
+    lines.push(skipped.slice(0, 12).map((s) => `${emoji("dot")} ${s}`).join("\n"));
+    if (skipped.length > 12) lines.push(`${emoji("dot")} *…+${skipped.length - 12} more*`);
+  }
+  if (lines.length === 0) lines.push(`${emoji("warn")} Nothing changed.`);
+  await message.reply(lines.join("\n").slice(0, 1990));
 }

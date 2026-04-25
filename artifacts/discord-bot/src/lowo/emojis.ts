@@ -329,3 +329,19 @@ export function reloadOverrides(): void {
 export function catalogKeys(): string[] {
   return Object.keys(FALLBACKS).sort();
 }
+
+/** Current override map (snapshot copy). */
+export function getOverrides(): Record<string, string> {
+  load();
+  return { ...overrides };
+}
+
+/**
+ * Merge `partial` into the existing override map, persist, and hot-swap into
+ * memory. Used by `lowo emojiupload` to add a few emojis at a time without
+ * wiping the existing ones.
+ */
+export function mergeOverrides(partial: Record<string, string>): void {
+  load();
+  saveOverrides({ ...overrides, ...partial });
+}
