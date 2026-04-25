@@ -4,7 +4,8 @@ import { getUser, allUsers } from "./storage.js";
 import { ANIMAL_BY_ID, PITY_THRESHOLD, BACKGROUND_BY_ID } from "./data.js";
 import { generateProfileCard } from "./profileCard.js";
 import { isCensored } from "./censor.js";
-import { emoji, allEmojiKeys, isOverridden } from "./emojis.js";
+import { PermissionFlagsBits } from "discord.js";
+import { emoji, allEmojiKeys, isOverridden, saveOverrides, catalogKeys } from "./emojis.js";
 
 export async function cmdProfile(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
@@ -157,4 +158,64 @@ export async function cmdEmojiList(message: Message, args: string[]): Promise<vo
   if ("send" in ch) {
     for (let i = 1; i < chunks.length; i++) await ch.send(chunks[i]);
   }
+}
+
+/**
+ * `lowo emojisync` — auto-build the emoji override file from this server's
+ * custom emojis. For every guild emoji whose name matches a catalog key,
+ * persist `<:name:id>` (or `<a:name:id>` for animated) into
+ * `data/lowo_emojis.json` and hot-swap it into memory immediately.
+ *
+ * Restricted to bot owner (`LOWO_OWNER_ID`) or members with Manage Server.
+ */
+export async function cmdEmojiSync(message: Message): Promise<void> {
+  if (!message.guild) {
+    await message.reply(`${emoji("fail")} \`emojisync\` must be used in a server.`);
+    return;
+  }
+  const isOwner = process.env.LOWO_OWNER_ID === message.author.id;
+  const isAdmin = message.member?.permissions.has(PermissionFlagsBits.ManageGuild) ?? false;
+  if (!isOwner && !isAdmin) {
+    await message.reply(`${emoji("locked")} Only the bot owner or members with **Manage Server** can run \`emojisync\`.`);
+    return;
+  }
+
+  const cat = new Set(catalogKeys());
+  const guildEmojis = await message.guild.emojis.fetch().catch(() => null);
+  if (!guildEmojis) {
+    await message.reply(`${emoji("fail")} Couldn't read this server's emojis.`);
+    return;
+  }
+
+  const map: Record<string, string> = {};
+  const matched: string[] = [];
+  const skipped: string[] = [];
+  for (const e of guildEmojis.values()) {
+    if (!e.name) continue;
+    if (!cat.has(e.name)) { skipped.push(e.name); continue; }
+    map[e.name] = `<${e.animated ? "a" : ""}:${e.name}:${e.id}>`;
+    matched.push(e.name);
+  }
+
+  if (matched.length === 0) {
+    await message.reply([
+      `${emoji("warn")} **No catalog matches found.**`,
+      `Found **${guildEmojis.size}** custom emoji${guildEmojis.size === 1 ? "" : "s"} in this server, but none have names matching catalog keys.`,
+      `${emoji("info")} Run \`lowo emojis\` to see catalog keys, then re-upload your emojis using those exact names (case-sensitive).`,
+    ].join("\n"));
+    return;
+  }
+
+  saveOverrides(map);
+
+  const sample = matched.slice(0, 18).map((k) => `${emoji(k)} \`${k}\``).join("  ");
+  const more = matched.length > 18 ? `  *…+${matched.length - 18} more*` : "";
+  const missing = catalogKeys().filter((k) => !map[k]);
+  await message.reply([
+    `${emoji("success")} **Synced ${matched.length} custom emoji${matched.length === 1 ? "" : "s"}** into \`data/lowo_emojis.json\`. Live immediately. ${emoji("sparkles")}`,
+    sample + more,
+    "",
+    `${emoji("info")} ${missing.length} catalog slot${missing.length === 1 ? "" : "s"} still on unicode fallback (run \`lowo emojis\` to see all).`,
+    skipped.length > 0 ? `${emoji("dot")} ${skipped.length} server emoji${skipped.length === 1 ? "" : "s"} ignored (name didn't match a catalog key).` : "",
+  ].filter(Boolean).join("\n"));
 }

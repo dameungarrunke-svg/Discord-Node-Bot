@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -304,4 +304,28 @@ export function allEmojiKeys(): string[] {
 export function isOverridden(name: string): boolean {
   load();
   return Object.prototype.hasOwnProperty.call(overrides, name);
+}
+
+/**
+ * Persist a new override map to `data/lowo_emojis.json` AND swap it into the
+ * in-memory cache so subsequent `emoji()` calls return the new values without
+ * a bot restart. Used by `lowo emojisync`.
+ */
+export function saveOverrides(map: Record<string, string>): void {
+  const dir = dirname(OVERRIDE_FILE);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  writeFileSync(OVERRIDE_FILE, JSON.stringify(map, null, 2) + "\n", "utf-8");
+  overrides = { ...map };
+  loaded = true;
+}
+
+/** Force-reload overrides from disk (e.g. after a manual file edit). */
+export function reloadOverrides(): void {
+  loaded = false;
+  load();
+}
+
+/** All known fallback keys (catalog slots), without overrides. */
+export function catalogKeys(): string[] {
+  return Object.keys(FALLBACKS).sort();
 }
