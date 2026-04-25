@@ -1,5 +1,6 @@
 import type { Message } from "discord.js";
 import { getUser, updateUser } from "./storage.js";
+import { emoji } from "./emojis.js";
 
 const DAILY_AMOUNT = 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -8,7 +9,7 @@ const STREAK_WINDOW_MS = 48 * 60 * 60 * 1000; // claim within 48h to keep streak
 export async function cmdCowoncy(message: Message, args: string[]): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
-  await message.reply(`💰 **${target.username}** has **${u.cowoncy.toLocaleString()}** cowoncy and **${u.essence.toLocaleString()}** ✨ essence.`);
+  await message.reply(`${emoji("cowoncy")} **${target.username}** has **${u.cowoncy.toLocaleString()}** cowoncy and **${u.essence.toLocaleString()}** ${emoji("essence")} essence.`);
 }
 
 // Premium currency balance
@@ -16,7 +17,7 @@ export async function cmdCash(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
   await message.reply(
-    `💎 **${target.username}** has **${u.lowoCash.toLocaleString()}** Lowo Cash *(premium currency)*.\n` +
+    `${emoji("cash")} **${target.username}** has **${u.lowoCash.toLocaleString()}** Lowo Cash *(premium currency)*.\n` +
     `_Earn +1 every 50 hunts. Spend it in \`lowo shop premium\`._`,
   );
 }
@@ -28,7 +29,7 @@ export async function cmdDaily(message: Message): Promise<void> {
     const left = DAY_MS - (now - u.lastDaily);
     const h = Math.floor(left / 3600000);
     const m = Math.floor((left % 3600000) / 60000);
-    await message.reply(`🕒 Daily already claimed. Come back in **${h}h ${m}m**.`);
+    await message.reply(`${emoji("clock")} Daily already claimed. Come back in **${h}h ${m}m**.`);
     return;
   }
 
@@ -56,11 +57,11 @@ export async function cmdDaily(message: Message): Promise<void> {
   });
 
   const lines = [
-    `🎁 Daily claimed: **+${reward.toLocaleString()}** cowoncy`,
-    `🔥 Streak: **${newStreak} day${newStreak === 1 ? "" : "s"}** *(+${Math.round(bonusPct * 100)}% bonus)*`,
+    `${emoji("daily")} Daily claimed: **+${reward.toLocaleString()}** cowoncy`,
+    `${emoji("streak")} Streak: **${newStreak} day${newStreak === 1 ? "" : "s"}** *(+${Math.round(bonusPct * 100)}% bonus)*`,
   ];
-  if (milestone) lines.push(`🏅 **Milestone bonus:** +${milestone.toLocaleString()} cowoncy!`);
-  if (!continued && u.dailyStreak > 1) lines.push(`💔 (Previous streak of ${u.dailyStreak} reset — claim within 48h next time.)`);
+  if (milestone) lines.push(`${emoji("rank")} **Milestone bonus:** +${milestone.toLocaleString()} cowoncy!`);
+  if (!continued && u.dailyStreak > 1) lines.push(`${emoji("divorce")} (Previous streak of ${u.dailyStreak} reset — claim within 48h next time.)`);
   await message.reply(lines.join("\n"));
 }
 
@@ -71,20 +72,20 @@ export async function cmdGive(message: Message, args: string[]): Promise<void> {
     await message.reply("Usage: `lowo give @user <amount>`");
     return;
   }
-  if (target.id === message.author.id) { await message.reply("❌ You can't give to yourself."); return; }
-  if (target.bot) { await message.reply("❌ Bots don't need cowoncy."); return; }
+  if (target.id === message.author.id) { await message.reply(`${emoji("fail")} You can't give to yourself.`); return; }
+  if (target.bot) { await message.reply(`${emoji("fail")} Bots don't need cowoncy.`); return; }
   const amount = parseInt(amountStr, 10);
-  if (amount <= 0) { await message.reply("❌ Amount must be positive."); return; }
+  if (amount <= 0) { await message.reply(`${emoji("fail")} Amount must be positive.`); return; }
   const sender = getUser(message.author.id);
-  if (sender.cowoncy < amount) { await message.reply(`❌ You only have ${sender.cowoncy} cowoncy.`); return; }
+  if (sender.cowoncy < amount) { await message.reply(`${emoji("fail")} You only have ${sender.cowoncy} cowoncy.`); return; }
   updateUser(message.author.id, (x) => { x.cowoncy -= amount; });
   updateUser(target.id, (x) => { x.cowoncy += amount; });
-  await message.reply(`💸 Sent **${amount}** cowoncy to **${target.username}**.`);
+  await message.reply(`${emoji("give")} Sent **${amount}** cowoncy to **${target.username}**.`);
 }
 
 export async function cmdVote(message: Message): Promise<void> {
   updateUser(message.author.id, (x) => { x.cowoncy += 250; });
-  await message.reply(`🗳️ Thanks for voting! +**250** cowoncy. (Hook a real bot-list webhook for live tracking.)`);
+  await message.reply(`${emoji("vote")} Thanks for voting! +**250** cowoncy. (Hook a real bot-list webhook for live tracking.)`);
 }
 
 // ─── Reputation ───────────────────────────────────────────────────────────────

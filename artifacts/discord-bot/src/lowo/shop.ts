@@ -6,6 +6,7 @@ import {
 } from "./data.js";
 import { getUser, updateUser, updateEvent, getEvent } from "./storage.js";
 import { eventBonus } from "./events.js";
+import { emoji } from "./emojis.js";
 
 const LUCK_POTION_MS = 30 * 60 * 1000;
 const MEGA_LUCK_POTION_MS = 30 * 60 * 1000;
@@ -14,31 +15,31 @@ const SCROLL_EVENT_MS = 30 * 60 * 1000;
 export async function cmdShop(message: Message, args: string[]): Promise<void> {
   const cat = (args[0]?.toLowerCase() ?? "") as ShopCategory | "";
   if (!cat) {
-    const lines = ["🛒 **Lowo Shop** — *categories:*"];
+    const lines = [`${emoji("shop")} **Lowo Shop** — *categories:*`];
     for (const c of SHOP_CATEGORIES) {
       const count = SHOP_ITEMS.filter((i) => i.category === c).length;
-      lines.push(`• \`lowo shop ${c}\` — *${count} item${count === 1 ? "" : "s"}*`);
+      lines.push(`${emoji("bullet")} \`lowo shop ${c}\` — *${count} item${count === 1 ? "" : "s"}*`);
     }
-    lines.push("\nBuy with `lowo buy <itemId>` (premium items spend Lowo Cash).");
+    lines.push(`\nBuy with \`lowo buy <itemId>\` *(premium items spend ${emoji("cash")} Lowo Cash)*.`);
     await message.reply(lines.join("\n"));
     return;
   }
   if (!(SHOP_CATEGORIES as string[]).includes(cat)) {
-    await message.reply(`❌ Unknown category \`${cat}\`. Try: ${SHOP_CATEGORIES.map((c) => `\`${c}\``).join(", ")}`);
+    await message.reply(`${emoji("fail")} Unknown category \`${cat}\`. Try: ${SHOP_CATEGORIES.map((c) => `\`${c}\``).join(", ")}`);
     return;
   }
   const items = SHOP_ITEMS.filter((i) => i.category === cat);
-  if (items.length === 0) { await message.reply(`📭 No items in **${cat}** yet.`); return; }
+  if (items.length === 0) { await message.reply(`${emoji("empty")} No items in **${cat}** yet.`); return; }
   const sale = eventBonus("shop_sale"); // 0.8 if active else 1
-  const lines = [`🛒 **Lowo Shop — ${cat.toUpperCase()}**${sale < 1 ? " *(🏷️ SHOP SALE −20% active!)*" : ""}`];
+  const lines = [`${emoji("shop")} **Lowo Shop — ${cat.toUpperCase()}**${sale < 1 ? ` *(${emoji("sale")} SHOP SALE −20% active!)*` : ""}`];
   for (const it of items) {
     const cowoncyEffective = sale < 1 && it.price > 0 ? Math.floor(it.price * sale) : it.price;
     const cost = it.lowoCashPrice
-      ? `**${it.lowoCashPrice}** 💎 Lowo Cash`
+      ? `**${it.lowoCashPrice}** ${emoji("cash")} Lowo Cash`
       : (sale < 1 ? `~~${it.price.toLocaleString()}~~ **${cowoncyEffective.toLocaleString()}** cowoncy` : `**${it.price.toLocaleString()}** cowoncy`);
-    lines.push(`${it.emoji} \`${it.id}\` — **${it.name}** • ${cost}\n  *${it.description}*`);
+    lines.push(`${it.emoji} \`${it.id}\` — **${it.name}** ${emoji("bullet")} ${cost}\n  *${it.description}*`);
   }
-  lines.push("\nBuy with `lowo buy <itemId>`.");
+  lines.push(`\nBuy with \`lowo buy <itemId>\`.`);
   await message.reply(lines.join("\n").slice(0, 1900));
 }
 

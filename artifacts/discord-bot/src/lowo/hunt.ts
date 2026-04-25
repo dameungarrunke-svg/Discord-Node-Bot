@@ -10,6 +10,7 @@ import { onHuntCaught, bestHuntCdMultiplier, sellMultiplier, essenceMultiplier }
 import { eventBonus, activeEvent } from "./events.js";
 import { isAutohuntActive } from "./extra.js";
 import { refreshAreaUnlocks } from "./areas.js";
+import { emoji } from "./emojis.js";
 
 const BASE_HUNT_COOLDOWN_MS = 15_000;
 const HUNTS_PER_LOWOCASH = 50;
@@ -66,7 +67,7 @@ export async function cmdHunt(message: Message): Promise<void> {
   const cooldown = Math.floor(BASE_HUNT_COOLDOWN_MS * cdMult);
   if (now - u.lastHunt < cooldown) {
     const left = Math.ceil((cooldown - (now - u.lastHunt)) / 1000);
-    await message.reply(`⏳ Slow down! Hunt again in **${left}s**.`);
+    await message.reply(`${emoji("hourglass")} Slow down! Hunt again in **${left}s**.`);
     return;
   }
 
@@ -116,20 +117,20 @@ export async function cmdHunt(message: Message): Promise<void> {
 
   const ev = activeEvent();
   const evNote = ev ? `\n${ev.emoji} *${ev.name} active*` : "";
-  const pityNote = pityTriggered ? "\n🌟 **PITY!** Guaranteed legendary triggered!" : "";
-  const cashNote = cashGained > 0 ? `\n💎 **+${cashGained}** Lowo Cash *(50-hunt milestone!)*` : "";
-  const arcuesNote = arcuesJustUnlocked ? `\n🌠 **ARCUES UNLOCKED!** Permanent **+5% Luck** & **+10% Essence** on sacrifices!` : "";
+  const pityNote = pityTriggered ? `\n${emoji("pity")} **PITY!** Guaranteed legendary triggered!` : "";
+  const cashNote = cashGained > 0 ? `\n${emoji("cash")} **+${cashGained}** Lowo Cash *(50-hunt milestone!)*` : "";
+  const arcuesNote = arcuesJustUnlocked ? `\n${emoji("rocket")} **ARCUES UNLOCKED!** Permanent **+5% Luck** & **+10% Essence** on sacrifices!` : "";
   const unlockNote = newlyUnlocked.length
-    ? `\n🗺️ **AREA UNLOCKED:** ${newlyUnlocked.map((id) => `${AREA_BY_ID[id].emoji} **${AREA_BY_ID[id].name}**`).join(", ")} — switch via \`lowo area\`.`
+    ? `\n${emoji("flag")} **AREA UNLOCKED:** ${newlyUnlocked.map((id) => `${AREA_BY_ID[id].emoji} **${AREA_BY_ID[id].name}**`).join(", ")} — switch via \`lowo area\`.`
     : "";
   const areaTag = `*[${AREA_BY_ID[area].emoji} ${AREA_BY_ID[area].name}]*`;
 
   if (caught.length === 1) {
     const a = caught[0];
-    await message.reply(`🎯 ${areaTag} **${message.author.username}** went hunting and caught a ${RARITY_COLOR[a.rarity]} **${a.name}** ${a.emoji} *(${a.rarity})*${evNote}${pityNote}${cashNote}${arcuesNote}${unlockNote}`);
+    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught a ${RARITY_COLOR[a.rarity]} **${a.name}** ${a.emoji} *(${a.rarity})*${evNote}${pityNote}${cashNote}${arcuesNote}${unlockNote}`);
   } else {
     const list = caught.map((a) => `${RARITY_COLOR[a.rarity]} ${a.emoji} **${a.name}** *(${a.rarity})*`).join(" + ");
-    await message.reply(`🎯 ${areaTag} **${message.author.username}** went hunting and caught **${caught.length}** animals!\n${list}${evNote}${pityNote}${cashNote}${arcuesNote}${unlockNote}`);
+    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught **${caught.length}** animals!\n${list}${evNote}${pityNote}${cashNote}${arcuesNote}${unlockNote}`);
   }
 }
 
@@ -137,14 +138,14 @@ export async function cmdZoo(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
   const entries = Object.entries(u.zoo).filter(([, c]) => c > 0);
-  if (entries.length === 0) { await message.reply(`📭 **${target.username}** has no animals yet. Try \`lowo hunt\`!`); return; }
+  if (entries.length === 0) { await message.reply(`${emoji("empty")} **${target.username}** has no animals yet. Try \`lowo hunt\`!`); return; }
 
   const grouped: Partial<Record<Rarity, string[]>> = {};
   for (const [id, count] of entries) {
     const a = ANIMAL_BY_ID[id]; if (!a) continue;
     (grouped[a.rarity] ??= []).push(`${a.emoji} ${a.name} ×${count}`);
   }
-  const lines: string[] = [`🦊 **${target.username}'s Zoo**`];
+  const lines: string[] = [`${emoji("zoo")} **${target.username}'s Zoo**`];
   for (const r of RARITY_ORDER) {
     const arr = grouped[r];
     if (arr && arr.length) lines.push(`\n${RARITY_COLOR[r]} **${r.toUpperCase()}**\n${arr.join(", ")}`);
@@ -162,7 +163,7 @@ export async function cmdSell(message: Message, args: string[]): Promise<void> {
     return;
   }
   const a = ANIMAL_BY_ID[id];
-  if (owned <= 0) { await message.reply(`❌ You don't own any ${a.emoji} ${a.name}.`); return; }
+  if (owned <= 0) { await message.reply(`${emoji("fail")} You don't own any ${a.emoji} ${a.name}.`); return; }
   const count = Math.max(1, Math.min(owned, rawCount));
   const sellMult = sellMultiplier(message.author.id, a.id);
   const cowoncyMult = eventBonus("cowoncy");
@@ -170,9 +171,9 @@ export async function cmdSell(message: Message, args: string[]): Promise<void> {
   updateUser(message.author.id, (x) => { x.zoo[a.id] -= count; x.cowoncy += total; });
   const tags: string[] = [];
   if (sellMult > 1)     tags.push("Lv 3 perk +25%");
-  if (cowoncyMult > 1)  tags.push("💰 Cowoncy Event ×2");
+  if (cowoncyMult > 1)  tags.push(`${emoji("cowoncy")} Cowoncy Event ×2`);
   const tag = tags.length ? ` *(${tags.join(", ")})*` : "";
-  await message.reply(`💰 Sold ${count}× ${a.emoji} **${a.name}** for **${total.toLocaleString()}** cowoncy${tag}.`);
+  await message.reply(`${emoji("sell")} Sold ${count}× ${a.emoji} **${a.name}** for **${total.toLocaleString()}** cowoncy${tag}.`);
 }
 
 export async function cmdSacrifice(message: Message, args: string[]): Promise<void> {
@@ -185,7 +186,7 @@ export async function cmdSacrifice(message: Message, args: string[]): Promise<vo
     return;
   }
   const a = ANIMAL_BY_ID[id];
-  if (owned <= 0) { await message.reply(`❌ You don't own any ${a.emoji} ${a.name}.`); return; }
+  if (owned <= 0) { await message.reply(`${emoji("fail")} You don't own any ${a.emoji} ${a.name}.`); return; }
   const count = Math.max(1, Math.min(owned, rawCount));
   const evMult = eventBonus("essence");
   const perkMult = essenceMultiplier(message.author.id, a.id);
@@ -193,11 +194,11 @@ export async function cmdSacrifice(message: Message, args: string[]): Promise<vo
   const total = Math.floor(count * a.essence * evMult * perkMult * arcuesMult);
   updateUser(message.author.id, (x) => { x.zoo[a.id] -= count; x.essence += total; });
   const tags: string[] = [];
-  if (evMult > 1)      tags.push("✨ Essence Storm ×2");
+  if (evMult > 1)      tags.push(`${emoji("essence")} Essence Storm ×2`);
   if (perkMult > 1)    tags.push("Lv 10 perk ×2");
-  if (arcuesMult > 1)  tags.push("🌠 Arcues +10%");
+  if (arcuesMult > 1)  tags.push(`${emoji("rocket")} Arcues +10%`);
   const tag = tags.length ? ` *(${tags.join(", ")})*` : "";
-  await message.reply(`✨ Sacrificed ${count}× ${a.emoji} **${a.name}** → +**${total.toLocaleString()}** essence${tag}.`);
+  await message.reply(`${emoji("essence")} Sacrificed ${count}× ${a.emoji} **${a.name}** → +**${total.toLocaleString()}** essence${tag}.`);
 }
 
 export async function cmdLowodex(message: Message): Promise<void> {
@@ -206,13 +207,13 @@ export async function cmdLowodex(message: Message): Promise<void> {
   const total = ANIMALS.length;
   const owned = u.dex.length;
   const pct = Math.round((owned / total) * 100);
-  const lines = [`📕 **${target.username}'s Lowodex** — ${owned}/${total} (${pct}%)`];
+  const lines = [`${emoji("dex")} **${target.username}'s Lowodex** — ${owned}/${total} (${pct}%)`];
   for (const a of ANIMALS) {
     const got = u.dex.includes(a.id);
     const tags: string[] = [];
-    if (a.aquatic)   tags.push("🐟");
-    if (a.eventOnly) tags.push("👾");
-    lines.push(`${got ? "✅" : "⬜"} ${a.emoji} ${a.name} \`${a.id}\` ${RARITY_COLOR[a.rarity]}${tags.length ? ` ${tags.join("")}` : ""}`);
+    if (a.aquatic)   tags.push(emoji("fishCaught"));
+    if (a.eventOnly) tags.push(emoji("event"));
+    lines.push(`${got ? emoji("dexFound") : emoji("dexMissing")} ${a.emoji} ${a.name} \`${a.id}\` ${RARITY_COLOR[a.rarity]}${tags.length ? ` ${tags.join("")}` : ""}`);
   }
   await message.reply(lines.join("\n").slice(0, 1900));
 }

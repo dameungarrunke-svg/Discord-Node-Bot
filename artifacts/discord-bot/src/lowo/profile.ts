@@ -4,6 +4,7 @@ import { getUser, allUsers } from "./storage.js";
 import { ANIMAL_BY_ID, PITY_THRESHOLD, BACKGROUND_BY_ID } from "./data.js";
 import { generateProfileCard } from "./profileCard.js";
 import { isCensored } from "./censor.js";
+import { emoji, allEmojiKeys, isOverridden } from "./emojis.js";
 
 export async function cmdProfile(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
@@ -13,14 +14,14 @@ export async function cmdProfile(message: Message): Promise<void> {
   const bg = BACKGROUND_BY_ID[u.background ?? "bg_dark"]?.name ?? "Midnight";
   const pityPct = Math.min(100, Math.floor(((u.pity ?? 0) / PITY_THRESHOLD) * 100));
   await message.reply([
-    `👤 **${target.username}'s Lowo Profile**`,
+    `${emoji("profile")} **${target.username}'s Lowo Profile**`,
     u.tag ? `*"${u.tag}"*` : null,
-    `💰 Cowoncy: **${u.cowoncy.toLocaleString()}**  •  ✨ Essence: **${u.essence.toLocaleString()}**`,
-    `🐾 Animals: **${animals}** (${u.dex.length} unique)  •  🗡️ Weapons: **${u.weapons.length}**`,
-    `🦊 Pet streak: **${u.pet.streak}**  •  🥕 Garden: **${u.piku.harvested}**  •  🎟️ Tickets: **${u.lotteryTickets}**`,
-    `🔥 Daily streak: **${u.dailyStreak}**  •  ⭐ Rep: **${u.rep}**`,
-    `🌟 Pity: **${u.pity}/${PITY_THRESHOLD}** (${pityPct}%)  •  🖼️ BG: **${bg}**`,
-    `💍 Married to: ${married}`,
+    `${emoji("cowoncy")} Cowoncy: **${u.cowoncy.toLocaleString()}**  ${emoji("bullet")}  ${emoji("essence")} Essence: **${u.essence.toLocaleString()}**`,
+    `${emoji("pet")} Animals: **${animals}** (${u.dex.length} unique)  ${emoji("bullet")}  ${emoji("weapon")} Weapons: **${u.weapons.length}**`,
+    `${emoji("zoo")} Pet streak: **${u.pet.streak}**  ${emoji("bullet")}  ${emoji("carrot")} Garden: **${u.piku.harvested}**  ${emoji("bullet")}  ${emoji("ticket")} Tickets: **${u.lotteryTickets}**`,
+    `${emoji("streak")} Daily streak: **${u.dailyStreak}**  ${emoji("bullet")}  ${emoji("rep")} Rep: **${u.rep}**`,
+    `${emoji("pity")} Pity: **${u.pity}/${PITY_THRESHOLD}** (${pityPct}%)  ${emoji("bullet")}  ${emoji("bg")} BG: **${bg}**`,
+    `${emoji("marry")} Married to: ${married}`,
     `\n_Try \`lowo card\` for the visual version._`,
   ].filter(Boolean).join("\n"));
 }
@@ -119,4 +120,41 @@ export async function cmdTop(message: Message, args: string[]): Promise<void> {
 
 export async function cmdMy(message: Message): Promise<void> {
   await cmdProfile(message);
+}
+
+/**
+ * Lists every named emoji slot the bot knows about, marking which are using a
+ * custom Discord emoji override vs the unicode fallback. Useful when building
+ * `data/lowo_emojis.json`.
+ *
+ * Usage:
+ *   lowo emojis            — list every key (chunked into multiple replies if long)
+ *   lowo emojis <filter>   — only list keys containing <filter>
+ */
+export async function cmdEmojiList(message: Message, args: string[]): Promise<void> {
+  const filter = (args[0] ?? "").toLowerCase();
+  const keys = allEmojiKeys().filter((k) => !filter || k.toLowerCase().includes(filter));
+  if (keys.length === 0) {
+    await message.reply(`${emoji("fail")} No emoji keys match \`${filter}\`.`);
+    return;
+  }
+  const header = `${emoji("sparkles")} **Lowo Emoji Catalog** — *${keys.length} key${keys.length === 1 ? "" : "s"}${filter ? ` matching \`${filter}\`` : ""}*\n_Override any with \`data/lowo_emojis.json\` (e.g. \`{"fire":"<:my_fire:123…>"}\`).  ${emoji("check")} = custom override active._\n`;
+  const lines = keys.map((k) => `${isOverridden(k) ? emoji("check") : emoji("dot")} \`${k}\` ${emoji(k)}`);
+
+  const chunks: string[] = [];
+  let buf = header;
+  for (const line of lines) {
+    if (buf.length + line.length + 1 > 1900) {
+      chunks.push(buf);
+      buf = "";
+    }
+    buf += `\n${line}`;
+  }
+  if (buf) chunks.push(buf);
+
+  await message.reply(chunks[0]);
+  const ch = message.channel;
+  if ("send" in ch) {
+    for (let i = 1; i < chunks.length; i++) await ch.send(chunks[i]);
+  }
 }

@@ -3,6 +3,7 @@ import { getUser, updateUser, type UserData } from "./storage.js";
 import { ANIMAL_BY_ID, ANIMALS, ARMOR_BY_ID, ACCESSORY_BY_ID, SIGNATURE_SKILLS, rollWeapon } from "./data.js";
 import { getAnimalMultiplier, onBattleWin, getAnimalPerk } from "./skills.js";
 import { eventBonus } from "./events.js";
+import { emoji } from "./emojis.js";
 
 const BATTLE_COOLDOWN_MS = 30_000;
 const SKILL_TRIGGER_CHANCE = 0.25;
@@ -204,10 +205,10 @@ export async function cmdBattle(message: Message): Promise<void> {
   const now = Date.now();
   const left = BATTLE_COOLDOWN_MS - (now - me.lastBattle);
   if (left > 0) {
-    await message.reply(`⏳ Cooling down — battle again in **${Math.ceil(left / 1000)}s**.`);
+    await message.reply(`${emoji("hourglass")} Cooling down — battle again in **${Math.ceil(left / 1000)}s**.`);
     return;
   }
-  if (me.team.length === 0) { await message.reply("❌ Build a team first: `lowo team add <name>`"); return; }
+  if (me.team.length === 0) { await message.reply(`${emoji("fail")} Build a team first: \`lowo team add <name>\``); return; }
   const teamA = buildTeam(me, message.author.id);
   let teamB: CombatUnit[];
   let oppName: string;

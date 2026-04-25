@@ -12,7 +12,7 @@ import * as Actions from "./actions.js";
 import * as Memes from "./memes.js";
 import * as Util from "./utility.js";
 import { cmdQuest, cmdChecklist } from "./quests.js";
-import { cmdProfile, cmdLevel, cmdAvatar, cmdWallpaper, cmdEmoji, cmdCookie, cmdPray, cmdCurse, cmdTop, cmdMy, cmdCard } from "./profile.js";
+import { cmdProfile, cmdLevel, cmdAvatar, cmdWallpaper, cmdEmoji, cmdCookie, cmdPray, cmdCurse, cmdTop, cmdMy, cmdCard, cmdEmojiList } from "./profile.js";
 import { cmdAutohunt, cmdLootbox, cmdBox, cmdInv, cmdRename, cmdDismantle, cmdBattlesetting } from "./extra.js";
 import { cmdSkills } from "./skills.js";
 import { cmdEvent } from "./events.js";
@@ -112,6 +112,7 @@ const HANDLERS: Record<string, Handler> = {
   profile: cmdProfile, p: cmdProfile, my: cmdMy, top: cmdTop, leaderboard: cmdTop, lb: cmdTop,
   level: cmdLevel, lvl: cmdLevel, avatar: cmdAvatar, av: cmdAvatar,
   wallpaper: cmdWallpaper, emoji: cmdEmoji, cookie: cmdCookie, pray: cmdPray, curse: cmdCurse,
+  emojis: cmdEmojiList, emojilist: cmdEmojiList, emojikeys: cmdEmojiList,
   card: cmdCard,
   // extra inventory / battle
   autohunt: cmdAutohunt, ah: cmdAutohunt,

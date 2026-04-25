@@ -10,12 +10,27 @@ const __dirname = dirname(__filename);
 // Anything not overridden falls back to a nice Unicode emoji.
 const OVERRIDE_FILE = join(resolve(__dirname, "../../data"), "lowo_emojis.json");
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Massive named-emoji catalog. Every key here is a slot you can override with
+// a real Discord custom emoji by editing data/lowo_emojis.json. Unicode
+// fallbacks are chosen to match what the bot used to print inline so behaviour
+// stays identical until you provide overrides.
+// ─────────────────────────────────────────────────────────────────────────────
 const FALLBACKS: Record<string, string> = {
-  // Currencies
+  // ── Currencies ──────────────────────────────────────────────────────────
   cowoncy: "💰",
   essence: "✨",
   cash: "💎",
-  // Activities
+  ring: "💍",
+  ticket: "🎟️",
+  carrot: "🥕",
+  petfood: "🍖",
+  cookie: "🍪",
+  coin: "🪙",
+  gem: "💎",
+  money: "💵",
+
+  // ── Activities ──────────────────────────────────────────────────────────
   hunt: "🏹",
   fish: "🎣",
   mine: "⛏️",
@@ -23,33 +38,208 @@ const FALLBACKS: Record<string, string> = {
   battle: "⚔️",
   skillbattle: "🔥",
   boss: "👹",
-  // Visual decorations
+  daily: "🎁",
+  vote: "🗳️",
+  give: "💸",
+  pet: "🐾",
+  pray: "🙏",
+  curse: "😈",
+  gamble: "🎰",
+  trade: "🤝",
+  quest: "📋",
+  event: "🌍",
+  emote: "🎭",
+  meme: "🤣",
+
+  // ── Equipment slots & gear ──────────────────────────────────────────────
+  weapon: "🗡️",
+  armor: "🛡️",
+  accessory: "🧿",
+  pickaxe: "⛏️",
+  pickaxe0: "⛏️",
+  pickaxe1: "🪓",
+  pickaxe2: "🥇",
+  pickaxe3: "💎",
+  rod: "🎣",
+  charm: "📿",
+  crate: "📦",
+  chest: "🧰",
+  box: "🎁",
+
+  // ── Areas ───────────────────────────────────────────────────────────────
+  forest: "🌲",
+  volcano: "🌋",
+  volcanic: "🌋",
+  galaxy: "🌌",
+  space: "🚀",
+  ocean: "🌊",
+  desert: "🏜️",
+  cave: "🕳️",
+
+  // ── Loot rarities ───────────────────────────────────────────────────────
+  common: "⚪",
+  uncommon: "🟢",
+  rare: "🔵",
+  epic: "🟣",
+  mythic: "🟡",
+  legendary: "🌈",
+  ethereal: "🩵",
+  divine: "🌕",
+  omni: "💠",
+  glitched: "🟥",
+  inferno: "🔥",
+  cosmic: "🌌",
+  void: "🕳️",
+  secret: "🦷",
+
+  // ── UI / status ─────────────────────────────────────────────────────────
+  success: "✅",
+  fail: "❌",
+  warn: "⚠️",
+  info: "ℹ️",
+  loading: "⏳",
+  lock: "🔒",
+  unlock: "🔓",
+  check: "✅",
+  cross: "❌",
+  blank: "⬜",
+  filled: "✅",
+  empty: "📭",
+  full: "🎉",
+  on: "🟢",
+  off: "🔴",
+  yes: "✔️",
+  no: "✖️",
+
+  // ── Combat stats / FX ──────────────────────────────────────────────────
+  atk: "⚔️",
+  def: "🛡️",
+  mag: "🔮",
+  hp: "❤️",
+  mp: "💙",
+  crit: "💥",
+  stun: "💫",
+  heal: "💚",
+  shield: "🛡️",
+  burn: "🔥",
+  freeze: "❄️",
+  poison: "☠️",
+  bleed: "🩸",
+  lifesteal: "🧛",
+  buff: "🔺",
+  debuff: "🔻",
+  win: "🏆",
+  loss: "💀",
+  draw: "🤝",
+  versus: "⚡",
+
+  // ── Decoration / flair ──────────────────────────────────────────────────
   star: "🌟",
+  stars: "✨",
   fire: "🔥",
   bolt: "⚡",
-  shield: "🛡️",
   heart: "❤️",
   skull: "💀",
   trophy: "🏆",
   crown: "👑",
   scroll: "📜",
   sparkle: "✨",
-  // Pet equipment slots
-  weapon: "🗡️",
-  armor: "🛡️",
-  accessory: "🧿",
-  // Areas
-  forest: "🌲",
-  volcano: "🌋",
-  galaxy: "🌌",
-  // Bars
+  sparkles: "✨",
+  rainbow: "🌈",
+  diamond: "💎",
+  music: "🎵",
+  party: "🎉",
+  flag: "🚩",
+  rocket: "🚀",
+  bomb: "💣",
+  gift: "🎁",
+
+  // ── Time / pace ─────────────────────────────────────────────────────────
+  clock: "🕒",
+  hourglass: "⏳",
+  fast: "💨",
+  slow: "🐢",
+  cooldown: "⏱️",
+  calendar: "📅",
+
+  // ── Profile / progression ───────────────────────────────────────────────
+  profile: "👤",
+  level: "📈",
+  xp: "⭐",
+  streak: "🔥",
+  rep: "⭐",
+  tag: "🏷️",
+  bg: "🖼️",
+  card: "🪪",
+  avatar: "🧑",
+  rank: "🏅",
+  pity: "🌟",
+  zoo: "🦊",
+  dex: "📕",
+  dexFound: "✅",
+  dexMissing: "⬜",
+
+  // ── Shop / commerce ─────────────────────────────────────────────────────
+  shop: "🛒",
+  buy: "🛍️",
+  sell: "💰",
+  sale: "🏷️",
+  premium: "💎",
+  bag: "👜",
+  receipt: "🧾",
+  newItem: "🆕",
+  hot: "🔥",
+
+  // ── Social / pet emotes ─────────────────────────────────────────────────
+  hug: "🤗",
+  kiss: "😘",
+  slap: "👋",
+  pat: "✋",
+  cuddle: "🤲",
+  poke: "👉",
+  lick: "👅",
+  propose: "💍",
+  divorce: "💔",
+  marry: "💞",
+  ship: "🚢",
+
+  // ── Minerals / mining ───────────────────────────────────────────────────
+  ore: "🪨",
+  iron: "⚙️",
+  gold: "🥇",
+  silver: "🥈",
+  copper: "🟠",
+  ruby: "❤️",
+  sapphire: "💙",
+  emerald: "💚",
+  amethyst: "💜",
+  obsidian: "🖤",
+  mithril: "🩵",
+  crystal: "🔮",
+
+  // ── Aquatic / fishing ───────────────────────────────────────────────────
+  fishCaught: "🐟",
+  shark: "🦈",
+  whale: "🐳",
+  octopus: "🐙",
+  shell: "🐚",
+
+  // ── Bullets / dividers / arrows ─────────────────────────────────────────
+  bullet: "•",
+  dot: "·",
+  arrow: "➜",
+  arrowR: "▶",
+  arrowL: "◀",
+  arrowU: "▲",
+  arrowD: "▼",
+  divider: "━",
+  pipe: "│",
+
+  // ── Bars (used by progressBar) ──────────────────────────────────────────
   barFull: "█",
   barEmpty: "░",
-  // Loot rarities
-  void: "🕳️",
-  cosmic: "🌌",
-  inferno: "🔥",
-  secret: "🦷",
+  barLeft: "▕",
+  barRight: "▏",
 };
 
 let overrides: Record<string, string> = {};
@@ -93,12 +283,19 @@ export function progressBar(cur: number, max: number, width = 12): string {
 
 /** A short rarity badge with a colored circle + label. */
 export function rarityBadge(rarity: string): string {
-  const emojiMap: Record<string, string> = {
-    common: "⚪", uncommon: "🟢", rare: "🔵", epic: "🟣",
-    mythic: "🟡", legendary: "🌈", ethereal: "🩵", divine: "🌕",
-    omni: "💠", glitched: "🟥",
-    inferno: "🔥", cosmic: "🌌", void: "🕳️", secret: "🦷",
-  };
-  const e = emojiMap[rarity] ?? "⚫";
+  load();
+  const e = overrides[rarity] ?? FALLBACKS[rarity] ?? "⚫";
   return `${e} \`${rarity}\``;
+}
+
+/** Return every known emoji key in sorted order (for the `lowo emojis` listing). */
+export function allEmojiKeys(): string[] {
+  load();
+  return Array.from(new Set([...Object.keys(FALLBACKS), ...Object.keys(overrides)])).sort();
+}
+
+/** Returns true if this key is currently using a custom override (not the fallback). */
+export function isOverridden(name: string): boolean {
+  load();
+  return Object.prototype.hasOwnProperty.call(overrides, name);
 }
