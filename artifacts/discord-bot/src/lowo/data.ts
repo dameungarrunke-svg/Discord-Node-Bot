@@ -1,9 +1,10 @@
 export type Rarity =
   | "common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary"
   | "ethereal" | "divine" | "omni" | "glitched"
-  | "inferno" | "cosmic" | "void" | "secret";
+  | "inferno" | "cosmic" | "void" | "secret"
+  | "supreme" | "transcendent";
 
-export type HuntArea = "default" | "volcanic" | "space";
+export type HuntArea = "default" | "volcanic" | "space" | "heaven" | "void_unknown";
 
 export interface Animal {
   id: string;
@@ -29,10 +30,12 @@ export const RARITY_WEIGHTS: Record<Rarity, number> = {
   common: 55, uncommon: 25, rare: 12, epic: 5, mythic: 2.5, legendary: 0.5,
   ethereal: 0.05, divine: 0.01, omni: 0.005, glitched: 0,
   inferno: 0.008, cosmic: 0.006, void: 0.002, secret: 0,
+  supreme: 0, transcendent: 0.0008,
 };
 
 export const RARITY_ORDER: Rarity[] = [
-  "secret", "void", "cosmic", "inferno",
+  "secret", "supreme", "transcendent",
+  "void", "cosmic", "inferno",
   "glitched", "omni", "divine", "ethereal",
   "legendary", "mythic", "epic", "rare", "uncommon", "common",
 ];
@@ -42,6 +45,7 @@ export const RARITY_COLOR: Record<Rarity, string> = {
   mythic: "🟡", legendary: "🌈", ethereal: "🩵", divine: "🌕",
   omni: "💠", glitched: "🟥",
   inferno: "🔥", cosmic: "🌌", void: "🕳️", secret: "🦷",
+  supreme: "👑", transcendent: "🪽",
 };
 
 // ─── Signature Skills (battle phase passive triggers) ─────────────────────────
@@ -339,6 +343,144 @@ const FISH_ANIMALS: Animal[] = [
   { id: "megalodon",  name: "Megalodon",  emoji: "🦈🌊", rarity: "legendary", hp: 600, atk: 90, def: 50, mag: 60, sellPrice: 28000, essence: 160, huntable: false, aquatic: true, signatureSkill: "vampiric_bite" },
 ];
 
+// ─── Heaven (4th area) — 100+ angelic animals ────────────────────────────────
+function buildAreaPool(
+  prefix: string,
+  area: HuntArea,
+  themes: { common: string[]; uncommon: string[]; rare: string[]; epic: string[]; mythic: string[]; legendary: string[]; topRarity: Rarity; topName: string; topEmoji: string; topSellPrice: number; topEssence: number },
+): Animal[] {
+  const out: Animal[] = [];
+  const SK = ["fire_breath","vampiric_bite","piercing_strike","blessed_aura","petrify","flurry","iron_wall","cinder_burn"];
+  let idx = 0;
+  const push = (count: number, rarity: Rarity, names: string[], hp0: number, atk0: number, def0: number, mag0: number, sell0: number, ess0: number): void => {
+    for (let i = 0; i < count; i++) {
+      const n = names[i % names.length];
+      const id = `${prefix}_${n.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${i}`;
+      out.push({
+        id, name: `${n}`, emoji: themes[rarity as "common"]?.[i % (themes[rarity as "common"]?.length || 1)] ?? "✨",
+        rarity, area,
+        hp: hp0 + i * 4, atk: atk0 + Math.floor(i / 2), def: def0 + Math.floor(i / 3), mag: mag0 + Math.floor(i / 2),
+        sellPrice: sell0 + i * 7, essence: ess0,
+        signatureSkill: SK[(idx++) % SK.length],
+      });
+    }
+  };
+  // Common (30)
+  push(30, "common", themes.common, 90, 10, 8, 7, 40, 1);
+  // Uncommon (25)
+  push(25, "uncommon", themes.uncommon, 110, 16, 11, 12, 120, 3);
+  // Rare (18)
+  push(18, "rare", themes.rare, 175, 28, 17, 13, 380, 7);
+  // Epic (15)
+  push(15, "epic", themes.epic, 260, 40, 25, 32, 1500, 18);
+  // Mythic (8)
+  push(8, "mythic", themes.mythic, 400, 58, 35, 50, 6500, 50);
+  // Legendary (3)
+  push(3, "legendary", themes.legendary, 600, 95, 60, 80, 45000, 220);
+  // 1 top-tier (transcendent for heaven, void for void_unknown)
+  out.push({
+    id: `${prefix}_${themes.topName.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
+    name: themes.topName, emoji: themes.topEmoji,
+    rarity: themes.topRarity, area,
+    hp: 1100, atk: 175, def: 130, mag: 195,
+    sellPrice: themes.topSellPrice, essence: themes.topEssence,
+    signatureSkill: "blessed_aura",
+  });
+  return out;
+}
+
+const HEAVEN_ANIMALS: Animal[] = buildAreaPool("hv", "heaven", {
+  common: ["⛅🐶","☁️🐱","🪽🐭","✨🐰","☁️🐤","✨🐹","☁️🐿️","🪽🦔","☁️🦆","☁️🐢","🪽🐌","🪽🐛","☁️🐦","🪷🐋","🪷🐠","🪽🐝","☁️🪿","🪷🐇","☁️🐈","🪽🦋"],
+  uncommon: ["☁️🐸","🪽🦊","☁️🐼","🪽🦉","☁️🐷","🪽🐧","☁️🐨","🪽🦝","☁️🦅","☁️🐑","☁️🐄","☁️🐐","🪽🦌","🪽🫏","☁️🦙"],
+  rare: ["🪽🐺","🪽🐯","☁️🦁","🪽🦈","☁️🐙","🪽🐆","🪽🦅","☁️🐊","☁️🐻","🪽🦍","☁️🦏","🪽🐂","☁️🫎","🪽🦎"],
+  epic: ["🪽🦄","🪽🐉","☁️🦖","🪽🦅","🪽🐴","🪽🏹","🪽🐺","🪽🦁","🪽🦂","🪽🐲"],
+  mythic: ["☁️🔥🦅","🪽🦑","🌅🌟","🪽🐍","🪽🐕‍🦺","🪽🐉","☁️🦣","🪽🐍"],
+  legendary: ["👼👑","☁️🐲","🪽🐉","🌅✨"],
+  topRarity: "transcendent", topName: "Aetherion Prime", topEmoji: "🪽✨👼", topSellPrice: 1_800_000, topEssence: 9000,
+}).map((a, i) => {
+  // Distinct human-readable names per index per rarity tier
+  const rarityNames: Record<string, string[]> = {
+    common: ["Cherub Pup","Halo Kitten","Sky Mouse","Cloud Bunny","Angel Chick","Heaven Hamster","Seraph Squirrel","Halo Hedgehog","Cloud Duckling","Sky Turtle","Halo Snail","Cloud Caterpillar","Cherub Sparrow","Lotus Whale","Halo Goldfish","Sky Bee","Cloud Goose","Lotus Hare","Cloud Cat","Halo Butterfly","Cloud Robin","Cherub Finch","Sky Wren","Lotus Sparrow","Halo Pigeon","Cloud Ladybug","Halo Moth","Cherub Swallow","Cloud Magpie","Halo Quail"],
+    uncommon: ["Halo Frog","Heaven Fox","Cloud Panda","Cherub Owl","Sky Pig","Cloud Penguin","Halo Koala","Heaven Raccoon","Cloud Hawk","Cloud Sheep","Cloud Cow","Cloud Goat","Halo Deer","Cherub Donkey","Cloud Llama","Heaven Stoat","Cherub Mongoose","Halo Wallaby","Cloud Tapir","Halo Otter","Cloud Beaver","Heaven Capybara","Cloud Anteater","Halo Wombat","Cherub Pangolin"],
+    rare: ["Heaven Wolf","Halo Tiger","Cloud Lion","Halo Shark","Cloud Octopus","Heaven Cheetah","Cherub Eagle","Halo Crocodile","Cloud Bear","Heaven Gorilla","Halo Rhino","Halo Bull","Cloud Elk","Heaven Komodo","Halo Jaguar","Cloud Leopard","Cherub Hyena","Halo Cougar"],
+    epic: ["Heaven Unicorn","Cloud Dragon","Halo T-Rex","Cherub Griffin","Halo Pegasus","Cloud Centaur","Halo Werewolf","Cloud Sphinx","Heaven Manticore","Cloud Chimera","Halo Wyvern","Cherub Hippogryph","Sky Roc","Halo Salamander","Cloud Drake"],
+    mythic: ["Heaven Phoenix","Cloud Kraken","Celestial Star","Halo Hydra","Cloud Cerberus","Heaven Leviathan","Halo Behemoth","Halo Basilisk"],
+    legendary: ["Halo King","Aether Bahamut","Sky Tiamat","Heaven Ouroboros"],
+  };
+  const arr = rarityNames[a.rarity];
+  if (arr && i < 100) {
+    let runningOffset = 0;
+    const counts: Record<string, number> = { common: 30, uncommon: 25, rare: 18, epic: 15, mythic: 8, legendary: 3 };
+    for (const r of ["common","uncommon","rare","epic","mythic","legendary"]) {
+      if (a.rarity === r) {
+        const localIdx = i - runningOffset;
+        if (localIdx >= 0 && localIdx < (rarityNames[r]?.length ?? 0)) {
+          a.name = rarityNames[r][localIdx];
+        }
+        break;
+      }
+      runningOffset += counts[r] ?? 0;
+    }
+  }
+  return a;
+});
+
+// ─── Void Unknown (5th area) — 100+ shadowy animals ──────────────────────────
+const VOID_UNKNOWN_ANIMALS: Animal[] = buildAreaPool("vu", "void_unknown", {
+  common: ["🕳️🐶","◾🐱","🌑🐭","🕳️🐰","◾🐤","🌀🐹","🕳️🐿️","◾🦔","🌑🦆","🕳️🐢","◾🐌","🕳️🐛","🌑🐦","🕳️🐋","◾🐠","🕳️🐝","◾🪿","🕳️🐇","🌑🐈","🕳️🦋","🩻🐻","🕳️🐧","◾🐧","🌑🦦","🕳️🦫","🌀🐹","◾🦝","🕳️🦨","🌑🐀","🕳️🐭"],
+  uncommon: ["🕳️🐸","🌀🦊","🕳️🐼","🌑🦉","🕳️🐷","🌀🐧","🕳️🐨","🌀🦝","🕳️🦅","🌑🐑","🕳️🐄","🌑🐐","🌀🦌","🕳️🫏","🌑🦙","🕳️🦔","🌀🦦","🕳️🦫","🌑🐻","🕳️🦡","🌀🦨","🕳️🦔","🌑🐈‍⬛","🕳️🐀","🌑🐺"],
+  rare: ["🕳️🐺","🌀🐯","🕳️🦁","🌑🦈","🕳️🐙","🌀🐆","🕳️🦅","🌀🐊","🕳️🐻","🌑🦍","🕳️🦏","🌀🐂","🕳️🫎","🌀🦎","🕳️🐊","🌑🦖","🕳️🐲","🌀🐉"],
+  epic: ["🕳️🦄","🌀🐉","🕳️🦖","🌑🦅","🕳️🐴","🌀🏹","🕳️🐺","🌑🦁","🕳️🦂","🌀🐲","🕳️🐍","🌑🦂","🕳️👁️","🌀🦴","🕳️💀"],
+  mythic: ["🕳️🔥🦅","🌀🦑","🌑🌟","🕳️🐍","🌀🐕‍🦺","🕳️🐉","🌑🦣","🕳️🐍"],
+  legendary: ["🕳️👑","🌀🐲","🌑🐉","🕳️✨"],
+  topRarity: "void", topName: "The Unknown", topEmoji: "👁️🕳️🌀", topSellPrice: 2_750_000, topEssence: 14000,
+}).map((a, i) => {
+  const rarityNames: Record<string, string[]> = {
+    common: ["Void Pup","Shadow Kitten","Null Mouse","Whisper Bunny","Glitch Chick","Hollow Hamster","Void Squirrel","Phantom Hedgehog","Shade Duckling","Null Turtle","Hollow Snail","Glitch Caterpillar","Void Sparrow","Whisper Whale","Null Goldfish","Hollow Bee","Void Goose","Shade Hare","Phantom Cat","Glitch Butterfly","Null Bear","Void Penguin","Shadow Penguin","Hollow Otter","Phantom Beaver","Void Hamster","Shade Raccoon","Null Skunk","Hollow Rat","Void Mouse"],
+    uncommon: ["Phantom Frog","Null Fox","Void Panda","Shadow Owl","Hollow Pig","Null Penguin","Void Koala","Glitch Raccoon","Phantom Hawk","Shadow Sheep","Void Cow","Shade Goat","Null Deer","Phantom Donkey","Hollow Llama","Void Stoat","Glitch Otter","Phantom Beaver","Shade Bear","Void Badger","Null Skunk","Phantom Hedgehog","Shadow Cat","Void Rat","Glitch Wolf"],
+    rare: ["Shadow Wolf","Null Tiger","Void Lion","Phantom Shark","Shade Octopus","Glitch Cheetah","Void Eagle","Null Crocodile","Phantom Bear","Void Gorilla","Shade Rhino","Glitch Bull","Void Elk","Null Komodo","Phantom Crocodile","Shade Allosaur","Void Wyrm","Null Drake"],
+    epic: ["Void Unicorn","Null Dragon","Phantom T-Rex","Shadow Eagle","Glitch Pegasus","Void Centaur","Null Werewolf","Shadow Lion","Void Manticore","Null Chimera","Phantom Snake","Shade Scorpion","Void Eye","Null Bone","Phantom Skull"],
+    mythic: ["Void Phoenix","Null Kraken","Shadow Star","Phantom Hydra","Glitch Cerberus","Void Leviathan","Null Behemoth","Shadow Basilisk"],
+    legendary: ["Void King","Null Bahamut","Shadow Tiamat","Phantom Ouroboros"],
+  };
+  const arr = rarityNames[a.rarity];
+  if (arr && i < 100) {
+    let runningOffset = 0;
+    const counts: Record<string, number> = { common: 30, uncommon: 25, rare: 18, epic: 15, mythic: 8, legendary: 3 };
+    for (const r of ["common","uncommon","rare","epic","mythic","legendary"]) {
+      if (a.rarity === r) {
+        const localIdx = i - runningOffset;
+        if (localIdx >= 0 && localIdx < (rarityNames[r]?.length ?? 0)) {
+          a.name = rarityNames[r][localIdx];
+        }
+        break;
+      }
+      runningOffset += counts[r] ?? 0;
+    }
+  }
+  return a;
+});
+
+// ─── Boss Pets (supreme rarity — drop on world-boss kills) ───────────────────
+export const BOSS_PETS: Animal[] = [
+  { id: "boss_ember_titan",   name: "Ember Titan Pet",   emoji: "🔥🗿",  rarity: "supreme", hp: 1300, atk: 195, def: 145, mag: 130, sellPrice: 850_000,  essence: 4200, area: "any", huntable: false, signatureSkill: "fire_breath" },
+  { id: "boss_frost_warden",  name: "Frost Warden Pet",  emoji: "❄️🛡️",  rarity: "supreme", hp: 1450, atk: 175, def: 195, mag: 145, sellPrice: 950_000,  essence: 4500, area: "any", huntable: false, signatureSkill: "iron_wall" },
+  { id: "boss_stormbringer",  name: "Stormbringer Pet",  emoji: "⚡🌩️",  rarity: "supreme", hp: 1400, atk: 215, def: 130, mag: 175, sellPrice: 1_050_000, essence: 4800, area: "any", huntable: false, signatureSkill: "piercing_strike" },
+  { id: "boss_abyss_serpent", name: "Abyss Serpent Pet", emoji: "🌊🐉",  rarity: "supreme", hp: 1500, atk: 200, def: 150, mag: 195, sellPrice: 1_200_000, essence: 5400, area: "any", huntable: false, signatureSkill: "vampiric_bite" },
+  { id: "boss_void_colossus", name: "Void Colossus Pet", emoji: "🕳️🦣",  rarity: "supreme", hp: 1700, atk: 215, def: 195, mag: 165, sellPrice: 1_500_000, essence: 6500, area: "any", huntable: false, signatureSkill: "petrify" },
+  { id: "boss_cosmic_maw",    name: "Cosmic Maw Pet",    emoji: "🌌🐲",  rarity: "supreme", hp: 1850, atk: 235, def: 180, mag: 215, sellPrice: 1_800_000, essence: 7800, area: "any", huntable: false, signatureSkill: "fire_breath" },
+];
+
+// Map boss template id → pet id (used in bosses.ts to award the right pet)
+export const BOSS_ID_TO_PET_ID: Record<string, string> = {
+  ember_titan: "boss_ember_titan",
+  frost_warden: "boss_frost_warden",
+  stormbringer: "boss_stormbringer",
+  abyss_serpent: "boss_abyss_serpent",
+  void_colossus: "boss_void_colossus",
+  cosmic_maw: "boss_cosmic_maw",
+};
+
 // ─── Glitched (event-only) + Pepsodent + Internet (secret, any-area) ─────────
 const SPECIAL_ANIMALS: Animal[] = [
   // Glitched — fixed price (was suspiciously low for its rarity)
@@ -347,6 +489,8 @@ const SPECIAL_ANIMALS: Animal[] = [
   { id: "pepsodent",  name: "Pepsodent", emoji: "🦷✨", rarity: "secret", hp: 999, atk: 222, def: 222, mag: 222, sellPrice: 5000000, essence: 25000, area: "any", signatureSkill: "blessed_aura" },
   // Internet — NEW secret pet (The New Era). Even rarer than Pepsodent. Sells for 6.7M.
   { id: "internet",   name: "Internet",  emoji: "🌐⚡", rarity: "secret", hp: 1200, atk: 280, def: 280, mag: 280, sellPrice: 6700000, essence: 33000, area: "any", signatureSkill: "fire_breath" },
+  // Dino Leo — THE NEW secret. Even rarer than Internet. Sells for 4,500,000 (per spec).
+  { id: "dino_leo",   name: "Dino Leo",  emoji: "🦖🦁✨", rarity: "secret", hp: 2400, atk: 420, def: 360, mag: 380, sellPrice: 4_500_000, essence: 22_000, area: "any", signatureSkill: "fire_breath" },
 ];
 
 // ─── Aquatic (additional fish) — THE NEW ERA ─────────────────────────────────
@@ -455,9 +599,12 @@ export const ANIMALS: Animal[] = [
   ...tagArea(DEFAULT_ANIMALS, "default"),
   ...tagArea(VOLCANIC_ANIMALS, "volcanic"),
   ...tagArea(SPACE_ANIMALS, "space"),
+  ...HEAVEN_ANIMALS,
+  ...VOID_UNKNOWN_ANIMALS,
   ...FISH_ANIMALS,
   ...NEW_ERA_FISH,
   ...SPECIAL_ANIMALS,
+  ...BOSS_PETS,
   ...FUSION_PETS,
 ];
 
@@ -467,21 +614,26 @@ export const ANIMAL_BY_ID: Record<string, Animal> = Object.fromEntries(ANIMALS.m
 export const HUNT_POOL = ANIMALS.filter((a) => a.huntable !== false && !a.aquatic && !a.eventOnly && a.area === "default");
 export const VOLCANIC_HUNT_POOL = ANIMALS.filter((a) => a.huntable !== false && !a.aquatic && !a.eventOnly && a.area === "volcanic");
 export const SPACE_HUNT_POOL = ANIMALS.filter((a) => a.huntable !== false && !a.aquatic && !a.eventOnly && a.area === "space");
+export const HEAVEN_HUNT_POOL = ANIMALS.filter((a) => a.huntable !== false && !a.aquatic && !a.eventOnly && a.area === "heaven");
+export const VOID_UNKNOWN_HUNT_POOL = ANIMALS.filter((a) => a.huntable !== false && !a.aquatic && !a.eventOnly && a.area === "void_unknown");
 export const FISH_POOL = ANIMALS.filter((a) => a.aquatic === true);
 
 export function poolForArea(area: HuntArea): Animal[] {
-  if (area === "volcanic") return VOLCANIC_HUNT_POOL;
-  if (area === "space")    return SPACE_HUNT_POOL;
+  if (area === "volcanic")     return VOLCANIC_HUNT_POOL;
+  if (area === "space")        return SPACE_HUNT_POOL;
+  if (area === "heaven")       return HEAVEN_HUNT_POOL;
+  if (area === "void_unknown") return VOID_UNKNOWN_HUNT_POOL;
   return HUNT_POOL;
 }
 
 // ─── Hunt Areas (display + unlock metadata) ───────────────────────────────────
+export type AreaDexCount = Record<HuntArea, number>;
 export interface AreaDef {
   id: HuntArea;
   name: string;
   emoji: string;
   description: string;
-  unlock: (dexCount: { default: number; volcanic: number; space: number }, totals: { default: number; volcanic: number; space: number }) => boolean;
+  unlock: (dexCount: AreaDexCount, totals: AreaDexCount) => boolean;
   unlockHint: string;
 }
 export const AREA_DEFS: AreaDef[] = [
@@ -503,21 +655,35 @@ export const AREA_DEFS: AreaDef[] = [
     unlock: (d, t) => d.volcanic >= t.volcanic,
     unlockHint: "Complete 100% of the volcanic-area dex.",
   },
+  {
+    id: "heaven", name: "Heaven", emoji: "🪽",
+    description: "The fourth realm — angelic beasts blessed with passive luck attributes. Home of the TRANSCENDENT rarity.",
+    unlock: (d, t) => d.space >= t.space,
+    unlockHint: "Complete 100% of the space-area dex.",
+  },
+  {
+    id: "void_unknown", name: "Unknown Void", emoji: "🕳️",
+    description: "The fifth realm — beyond comprehension. Whispers, glitches, and unspeakable fauna.",
+    unlock: (d, t) => d.heaven >= t.heaven,
+    unlockHint: "Complete 100% of the heaven-area dex.",
+  },
 ];
 export const AREA_BY_ID: Record<HuntArea, AreaDef> = Object.fromEntries(AREA_DEFS.map((a) => [a.id, a])) as Record<HuntArea, AreaDef>;
 
 // Per-area dex totals (used for unlock checks)
-export const AREA_DEX_TOTALS = {
-  default:  HUNT_POOL.length,
-  volcanic: VOLCANIC_HUNT_POOL.length,
-  space:    SPACE_HUNT_POOL.length,
+export const AREA_DEX_TOTALS: AreaDexCount = {
+  default:      HUNT_POOL.length,
+  volcanic:     VOLCANIC_HUNT_POOL.length,
+  space:        SPACE_HUNT_POOL.length,
+  heaven:       HEAVEN_HUNT_POOL.length,
+  void_unknown: VOID_UNKNOWN_HUNT_POOL.length,
 };
 
 // ─── Roll helpers ─────────────────────────────────────────────────────────────
 function pickRarityFromPool(pool: Animal[], luck: number): Rarity {
   const present = new Set<Rarity>(pool.map((a) => a.rarity));
   // Apply luck multiplier to all rarities above "rare"
-  const rareTiers = new Set<Rarity>(["rare", "epic", "mythic", "legendary", "ethereal", "divine", "omni", "inferno", "cosmic", "void"]);
+  const rareTiers = new Set<Rarity>(["rare", "epic", "mythic", "legendary", "ethereal", "divine", "omni", "inferno", "cosmic", "void", "supreme", "transcendent"]);
   const weights: Array<[Rarity, number]> = [];
   for (const r of Object.keys(RARITY_WEIGHTS) as Rarity[]) {
     if (!present.has(r)) continue;
@@ -535,9 +701,16 @@ function pickRarityFromPool(pool: Animal[], luck: number): Rarity {
 export const SECRET_PEPSODENT_CHANCE = 4.5e-7;
 // 0.000010% per roll — Internet is even rarer than Pepsodent
 export const SECRET_INTERNET_CHANCE = 1.0e-7;
+// 0.000003% per roll — Dino Leo, the rarest secret of all
+export const SECRET_DINO_LEO_CHANCE = 3.0e-8;
 
 export function rollAnimalInArea(area: HuntArea, luck = 1): Animal {
-  // Internet (rarest secret) can drop in any area
+  // Dino Leo (rarest secret) — any area
+  if (Math.random() < SECRET_DINO_LEO_CHANCE * luck) {
+    const d = ANIMAL_BY_ID["dino_leo"];
+    if (d) return d;
+  }
+  // Internet (rarer secret) can drop in any area
   if (Math.random() < SECRET_INTERNET_CHANCE * luck) {
     const net = ANIMAL_BY_ID["internet"];
     if (net) return net;
@@ -563,6 +736,10 @@ export function rollAnimal(luck = 1): Animal {
 
 export function rollFish(luck = 1): Animal {
   // Secret bypass works for fishing too — fairness across activities.
+  if (Math.random() < SECRET_DINO_LEO_CHANCE * luck) {
+    const d = ANIMAL_BY_ID["dino_leo"];
+    if (d) return d;
+  }
   if (Math.random() < SECRET_INTERNET_CHANCE * luck) {
     const net = ANIMAL_BY_ID["internet"];
     if (net) return net;
@@ -832,7 +1009,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
 export const CRAFT_RECIPE_BY_ID: Record<string, CraftRecipe> = Object.fromEntries(CRAFT_RECIPES.map((r) => [r.id, r]));
 
 // ─── Shop items (now categorized) ─────────────────────────────────────────────
-export type ShopCategory = "items" | "potions" | "events" | "equips" | "premium" | "pets" | "mining" | "skills" | "gamepasses" | "essence";
+export type ShopCategory = "items" | "potions" | "events" | "equips" | "premium" | "pets" | "mining" | "skills" | "gamepasses" | "essence" | "op_expensive" | "team_slots" | "enchant";
 
 // ─── GAMEPASSES — permanent server-bought perks (THE NEW ERA) ────────────────
 export interface GamepassDef {
@@ -968,8 +1145,29 @@ export const SHOP_ITEMS: ShopItem[] = [
     description: `${a.description} HP+${a.mods.hp} ATK+${a.mods.atk} DEF+${a.mods.def} MAG+${a.mods.mag}`,
   })),
 ];
+// ─── NEW: Team-slot extras, Enchant tomes, OP expensive ──────────────────────
+SHOP_ITEMS.push(
+  // Team slots — default cap is 3, buy more to widen your battle line.
+  { id: "team_slot_1", name: "Team Slot +1 (4th slot)", emoji: "👥",  price: 250_000,   category: "team_slots", description: "Permanently expand your team to 4 pets." },
+  { id: "team_slot_2", name: "Team Slot +1 (5th slot)", emoji: "👥",  price: 1_500_000, category: "team_slots", description: "Permanently expand your team to 5 pets." },
+  { id: "team_slot_3", name: "Team Slot +1 (6th slot)", emoji: "👥",  price: 8_000_000, category: "team_slots", description: "Permanently expand your team to 6 pets." },
+  // Enchantments — apply to pets via `lowo enchant <petId> <enchantId>`. Big essence sinks.
+  { id: "enchant_blessed",   name: "Tome: Blessed",   emoji: "📕", price: 35_000,  category: "enchant", description: "Apply with `lowo enchant <petId> blessed` — +10% pet HP/DEF, costs 800 essence." },
+  { id: "enchant_savage",    name: "Tome: Savage",    emoji: "📕", price: 50_000,  category: "enchant", description: "Apply with `lowo enchant <petId> savage` — +15% pet ATK, costs 1,200 essence." },
+  { id: "enchant_mystic",    name: "Tome: Mystic",    emoji: "📕", price: 50_000,  category: "enchant", description: "Apply with `lowo enchant <petId> mystic` — +15% pet MAG, costs 1,200 essence." },
+  { id: "enchant_swift",     name: "Tome: Swift",     emoji: "📕", price: 80_000,  category: "enchant", description: "Apply with `lowo enchant <petId> swift` — +5% crit chance to whole team while equipped, costs 2,000 essence." },
+  { id: "enchant_eternal",   name: "Tome: Eternal",   emoji: "📕", price: 250_000, category: "enchant", description: "Apply with `lowo enchant <petId> eternal` — +25% to ALL pet stats, costs 8,000 essence." },
+  { id: "enchant_godslayer", name: "Tome: Godslayer", emoji: "📕", price: 1_000_000, category: "enchant", description: "Apply with `lowo enchant <petId> godslayer` — +50% pet stats and +10% team luck, costs 25,000 essence." },
+  // OP expensive (pure flex / huge essence sinks)
+  { id: "op_pet_chest",       name: "OP Pet Chest",         emoji: "🟦📦", price: 2_500_000,  category: "op_expensive", description: "Guaranteed mythic+ pet on open. Use `lowo op_open op_pet_chest`." },
+  { id: "op_god_chest",       name: "OP God Chest",         emoji: "🟪📦", price: 9_500_000,  category: "op_expensive", description: "Guaranteed legendary+ pet on open." },
+  { id: "op_void_chest",      name: "OP Void Chest",        emoji: "🟥📦", price: 25_000_000, category: "op_expensive", description: "Guaranteed cosmic/void/inferno pet on open." },
+  { id: "op_attribute_seal",  name: "OP Attribute Seal",    emoji: "🪶",   price: 1_750_000,  category: "op_expensive", description: "Reroll the attribute on any above-ethereal pet via `lowo reroll <petId>`." },
+  { id: "op_dino_summon",     name: "OP Dino Summon Stone", emoji: "🦖✨", price: 75_000_000, category: "op_expensive", description: "Single-use: dramatically increase Dino Leo drop chance for 1 hour." },
+  { id: "op_essence_brick",   name: "OP Essence Brick",     emoji: "✨🧱", price: 5_000_000,  category: "op_expensive", description: "Converts cowoncy → 50,000 essence. Big essence sink." },
+);
 export const SHOP_BY_ID: Record<string, ShopItem> = Object.fromEntries(SHOP_ITEMS.map((i) => [i.id, i]));
-export const SHOP_CATEGORIES: ShopCategory[] = ["items", "potions", "events", "equips", "pets", "mining", "skills", "gamepasses", "essence", "premium"];
+export const SHOP_CATEGORIES: ShopCategory[] = ["items", "potions", "events", "equips", "pets", "mining", "skills", "gamepasses", "essence", "team_slots", "enchant", "op_expensive", "premium"];
 
 // ─── Luck helper (Arcues + potions + events) ──────────────────────────────────
 // Returns a multiplier applied to rare+ rarity weights when rolling.
@@ -986,4 +1184,203 @@ export function luckMultiplier(arcuesUnlocked: boolean, luckUntil: number, megaL
 // ─── Essence helper (Arcues bonus) ────────────────────────────────────────────
 export function essenceArcuesMultiplier(arcuesUnlocked: boolean): number {
   return arcuesUnlocked ? 1.10 : 1;
+}
+
+// ─── Mutations (only roll during one of the 10 mutation events) ──────────────
+export interface MutationDef {
+  id: string;
+  name: string;
+  emoji: string;
+  rarity: "common" | "rare" | "epic" | "legendary";
+  valueMul: number;        // sell-price multiplier
+  statMul: number;         // applies to all stats
+  description: string;
+}
+export const MUTATIONS: MutationDef[] = [
+  { id: "shiny",       name: "Shiny",       emoji: "✨", rarity: "common",    valueMul: 1.5,  statMul: 1.05, description: "+50% sell value, +5% stats." },
+  { id: "blazing",     name: "Blazing",     emoji: "🔥", rarity: "common",    valueMul: 1.7,  statMul: 1.07, description: "+70% sell value, +7% stats." },
+  { id: "frosted",     name: "Frosted",     emoji: "❄️", rarity: "common",    valueMul: 1.7,  statMul: 1.07, description: "+70% sell value, +7% stats." },
+  { id: "electric",    name: "Electric",    emoji: "⚡", rarity: "rare",      valueMul: 2.5,  statMul: 1.12, description: "+150% sell value, +12% stats." },
+  { id: "stormcrowned",name: "Stormcrowned",emoji: "🌩️", rarity: "rare",      valueMul: 3,    statMul: 1.15, description: "+200% sell value, +15% stats." },
+  { id: "voidkissed",  name: "Voidkissed",  emoji: "🕳️", rarity: "epic",      valueMul: 5,    statMul: 1.25, description: "+400% sell value, +25% stats." },
+  { id: "celestial",   name: "Celestial",   emoji: "🌟", rarity: "epic",      valueMul: 6,    statMul: 1.30, description: "+500% sell value, +30% stats." },
+  { id: "ascended",    name: "Ascended",    emoji: "🪽", rarity: "legendary", valueMul: 10,   statMul: 1.50, description: "+900% sell value, +50% stats." },
+  { id: "godforged",   name: "Godforged",   emoji: "👑", rarity: "legendary", valueMul: 15,   statMul: 1.75, description: "+1400% sell value, +75% stats." },
+  { id: "primordial",  name: "Primordial",  emoji: "💠", rarity: "legendary", valueMul: 25,   statMul: 2.00, description: "+2400% sell value, +100% stats." },
+];
+export const MUTATION_BY_ID: Record<string, MutationDef> = Object.fromEntries(MUTATIONS.map((m) => [m.id, m]));
+
+// The 10 mutation event ids (see events.ts). When any is active, hunt rolls a mutation.
+export const MUTATION_EVENT_IDS: string[] = [
+  "mutation_shiny", "mutation_blazing", "mutation_frosted", "mutation_electric",
+  "mutation_stormcrowned", "mutation_voidkissed", "mutation_celestial",
+  "mutation_ascended", "mutation_godforged", "mutation_primordial",
+];
+
+// Roll a mutation (uses RARITY_WEIGHTS-like rules within the catalog).
+const MUT_RAR_WEIGHT: Record<MutationDef["rarity"], number> = { common: 60, rare: 25, epic: 12, legendary: 3 };
+export function rollMutation(): MutationDef | null {
+  // 25% chance to land any mutation when an event is active (caller gates by event)
+  if (Math.random() > 0.25) return null;
+  const total = MUTATIONS.reduce((s, m) => s + MUT_RAR_WEIGHT[m.rarity], 0);
+  let r = Math.random() * total;
+  for (const m of MUTATIONS) {
+    const w = MUT_RAR_WEIGHT[m.rarity];
+    if (r < w) return m;
+    r -= w;
+  }
+  return MUTATIONS[0];
+}
+
+// ─── Enchantments (apply persistently to a single pet) ───────────────────────
+export interface EnchantDef {
+  id: string;
+  name: string;
+  emoji: string;
+  hpPct?: number;  atkPct?: number;  defPct?: number;  magPct?: number;
+  allPct?: number; // applied on top of individual %
+  teamLuck?: number;     // adds to team-luck multiplier
+  teamCritPct?: number;  // adds to team crit chance
+  essenceCost: number;
+  tomeShopId: string;
+  description: string;
+}
+export const ENCHANTMENTS: EnchantDef[] = [
+  { id: "blessed",   name: "Blessed",   emoji: "🙏", hpPct: 0.10, defPct: 0.10, essenceCost: 800,  tomeShopId: "enchant_blessed",   description: "+10% HP & DEF" },
+  { id: "savage",    name: "Savage",    emoji: "🗡️", atkPct: 0.15,                essenceCost: 1200, tomeShopId: "enchant_savage",    description: "+15% ATK" },
+  { id: "mystic",    name: "Mystic",    emoji: "🔮", magPct: 0.15,                essenceCost: 1200, tomeShopId: "enchant_mystic",    description: "+15% MAG" },
+  { id: "swift",     name: "Swift",     emoji: "💨", teamCritPct: 0.05,           essenceCost: 2000, tomeShopId: "enchant_swift",     description: "+5% team crit chance" },
+  { id: "eternal",   name: "Eternal",   emoji: "♾️", allPct: 0.25,                essenceCost: 8000, tomeShopId: "enchant_eternal",   description: "+25% ALL stats" },
+  { id: "godslayer", name: "Godslayer", emoji: "👑", allPct: 0.50, teamLuck: 0.10,essenceCost: 25000,tomeShopId: "enchant_godslayer", description: "+50% ALL stats AND +10% team luck" },
+];
+export const ENCHANT_BY_ID: Record<string, EnchantDef> = Object.fromEntries(ENCHANTMENTS.map((e) => [e.id, e]));
+
+// ─── Pet Attributes (every pet at ethereal+ MUST have one — luck/team boost) ──
+export interface PetAttribute {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  teamLuck?: number;     // adds to luck multiplier when this pet is on team
+  teamHpPct?: number;
+  teamAtkPct?: number;
+  teamDefPct?: number;
+  teamMagPct?: number;
+  teamCritPct?: number;
+}
+
+function buildPetAttributes(): PetAttribute[] {
+  const base: Array<Omit<PetAttribute, "id">> = [];
+  // Block A: pure team-luck (40 entries)
+  const luckSteps = [0.02,0.025,0.03,0.035,0.04,0.045,0.05,0.06,0.07,0.08,0.09,0.10,0.11,0.12,0.13,0.14,0.15,0.16,0.17,0.18,0.20,0.22,0.24,0.26,0.28,0.30,0.32,0.34,0.36,0.38,0.40,0.42,0.45,0.48,0.50,0.55,0.60,0.70,0.85,1.00];
+  const luckEmojis = ["🍀","🌟","⭐","✨","🪄","🔮","🎰","💫","🪙","💎"];
+  for (let i = 0; i < luckSteps.length; i++) {
+    base.push({
+      name: `Lucky Charm ${i + 1}`,
+      emoji: luckEmojis[i % luckEmojis.length],
+      description: `+${Math.round(luckSteps[i] * 100)}% team luck (rare+ drop boost) when this pet is on your team.`,
+      teamLuck: luckSteps[i],
+    });
+  }
+  // Block B: single-stat team boosts (24 entries)
+  const stats: Array<keyof PetAttribute> = ["teamHpPct","teamAtkPct","teamDefPct","teamMagPct"];
+  const statEmoji: Record<string, string> = { teamHpPct: "❤️", teamAtkPct: "⚔️", teamDefPct: "🛡️", teamMagPct: "🔮" };
+  const statName: Record<string, string> = { teamHpPct: "Vigor", teamAtkPct: "Fury", teamDefPct: "Bulwark", teamMagPct: "Sage" };
+  const tiers = [0.05,0.075,0.10,0.125,0.15,0.20];
+  for (const s of stats) {
+    for (let i = 0; i < tiers.length; i++) {
+      base.push({
+        name: `${statName[s as string]} ${i + 1}`,
+        emoji: statEmoji[s as string],
+        description: `+${Math.round(tiers[i] * 100)}% team ${s.toString().replace("teamPct","").replace("team","").replace("Pct","")} for the whole battle team.`,
+        [s]: tiers[i],
+      } as Omit<PetAttribute, "id">);
+    }
+  }
+  // Block C: dual-stat boosts (24 entries)
+  const pairs: Array<[keyof PetAttribute, keyof PetAttribute, string, string]> = [
+    ["teamHpPct","teamDefPct", "🛡️❤️", "Wall"],
+    ["teamAtkPct","teamMagPct", "⚔️🔮", "Sorcerer"],
+    ["teamHpPct","teamAtkPct", "❤️⚔️", "Berserker"],
+    ["teamDefPct","teamMagPct", "🛡️🔮", "Mystic Wall"],
+  ];
+  for (const [a, b, em, nm] of pairs) {
+    for (let i = 0; i < 6; i++) {
+      const v = 0.04 + i * 0.025;
+      base.push({
+        name: `${nm} ${i + 1}`,
+        emoji: em,
+        description: `+${Math.round(v * 100)}% to two team stats.`,
+        [a]: v, [b]: v,
+      } as Omit<PetAttribute, "id">);
+    }
+  }
+  // Block D: crit chance attributes (12 entries)
+  const critTiers = [0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.10,0.12,0.15,0.20];
+  for (let i = 0; i < critTiers.length; i++) {
+    base.push({
+      name: `Sharp Eye ${i + 1}`,
+      emoji: "👁️",
+      description: `+${Math.round(critTiers[i] * 100)}% team crit chance.`,
+      teamCritPct: critTiers[i],
+    });
+  }
+  // Block E: divine combo (luck + all stats) — 8 entries
+  for (let i = 0; i < 8; i++) {
+    const v = 0.05 + i * 0.04;
+    base.push({
+      name: `Divine Aspect ${i + 1}`,
+      emoji: "🌅",
+      description: `+${Math.round(v * 100)}% luck AND +${Math.round(v * 100)}% to all team stats.`,
+      teamLuck: v, teamHpPct: v, teamAtkPct: v, teamDefPct: v, teamMagPct: v,
+    });
+  }
+  return base.map((b, i) => ({ id: `attr_${i + 1}`, ...b }));
+}
+
+export const PET_ATTRIBUTES: PetAttribute[] = buildPetAttributes();
+export const PET_ATTR_BY_ID: Record<string, PetAttribute> = Object.fromEntries(PET_ATTRIBUTES.map((p) => [p.id, p]));
+
+// Above-ethereal rarities require an attribute. Determined deterministically by pet id.
+export const ATTR_REQUIRED_RARITIES: Set<Rarity> = new Set([
+  "divine","omni","glitched","inferno","cosmic","void","secret","supreme","transcendent",
+]);
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+
+export function getPetAttribute(animal: Animal): PetAttribute | null {
+  if (!ATTR_REQUIRED_RARITIES.has(animal.rarity)) return null;
+  const idx = hashStr(animal.id) % PET_ATTRIBUTES.length;
+  return PET_ATTRIBUTES[idx];
+}
+
+// Sum the team's luck attribute multiplier from above-ethereal pets.
+// teamPetIds: animal ids currently on the user's team.
+export function teamAttributeLuck(teamPetIds: string[]): number {
+  let m = 1;
+  for (const id of teamPetIds) {
+    const a = ANIMAL_BY_ID[id];
+    if (!a) continue;
+    const attr = getPetAttribute(a);
+    if (attr?.teamLuck) m *= 1 + attr.teamLuck;
+  }
+  return m;
+}
+
+// Sum the team's stat-attribute boost for a given stat.
+export function teamAttributeStatPct(teamPetIds: string[], stat: "hp" | "atk" | "def" | "mag" | "crit"): number {
+  const key = stat === "hp" ? "teamHpPct" : stat === "atk" ? "teamAtkPct" : stat === "def" ? "teamDefPct" : stat === "mag" ? "teamMagPct" : "teamCritPct";
+  let pct = 0;
+  for (const id of teamPetIds) {
+    const a = ANIMAL_BY_ID[id];
+    if (!a) continue;
+    const attr = getPetAttribute(a);
+    const v = (attr as any)?.[key];
+    if (typeof v === "number") pct += v;
+  }
+  return pct;
 }

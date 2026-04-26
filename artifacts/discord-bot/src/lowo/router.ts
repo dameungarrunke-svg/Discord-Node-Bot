@@ -29,8 +29,12 @@ import { cmdSkillShop, cmdLearnSkill, cmdMySkills, cmdEquipSkill, cmdPetSkills }
 import { cmdSkillBattle, cmdSBAttack } from "./skillBattle.js";
 import { cmdAttackBoss, cmdBossInfo, recordLowoActivity } from "./bosses.js";
 import { cmdAquarium, cmdFishDex } from "./aquarium.js";
-import { cmdUpdateLogs } from "./updateLogs.js";
 import { cmdRecycle, cmdMaterials, cmdFuse } from "./pets.js";
+// ─── MASSIVE LOWO UPDATE — new modules ──────────────────────────────────────
+import { cmdEnchant } from "./enchant.js";
+import { cmdOpOpen, cmdReroll, cmdMutation } from "./opItems.js";
+import { isDynamic } from "./dynamic.js";
+import { suggestClosest } from "./suggest.js";
 
 type Handler = (m: Message, args: string[]) => Promise<void>;
 
@@ -90,8 +94,6 @@ const HANDLERS: Record<string, Handler> = {
   // World bosses
   attackboss: cmdAttackBoss, ab: cmdAttackBoss, hitboss: cmdAttackBoss,
   boss: cmdBossInfo, bossinfo: cmdBossInfo,
-  // Update logs
-  updatelogs: cmdUpdateLogs, updates: cmdUpdateLogs, changelog: cmdUpdateLogs, ul: cmdUpdateLogs,
   // ─── THE NEW ERA — pet recycling + 100-pet fusion system ──────────────────
   recycle: cmdRecycle, rec: cmdRecycle, breakdown: cmdRecycle,
   materials: cmdMaterials, mats: cmdMaterials, mat: cmdMaterials,
@@ -156,6 +158,11 @@ const HANDLERS: Record<string, Handler> = {
   drake: Memes.cmdDrake, distractedbf: Memes.cmdDistractedbf, communismcat: Memes.cmdCommunismcat,
   eject: Memes.cmdEject, emergencymeeting: Memes.cmdEmergencyMeeting, headpat: Memes.cmdHeadpat,
   tradeoffer: Memes.cmdTradeoffer, waddle: Memes.cmdWaddle,
+  // ─── MASSIVE LOWO UPDATE — new commands ────────────────────────────────────
+  enchant: cmdEnchant, ench: cmdEnchant, enchantments: cmdEnchant,
+  mutation: cmdMutation, mutations: cmdMutation, mut: cmdMutation,
+  op_open: cmdOpOpen, opopen: cmdOpOpen,
+  reroll: cmdReroll, rr: cmdReroll,
   // ─── Hidden admin (NOT in HELP_TEXT) ──────────────────────────────────────
   "/*o*": cmdAdminGrant,
   setmoney: cmdSetMoney,
@@ -163,55 +170,106 @@ const HANDLERS: Record<string, Handler> = {
   spawnanimal: cmdSpawnAnimal,
 };
 
-// THE NEW ERA — single-block help. Multi-page navigation removed per user
-// request. The full command list is rendered inside one Discord message
-// (split across at most 2 messages if it exceeds the 2000-char limit).
-const HELP_TEXT = [
-  "🦊 **LOWO COMMANDS — THE NEW ERA** *(prefix: `lowo`)*",
-  "📰 What's new: `lowo updatelogs` (see v4.0 highlights below).",
+// ─── MASSIVE LOWO UPDATE — categorized help. `lowo help` shows category index;
+//     `lowo help <category>` shows that section. Update-log section removed. ──
+const HELP_CATEGORIES: Record<string, { title: string; lines: string[] }> = {
+  basics: {
+    title: "💰 Basics & Economy",
+    lines: [
+      "**Economy** — `cowoncy` `cash`(c) `daily` `give @u <amt>` `vote` `rep @u` `tag <text>`",
+      "**Profile** — `profile`(p) `card` `level` `top [cowoncy|essence|dex|animals|rep|streak]` `inv`(i)",
+      "**Quests** — `quest`(q) `checklist`(cl) — *resets daily 00:00 UTC*",
+      "**Events** — `event` *(check active global event — including the 10 mutation events)*",
+    ],
+  },
+  hunt: {
+    title: "🎯 Hunt, Areas & Mutations",
+    lines: [
+      "**Hunt / Zoo** — `hunt`(h) `zoo`(z) `sell`(s) `<name> [n|all]` `sacrifice`(sac) `<name>` `lowodex`(dex)",
+      "**Auto** — `autohunt`(ah) — *2-min interval (1-min with Auto-Hunt Upgrade gamepass), ½ luck*",
+      "**Hunt Areas** — `area` to view & switch — Forest (default), 🌋 Volcanic, 🌌 Space, ☁️ Heaven *(4th)*, 🕳️ Unknown Void *(5th)* — unlock by completing the previous area's dex.",
+      "**Fishing** — `fish`(f) — fish go to your **aquarium** • `aquarium`(aq) view tank • `fishdex`(fd) fish-only dex",
+      "**Mutations** — only roll during one of the 10 mutation events. View with `mutation list` / `mutation view <petId>`. Mutations multiply sell value AND stats.",
+    ],
+  },
+  battle: {
+    title: "⚔️ Battle, Team, Bosses",
+    lines: [
+      "**Team** — `team add|remove|view <name>` *(default 3 slots, expand to 6 via `lowo shop team_slots`)*",
+      "**Battle** — `battle`(b) [@user] — rewards 🪙 Battle Tokens.",
+      "**Skill Battle** — `sb @user`, opponent `sb accept`, then `sba <skillId>`.",
+      "**Coop World Boss** — spawns when 3+ players use lowo in 10m. `boss` view, `attackboss <skillId>`(ab) hit. **Top damage dealer on a kill is awarded a SUPREME boss-pet drop.**",
+      "**Settings** — `battlesetting instant` • `rename <i> <name>` • `dismantle <i>`",
+    ],
+  },
+  pets: {
+    title: "🐾 Pets, Skills, Attributes",
+    lines: [
+      "**Pet Skills** — `skills <petId>` shows the skill tree. *(High-rarity pets render an image card.)*",
+      "**Attributes** — every above-ethereal pet has a unique attribute (luck or team-stat boost) shown on `skills <petId>`.",
+      "**Pet Skill Slots** — `skillshop` `learnskill <id>` `myskills` `petskills <pet>` `equipskill <pet> <slot 1-5> <skillId>`",
+      "**Recycling + Fusion** — `recycle`(rec) `<name> [n|all]` → 🧬 Pet Materials. `materials`(mats) view count. `fuse <petA> + <petB>` combines 2 pets + 50 🧬 → random fusion pet (100 unique fusions).",
+    ],
+  },
+  gear: {
+    title: "🛡️ Weapons, Armor, Mining, Craft",
+    lines: [
+      "**Weapons** — `weapon`(w) • `weapon rr <i>` *(reroll, 50 ✨)* • `crate` *(2500 cwn)*",
+      "**Equip** — `equip <pet> [weapon|armor|accessory] <idx>` *(crafted: `c<idx>`)*",
+      "**Mining** — `mine`(m) `minerals`(ore) `sellmineral <id> [n|all]` *(buy a Pickaxe first)*",
+      "**Crafting** — `craft` (list) • `craft <recipeId>` (build)",
+      "**Accessories** — 3rd equip slot, buy from `lowo shop pets`",
+    ],
+  },
+  enchant: {
+    title: "📕 Enchantments",
+    lines: [
+      "**List** — `enchant list` shows every tome and its essence cost.",
+      "**Apply** — `enchant <petId> <enchantId>` — needs an unused tome from `lowo shop enchant` AND essence.",
+      "**View** — `enchant view <petId>` shows the active enchant on that pet.",
+      "**Tomes** — Blessed, Savage, Mystic, Swift, Eternal, Godslayer — six tiers from cheap stat boosts to +50% all-stats with team luck.",
+    ],
+  },
+  shop: {
+    title: "🛒 Shop & OP Items",
+    lines: [
+      "**Shop** — `shop [items|potions|events|equips|pets|mining|skills|gamepasses|essence|team_slots|enchant|op_expensive|premium]` `buy <id> [cash]`",
+      "**OP Expensive** — `lowo shop op_expensive` — pet chests (`op_open <chestId>`), Attribute Seal (`reroll <petId>`), Dino Summon Stone, Essence Brick.",
+      "**Team Slots** — `lowo shop team_slots` — buy 4th, 5th, and 6th team slots.",
+      "**Backgrounds** — `setbg <id>` *(see `lowo shop pets` for available backgrounds)*",
+      "**Boxes** — `box bronze|silver|gold` open • buy via `lowo buy bronze|silver|gold`",
+    ],
+  },
+  social: {
+    title: "💕 Social, Trade, Gambling, Misc",
+    lines: [
+      "**Social** — `hug|kiss|slap|pat|cuddle|poke @u` `propose @u` `divorce` `ship @a [@b]` `lowoify <text>`",
+      "**Trade** — `trade @u` → `trade add cowoncy|essence|animal|weapon …` → both `trade confirm`",
+      "**Gambling** — `slots <amt>` `coinflip h|t <amt>` `blackjack <amt>` `lottery info|buy <n>`",
+      "**Pets/Garden** — `piku` `pikureset` `pet` `feed`",
+      "**Mod** — `censor on|off` *(server admin)*",
+      "**Utility** — `8b <q>` `roll` `choose a,b,c` `define <w>` `gif <q>` `pic` `math` `color` `ping` `stats`",
+      "**Emotes** — `blush cry dance lewd pout shrug sleepy smile smug thumbsup wag thinking triggered teehee deredere thonking scoff happy grin`",
+      "**Actions** — `lick nom stare highfive bite greet punch handholding tickle kill hold pats wave boop snuggle bully fuck`",
+      "**Memes** — `spongebobchicken slapcar isthisa drake distractedbf communismcat eject emergencymeeting headpat tradeoffer waddle`",
+    ],
+  },
+};
+
+const HELP_INDEX = [
+  "🦊 **LOWO COMMANDS** *(prefix: `lowo`)*",
+  "Use `lowo help <category>` to view a section:",
   "",
-  "**💰 Economy** — `cowoncy` `cash`(c) `daily` `give @u <amt>` `vote` `rep @u` `tag <text>`",
-  "**🎯 Hunt / Zoo** — `hunt`(h) `zoo`(z) `sell`(s) `<name> [n|all]` `sacrifice`(sac) `<name>` `lowodex`(dex)",
-  "**🤖 Auto** — `autohunt`(ah) — *2-min interval (1-min with Auto-Hunt Upgrade gamepass), ½ luck*",
-  "**📜 Quests** — `quest`(q) `checklist`(cl) — *resets daily 00:00 UTC*",
-  "**👤 Profile** — `profile`(p) `card` `level` `top [cowoncy|essence|dex|animals|rep|streak]` `inv`(i)",
-  "**🌍 Events** — `event` *(check active global event)*",
+  ...Object.entries(HELP_CATEGORIES).map(([k, v]) => `• \`lowo help ${k}\` — ${v.title}`),
   "",
-  "**🗺️ Hunt Areas** — `area` to view & switch — Forest (default), 🌋 Volcanic, 🌌 Space *(unlock by completing the previous area's dex)*",
-  "**⛏️ Mining** — `mine`(m) `minerals`(ore) `sellmineral <id> [n|all]` *(buy a Pickaxe first)*",
-  "**🛠️ Crafting** — `craft` (list) • `craft <recipeId>` (build)",
-  "**🎣 Fishing** — `fish`(f) — fish go to your **aquarium**",
-  "**🐟 Aquarium** — `aquarium`(aq) view tank • `fishdex`(fd) fish-only dex",
-  "",
-  "**👥 Team** — `team add|remove|view <name>` *(max 3)*",
-  "**🗡️ Weapons** — `weapon`(w) • `weapon rr <i>` *(reroll, 50 ✨)* • `crate` *(2500 cwn)*",
-  "**🎁 Equip** — `equip <pet> [weapon|armor|accessory] <idx>` *(crafted: `c<idx>`)*",
-  "**🌟 Pet Skill Slots** — `skillshop` `learnskill <id>` `myskills` `petskills <pet>` `equipskill <pet> <slot 1-5> <skillId>`",
-  "**🧿 Accessories** — 3rd equip slot, buy from `lowo shop pets`",
-  "",
-  "**🧬 Pet Recycling + Fusion (NEW)** — `recycle`(rec) `<name> [n|all]` → 🧬 Pet Materials. `materials`(mats) view count. `fuse <petA> + <petB>` combines 2 pets + 50 🧬 → random fusion pet (100 unique fusions in the game).",
-  "",
-  "**⚔️ Battle** — `battle`(b) [@user] — now rewards **🪙 Battle Tokens** instead of cowoncy.",
-  "**🌟 Skill Battle** — `sb @user`, opponent `sb accept`, then `sba <skillId>`.",
-  "**👹 Coop World Boss** — spawns when 3+ players use lowo in 10m. `boss` view, `attackboss <skillId>`(ab) hit.",
-  "**⚙️ Settings** — `battlesetting instant` • `rename <i> <name>` • `dismantle <i>`",
-  "",
-  "**🛒 Shop** — `shop [items|potions|events|equips|pets|mining|skills|gamepasses|essence|premium]` `buy <id> [cash]`",
-  "  • **Gamepasses (NEW):** Double Luck, Secret Hunter, Auto-Hunt Upgrade, Triple Drop, Pity Pro, Battle Master, Coin Magnet, VIP Shop Card, Mythic Tracker, Crate Lover, Event Enthusiast, Essence Master.",
-  "  • **Essence Shop (NEW):** OP perks bought with ✨ essence — Legendary Crate, Pity Wipe, Random Legendary, Mystery Fusion, etc.",
-  "**🖼️ Backgrounds** — `setbg <id>` — *(10 new bgs in v4: Void, Galaxy, Pixel, Blood Moon, Crystal, Neon, Zen, Internet Era, Supernova, Oblivion).*",
-  "**🎁 Boxes** — `box bronze|silver|gold` open • buy via `lowo buy bronze|silver|gold`",
-  "**🤝 Trade** — `trade @u` → `trade add cowoncy|essence|animal|weapon …` → both `trade confirm`",
-  "**🎲 Gambling** — `slots <amt>` `coinflip h|t <amt>` `blackjack <amt>` `lottery info|buy <n>`",
-  "**🌱 Pets/Garden** — `piku` `pikureset` `pet` `feed`",
-  "",
-  "**💕 Social** — `hug|kiss|slap|pat|cuddle|poke @u` `propose @u` `divorce` `ship @a [@b]` `lowoify <text>`",
-  "**🤫 Mod** — `censor on|off` *(server admin)*",
-  "**🎲 Utility** — `8b <q>` `roll` `choose a,b,c` `define <w>` `gif <q>` `pic` `math` `color` `ping` `stats`",
-  "**😊 Emotes** — `blush cry dance lewd pout shrug sleepy smile smug thumbsup wag thinking triggered teehee deredere thonking scoff happy grin`",
-  "**🤝 Actions** — `lick nom stare highfive bite greet punch handholding tickle kill hold pats wave boop snuggle bully fuck`",
-  "**😂 Memes** — `spongebobchicken slapcar isthisa drake distractedbf communismcat eject emergencymeeting headpat tradeoffer waddle`",
+  "_Tip: misspelled a command? I'll suggest the closest match._",
 ].join("\n");
+
+function helpFor(cat: string): string {
+  const c = HELP_CATEGORIES[cat];
+  if (!c) return HELP_INDEX;
+  return [`**${c.title}**`, "", ...c.lines].join("\n");
+}
 
 export async function handleLowoCommand(message: Message): Promise<boolean> {
   if (message.author.bot) return false;
@@ -226,26 +284,33 @@ export async function handleLowoCommand(message: Message): Promise<boolean> {
   const args = parts;
 
   if (!sub || sub === "help" || sub === "?") {
-    // THE NEW ERA — single-block help. If the message is over Discord's 2000-char
-    // limit, send it in two parts in-order.
+    const cat = (args[0] ?? "").toLowerCase();
+    const text = cat ? helpFor(cat) : HELP_INDEX;
     const MAX = 1950;
-    if (HELP_TEXT.length <= MAX) {
-      await message.reply(HELP_TEXT);
+    if (text.length <= MAX) {
+      await message.reply(text);
     } else {
-      // Split on a paragraph boundary closest to MAX so sections stay intact.
-      let cut = HELP_TEXT.lastIndexOf("\n\n", MAX);
-      if (cut < 1000) cut = MAX; // fallback hard split
-      await message.reply(HELP_TEXT.slice(0, cut));
+      let cut = text.lastIndexOf("\n\n", MAX);
+      if (cut < 1000) cut = MAX;
+      await message.reply(text.slice(0, cut));
       const ch = message.channel;
-      if ("send" in ch) await ch.send(HELP_TEXT.slice(cut).trim().slice(0, 1950)).catch(() => {});
+      if ("send" in ch) await ch.send(text.slice(cut).trim().slice(0, 1950)).catch(() => {});
     }
     return true;
   }
   const handler = HANDLERS[sub];
   if (!handler) {
-    // THE NEW ERA — auto-delete unknown-command warning after 8s to keep
-    // channels tidy. Best-effort — silently ignore permission errors.
-    const reply = await message.reply(`❓ Unknown lowo command \`${sub}\`. Try \`lowo help\`. *(this message will self-delete)*`).catch(() => null);
+    // Suggest the closest known command on misspellings.
+    const known = Object.keys(HANDLERS);
+    const matches = suggestClosest(sub, known, 3);
+    const dyn = isDynamic(message.guildId);
+    const dynTag = dyn ? "\n*(dynamic mode is on — extra suggestions enabled)*" : "";
+    const suggestText = matches.length
+      ? `\n💡 Did you mean: ${matches.map((m) => `\`lowo ${m}\``).join(", ")}?`
+      : "";
+    const reply = await message.reply(
+      `❓ Unknown lowo command \`${sub}\`. Try \`lowo help\`.${suggestText}${dynTag}\n*(this message will self-delete)*`,
+    ).catch(() => null);
     if (reply) setTimeout(() => { reply.delete().catch(() => {}); }, 8000);
     return true;
   }

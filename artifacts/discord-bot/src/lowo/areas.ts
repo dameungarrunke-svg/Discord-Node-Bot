@@ -2,25 +2,30 @@ import type { Message } from "discord.js";
 import { getUser, updateUser, type UserData } from "./storage.js";
 import {
   AREA_DEFS, AREA_BY_ID, AREA_DEX_TOTALS,
-  HUNT_POOL, VOLCANIC_HUNT_POOL, SPACE_HUNT_POOL,
-  type HuntArea,
+  HUNT_POOL, VOLCANIC_HUNT_POOL, SPACE_HUNT_POOL, HEAVEN_HUNT_POOL, VOID_UNKNOWN_HUNT_POOL,
+  type HuntArea, type AreaDexCount,
 } from "./data.js";
 import { emoji, progressBar } from "./emojis.js";
 
-function dexCounts(u: UserData): { default: number; volcanic: number; space: number } {
+function dexCounts(u: UserData): AreaDexCount {
   const defaultIds = new Set(HUNT_POOL.map((a) => a.id));
   const volcIds    = new Set(VOLCANIC_HUNT_POOL.map((a) => a.id));
   const spaceIds   = new Set(SPACE_HUNT_POOL.map((a) => a.id));
-  let d = 0, v = 0, s = 0;
+  const heavenIds  = new Set(HEAVEN_HUNT_POOL.map((a) => a.id));
+  const voidIds    = new Set(VOID_UNKNOWN_HUNT_POOL.map((a) => a.id));
+  let d = 0, v = 0, s = 0, h = 0, vu = 0;
   for (const id of u.dex) {
     if (defaultIds.has(id)) d++;
     if (volcIds.has(id))    v++;
     if (spaceIds.has(id))   s++;
+    if (heavenIds.has(id))  h++;
+    if (voidIds.has(id))    vu++;
   }
-  // Also union with explicit per-area dex arrays (so volcanic/space dex counts even if not in main dex).
-  for (const id of u.volcanicDex) if (volcIds.has(id) && !u.dex.includes(id)) v++;
-  for (const id of u.spaceDex)    if (spaceIds.has(id) && !u.dex.includes(id)) s++;
-  return { default: d, volcanic: v, space: s };
+  for (const id of u.volcanicDex)    if (volcIds.has(id)   && !u.dex.includes(id)) v++;
+  for (const id of u.spaceDex)       if (spaceIds.has(id)  && !u.dex.includes(id)) s++;
+  for (const id of u.heavenDex)      if (heavenIds.has(id) && !u.dex.includes(id)) h++;
+  for (const id of u.voidUnknownDex) if (voidIds.has(id)   && !u.dex.includes(id)) vu++;
+  return { default: d, volcanic: v, space: s, heaven: h, void_unknown: vu };
 }
 
 /** Returns true if `area` is now unlocked. Mutates `unlockedAreas` if needed. */
@@ -68,19 +73,21 @@ export async function cmdArea(message: Message, args: string[]): Promise<void> {
       if (!unlocked) lines.push(`  🔓 *${def.unlockHint}*`);
     }
     lines.push("");
-    lines.push("Switch with `lowo area <forest|volcanic|space>`.");
+    lines.push("Switch with `lowo area <forest|volcanic|space|heaven|void>`.");
     await message.reply(lines.join("\n"));
     return;
   }
 
-  // Resolve "forest" → "default" alias
+  // Resolve aliases.
   const aliasMap: Record<string, HuntArea> = {
     forest: "default", default: "default", base: "default", normal: "default",
     volcanic: "volcanic", lava: "volcanic", volcano: "volcanic",
     space: "space", cosmic: "space", galaxy: "space",
+    heaven: "heaven", sky: "heaven", angel: "heaven", angels: "heaven",
+    void: "void_unknown", void_unknown: "void_unknown", unknown: "void_unknown", uv: "void_unknown",
   };
   const target = aliasMap[sub];
-  if (!target) { await message.reply("Usage: `lowo area <forest|volcanic|space>`"); return; }
+  if (!target) { await message.reply("Usage: `lowo area <forest|volcanic|space|heaven|void>`"); return; }
   if (!u.unlockedAreas.includes(target)) {
     const def = AREA_BY_ID[target];
     await message.reply(`🔒 **${def.name}** is locked.\n*${def.unlockHint}*`);

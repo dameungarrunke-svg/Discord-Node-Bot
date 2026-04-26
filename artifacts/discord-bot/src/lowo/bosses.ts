@@ -1,6 +1,6 @@
 import type { Message } from "discord.js";
 import { getUser, updateUser } from "./storage.js";
-import { ANIMAL_BY_ID, ACTIVE_SKILLS } from "./data.js";
+import { ANIMAL_BY_ID, ACTIVE_SKILLS, BOSS_ID_TO_PET_ID } from "./data.js";
 import { emoji, progressBar } from "./emojis.js";
 import { eventBonus } from "./events.js";
 
@@ -148,6 +148,19 @@ function resolveBoss(guildId: string, message?: Message): void {
       lines.push(`**${i + 1}.** <@${uid}> — ${d.toLocaleString()} dmg → +${reward.toLocaleString()} cowoncy, +${ess} ✨`);
     }
     if (topUserId) lines.push(`\n${emoji("crown")} Top damage dealer: <@${topUserId}>`);
+    // ─── MASSIVE LOWO UPDATE — drop a SUPREME boss-pet to the top damage dealer ─
+    if (boss.killed && topUserId) {
+      const petId = BOSS_ID_TO_PET_ID[boss.id];
+      const pet = petId ? ANIMAL_BY_ID[petId] : null;
+      if (pet) {
+        updateUser(topUserId, (x) => {
+          x.zoo[pet.id] = (x.zoo[pet.id] ?? 0) + 1;
+          if (!x.dex.includes(pet.id)) x.dex.push(pet.id);
+          x.defeatedBossPets[pet.id] = (x.defeatedBossPets[pet.id] ?? 0) + 1;
+        });
+        lines.push(`\n🏅 <@${topUserId}> earned a **SUPREME** drop: ${pet.emoji} **${pet.name}** *(${pet.rarity})*!`);
+      }
+    }
   }
   // Try to broadcast in the channel where the kill happened, fallback to spawn channel
   const ch = message?.channel ?? null;

@@ -15,6 +15,11 @@ export interface CraftedWeapon {
   mods: { atk: number; def: number; mag: number };
 }
 
+// Per-pet enchantment record (one enchant per pet at a time).
+export interface PetEnchantment { enchantId: string; appliedAt: number }
+// Per-pet mutation record (one mutation per pet, rolled at capture only).
+export interface PetMutation { mutationId: string; appliedAt: number }
+
 export interface UserData {
   cowoncy: number;
   essence: number;
@@ -55,10 +60,12 @@ export interface UserData {
   arcuesUnlocked: boolean;
   // ── MEGA EXPANSION ──
   // Areas
-  huntArea: "default" | "volcanic" | "space";
+  huntArea: "default" | "volcanic" | "space" | "heaven" | "void_unknown";
   unlockedAreas: string[];
   volcanicDex: string[];
   spaceDex: string[];
+  heavenDex: string[];
+  voidUnknownDex: string[];
   fishDex: string[];
   // Mining + crafting
   hasPickaxe: boolean;
@@ -84,7 +91,7 @@ export interface UserData {
   hasteUntil: number;
   shieldUntil: number;
   // Tracks last hunt area to render area-aware messages
-  lastHuntArea: "default" | "volcanic" | "space";
+  lastHuntArea: "default" | "volcanic" | "space" | "heaven" | "void_unknown";
   // Pet active rate (cooldowns per skill across battles — kept simple per skill battle)
   // The sbActive.cooldowns is per-active-session; not persisted long-term.
   // Lifetime stats
@@ -97,6 +104,14 @@ export interface UserData {
   petMaterials: number;            // currency from recycling pets
   fusionPetCount: number;          // total fusions performed (lifetime)
   ownedGamepassesPurchased: number; // total gamepasses bought (achievement)
+  // ── MASSIVE LOWO UPDATE ──
+  enchantments: Record<string, PetEnchantment>;     // animalId -> applied enchant
+  mutations:    Record<string, PetMutation>;        // animalId -> applied mutation
+  enchantTomes: Record<string, number>;             // tomeId -> count owned (unused tomes)
+  extraTeamSlots: number;                           // 0..3 added to base 3
+  defeatedBossPets: Record<string, number>;         // bossPetId -> times awarded
+  opChests: Record<string, number>;                 // opChestId -> count owned
+  dinoSummonUntil: number;                          // OP Dino Summon Stone end ts
 }
 
 interface Store {
@@ -125,6 +140,8 @@ function defaultUser(): UserData {
     unlockedAreas: ["default"],
     volcanicDex: [],
     spaceDex: [],
+    heavenDex: [],
+    voidUnknownDex: [],
     fishDex: [],
     hasPickaxe: false,
     pickaxeTier: 0,
@@ -146,6 +163,14 @@ function defaultUser(): UserData {
     petMaterials: 0,
     fusionPetCount: 0,
     ownedGamepassesPurchased: 0,
+    // Massive Lowo Update
+    enchantments: {},
+    mutations: {},
+    enchantTomes: {},
+    extraTeamSlots: 0,
+    defeatedBossPets: {},
+    opChests: {},
+    dinoSummonUntil: 0,
   };
 }
 

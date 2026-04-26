@@ -1,6 +1,7 @@
 import type { Message } from "discord.js";
 import { getUser, updateUser } from "./storage.js";
-import { ANIMAL_BY_ID, ANIMALS, animalLevelFromXp, animalXpToNext, animalLevelMultiplier, ANIMAL_LEVEL_CAP } from "./data.js";
+import { ANIMAL_BY_ID, ANIMALS, animalLevelFromXp, animalXpToNext, animalLevelMultiplier, ANIMAL_LEVEL_CAP, getPetAttribute } from "./data.js";
+import { renderPetCard, shouldRenderImage } from "./petCard.js";
 
 export function grantAnimalXp(userId: string, animalId: string, amount: number): { newXp: number; leveledUp: boolean; level: number } {
   const before = getUser(userId).animalXp[animalId] ?? 0;
@@ -56,15 +57,31 @@ export async function cmdSkills(message: Message, args: string[]): Promise<void>
   if (level >= 7)  perks.push("Lv 7 — Critical hit chance in battle");
   if (level >= 10) perks.push("Lv 10 — MAX: +50% stats, double essence on sacrifice");
 
-  await message.reply([
+  // High-rarity pets get a generated card image and an attribute readout.
+  const attr = getPetAttribute(a);
+  const attrLine = attr ? `\n${attr.emoji} **Attribute:** ${attr.name} — *${attr.description}*` : "";
+
+  const body = [
     `${a.emoji} **${a.name}** Skill Tree`,
     `Level **${level}**/${ANIMAL_LEVEL_CAP}  •  Stat bonus: **+${Math.round((mult - 1) * 100)}%**`,
     `XP: \`[${bar(current, needed)}]\` ${current.toLocaleString()} / ${needed > 0 ? needed.toLocaleString() : "MAX"}`,
     "",
     perks.length ? perks.join("\n") : "_No perks yet — gain XP from hunts and battle wins._",
+    attrLine,
     "",
     `_Hunt this animal: +5 XP. Win a battle with it on your team: +25 XP._`,
-  ].join("\n"));
+  ].join("\n");
+
+  if (shouldRenderImage(a)) {
+    try {
+      const att = await renderPetCard(a);
+      await message.reply({ content: body, files: [att] });
+      return;
+    } catch (err) {
+      console.error("[LOWO] petCard render failed", err);
+    }
+  }
+  await message.reply(body);
 }
 
 export function getAnimalPerk(userId: string, animalId: string, perk: "sell" | "huntCd" | "crit" | "essence"): boolean | number {

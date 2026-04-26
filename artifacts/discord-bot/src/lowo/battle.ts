@@ -1,9 +1,13 @@
 import type { Message } from "discord.js";
 import { getUser, updateUser, type UserData } from "./storage.js";
-import { ANIMAL_BY_ID, ANIMALS, ARMOR_BY_ID, ACCESSORY_BY_ID, SIGNATURE_SKILLS, rollWeapon } from "./data.js";
+import {
+  ANIMAL_BY_ID, ANIMALS, ARMOR_BY_ID, ACCESSORY_BY_ID, SIGNATURE_SKILLS, rollWeapon,
+  getPetAttribute, MUTATION_BY_ID,
+} from "./data.js";
 import { getAnimalMultiplier, onBattleWin, getAnimalPerk } from "./skills.js";
 import { eventBonus } from "./events.js";
 import { emoji } from "./emojis.js";
+import { petEnchantStats } from "./enchant.js";
 
 const BATTLE_COOLDOWN_MS = 30_000;
 const SKILL_TRIGGER_CHANCE = 0.25;
@@ -74,6 +78,51 @@ function buildTeam(u: UserData, ownerId: string | null): CombatUnit[] {
     mag = Math.floor(mag * mult);
     hp = Math.floor(hp * mult);
     if (shieldOn) def = Math.floor(def * 1.2);
+
+    // ─── MASSIVE LOWO UPDATE — pet attribute (above-ethereal) team boosts ────
+    // Attribute team-stat boosts apply to *every* team member; we apply the
+    // sum from getPetAttribute(...) of every team pet to this slot.
+    if (ownerId) {
+      let aHp = 0, aAtk = 0, aDef = 0, aMag = 0, aCrit = 0;
+      for (const tid of u.team) {
+        const ta = ANIMAL_BY_ID[tid]; if (!ta) continue;
+        const attr = getPetAttribute(ta);
+        if (!attr) continue;
+        aHp  += attr.teamHpPct  ?? 0;
+        aAtk += attr.teamAtkPct ?? 0;
+        aDef += attr.teamDefPct ?? 0;
+        aMag += attr.teamMagPct ?? 0;
+        aCrit+= attr.teamCritPct ?? 0;
+      }
+      hp  = Math.floor(hp  * (1 + aHp));
+      atk = Math.floor(atk * (1 + aAtk));
+      def = Math.floor(def * (1 + aDef));
+      mag = Math.floor(mag * (1 + aMag));
+      critChance += aCrit;
+    }
+
+    // ─── MASSIVE LOWO UPDATE — per-pet enchantment ──────────────────────────
+    if (ownerId) {
+      const e = petEnchantStats(id, ownerId);
+      hp  = Math.floor(hp  * (1 + e.hpPct));
+      atk = Math.floor(atk * (1 + e.atkPct));
+      def = Math.floor(def * (1 + e.defPct));
+      mag = Math.floor(mag * (1 + e.magPct));
+      critChance += e.teamCritPct;
+    }
+
+    // ─── MASSIVE LOWO UPDATE — mutation stat multiplier ─────────────────────
+    const mutId = u.mutations?.[id]?.mutationId;
+    if (mutId) {
+      const md = MUTATION_BY_ID[mutId];
+      if (md) {
+        hp  = Math.floor(hp  * md.statMul);
+        atk = Math.floor(atk * md.statMul);
+        def = Math.floor(def * md.statMul);
+        mag = Math.floor(mag * md.statMul);
+      }
+    }
+
     const perkCrit = ownerId ? !!getAnimalPerk(ownerId, id, "crit") : false;
     if (perkCrit) critChance += 0.18;
     team.push({
@@ -181,7 +230,8 @@ export async function cmdTeam(message: Message, args: string[]): Promise<void> {
     if (!id) { await message.reply("Usage: `lowo team add <name>` — e.g. `lowo team add Lowo King` or `lowo team add tRex`."); return; }
     if (!u.zoo[id] || u.zoo[id] <= 0) { await message.reply(`❌ You don't own ${ANIMAL_BY_ID[id].emoji} **${ANIMAL_BY_ID[id].name}**.`); return; }
     if (u.team.includes(id)) { await message.reply(`❌ ${ANIMAL_BY_ID[id].emoji} **${ANIMAL_BY_ID[id].name}** is already on your team.`); return; }
-    if (u.team.length >= 3) { await message.reply(`❌ Team full (3/3). Remove one first.`); return; }
+    const cap = 3 + (u.extraTeamSlots ?? 0);
+    if (u.team.length >= cap) { await message.reply(`❌ Team full (${cap}/${cap}). Buy more slots from \`lowo shop team_slots\` or remove one first.`); return; }
     updateUser(message.author.id, (x) => { x.team.push(id); });
     await message.reply(`✅ Added ${ANIMAL_BY_ID[id].emoji} **${ANIMAL_BY_ID[id].name}** to team.`);
   } else if (sub === "remove") {

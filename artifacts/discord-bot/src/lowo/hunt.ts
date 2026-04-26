@@ -2,14 +2,16 @@ import type { Message } from "discord.js";
 import { getUser, updateUser } from "./storage.js";
 import {
   ANIMALS, ANIMAL_BY_ID, RARITY_COLOR, RARITY_ORDER,
-  HUNT_POOL, VOLCANIC_HUNT_POOL, SPACE_HUNT_POOL,
+  HUNT_POOL, VOLCANIC_HUNT_POOL, SPACE_HUNT_POOL, HEAVEN_HUNT_POOL, VOID_UNKNOWN_HUNT_POOL,
   rollAnimalInArea, luckMultiplier, essenceArcuesMultiplier, PITY_THRESHOLD,
-  AREA_BY_ID, type Animal, type Rarity, type HuntArea,
+  AREA_BY_ID, teamAttributeLuck, type Animal, type Rarity, type HuntArea,
 } from "./data.js";
 import { onHuntCaught, bestHuntCdMultiplier, sellMultiplier, essenceMultiplier } from "./skills.js";
 import { eventBonus, activeEvent } from "./events.js";
 import { isAutohuntActive } from "./extra.js";
 import { refreshAreaUnlocks } from "./areas.js";
+import { teamEnchantLuck } from "./enchant.js";
+import { maybeRollMutationDuringEvent, mutationLabel } from "./mutations.js";
 import { emoji } from "./emojis.js";
 
 const BASE_HUNT_COOLDOWN_MS = 15_000;
@@ -47,8 +49,10 @@ function parseAnimalAndCount(args: string[], owned: number | null): { id: string
 }
 
 function poolForArea(area: HuntArea): Animal[] {
-  if (area === "volcanic") return VOLCANIC_HUNT_POOL;
-  if (area === "space")    return SPACE_HUNT_POOL;
+  if (area === "volcanic")     return VOLCANIC_HUNT_POOL;
+  if (area === "space")        return SPACE_HUNT_POOL;
+  if (area === "heaven")       return HEAVEN_HUNT_POOL;
+  if (area === "void_unknown") return VOID_UNKNOWN_HUNT_POOL;
   return HUNT_POOL;
 }
 
@@ -85,7 +89,13 @@ export async function cmdHunt(message: Message): Promise<void> {
   const autohuntOn = isAutohuntActive(message.author.id);
   let luck = luckMultiplier(u.arcuesUnlocked, u.luckUntil, u.megaLuckUntil, autohuntOn);
   const lucky = eventBonus("luck"); if (lucky > 1) luck *= lucky;
+  // Pet-attribute team luck (above-ethereal pets) + enchantment team luck.
+  luck *= teamAttributeLuck(u.team);
+  luck *= teamEnchantLuck(message.author.id);
+  // OP Dino Summon Stone temporarily boosts Dino Leo chance via overall luck.
+  if (Date.now() < u.dinoSummonUntil) luck *= 5;
   const caught: Animal[] = [];
+  const caughtMutations: Array<{ id: string; mutation: string | null }> = [];
   let pityTriggered = false;
 
   for (let i = 0; i < drops; i++) {
@@ -99,6 +109,9 @@ export async function cmdHunt(message: Message): Promise<void> {
       if (legendaries.length) { a = legendaries[Math.floor(Math.random() * legendaries.length)]; pityTriggered = true; }
     }
     caught.push(a);
+    // Mutation roll — only when one of the 10 mutation events is active.
+    const mut = maybeRollMutationDuringEvent();
+    caughtMutations.push({ id: a.id, mutation: mut?.id ?? null });
   }
 
   let cashGained = 0;
@@ -110,15 +123,21 @@ export async function cmdHunt(message: Message): Promise<void> {
     const before = (x.huntsTotal - caught.length);
     const newMilestones = Math.floor(x.huntsTotal / HUNTS_PER_LOWOCASH) - Math.floor(before / HUNTS_PER_LOWOCASH);
     if (newMilestones > 0) { x.lowoCash += newMilestones; cashGained = newMilestones; }
-    for (const a of caught) {
+    for (let idx = 0; idx < caught.length; idx++) {
+      const a = caught[idx];
       x.zoo[a.id] = (x.zoo[a.id] ?? 0) + 1;
       if (!x.dex.includes(a.id)) x.dex.push(a.id);
       // Per-area dex (additive, helps unlock checks)
-      if (area === "volcanic" && !x.volcanicDex.includes(a.id)) x.volcanicDex.push(a.id);
-      if (area === "space"    && !x.spaceDex.includes(a.id))    x.spaceDex.push(a.id);
+      if (area === "volcanic"     && !x.volcanicDex.includes(a.id))    x.volcanicDex.push(a.id);
+      if (area === "space"        && !x.spaceDex.includes(a.id))       x.spaceDex.push(a.id);
+      if (area === "heaven"       && !x.heavenDex.includes(a.id))      x.heavenDex.push(a.id);
+      if (area === "void_unknown" && !x.voidUnknownDex.includes(a.id)) x.voidUnknownDex.push(a.id);
       if (a.rarity === "legendary") x.pity = 0;
       else x.pity = (x.pity ?? 0) + 1;
       if (a.id === "arcues" && !x.arcuesUnlocked) { x.arcuesUnlocked = true; arcuesJustUnlocked = true; }
+      // Persist mutation if one rolled this hunt
+      const mid = caughtMutations[idx]?.mutation;
+      if (mid && !x.mutations[a.id]) x.mutations[a.id] = { mutationId: mid, appliedAt: Date.now() };
     }
   });
   for (const a of caught) onHuntCaught(message.author.id, a.id);
@@ -136,11 +155,15 @@ export async function cmdHunt(message: Message): Promise<void> {
     : "";
   const areaTag = `*[${AREA_BY_ID[area].emoji} ${AREA_BY_ID[area].name}]*`;
 
+  const fmtCatch = (a: Animal, idx: number): string => {
+    const m = caughtMutations[idx]?.mutation;
+    const mTag = m ? ` ${mutationLabel(m)}` : "";
+    return `${RARITY_COLOR[a.rarity]} ${a.emoji} **${a.name}**${mTag} *(${a.rarity})*`;
+  };
   if (caught.length === 1) {
-    const a = caught[0];
-    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught a ${RARITY_COLOR[a.rarity]} **${a.name}** ${a.emoji} *(${a.rarity})*${evNote}${pityNote}${cashNote}${arcuesNote}${unlockNote}`);
+    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught a ${fmtCatch(caught[0], 0)}${evNote}${pityNote}${cashNote}${arcuesNote}${unlockNote}`);
   } else {
-    const list = caught.map((a) => `${RARITY_COLOR[a.rarity]} ${a.emoji} **${a.name}** *(${a.rarity})*`).join(" + ");
+    const list = caught.map((a, i) => fmtCatch(a, i)).join(" + ");
     await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught **${caught.length}** animals!\n${list}${evNote}${pityNote}${cashNote}${arcuesNote}${unlockNote}`);
   }
 }

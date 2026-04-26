@@ -89,7 +89,10 @@ import { isFunEnabled, setFunEnabled } from "./fun/toggle.js";
 import { helpData, executeHelp } from "./commands/help.js";
 import { handlePurgeCommand, purgeConfigData, executePurgeConfig } from "./moderation/purge.js";
 import { handleLowoCommand } from "./lowo/router.js";
-import { lowoEnableData, lowoDisableData, executeLowoEnable, executeLowoDisable } from "./lowo/slashCommands.js";
+import {
+  lowoEnableData, lowoDisableData, executeLowoEnable, executeLowoDisable,
+  lowoDynamicEnableData, lowoDynamicDisableData, executeLowoDynamicEnable, executeLowoDynamicDisable,
+} from "./lowo/slashCommands.js";
 import { isLowoEnabled } from "./lowo/toggle.js";
 import { startLowoCron } from "./lowo/cron.js";
 import { startWeeklyResetScheduler } from "./leveling/weekly.js";
@@ -213,7 +216,17 @@ const offMemeData = new SlashCommandBuilder()
   .setDescription("Hide the meme/fun command groups in this server")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
-const baseCommands = [...commands, onMemeData.toJSON(), offMemeData.toJSON(), helpData.toJSON(), purgeConfigData.toJSON(), lowoEnableData.toJSON(), lowoDisableData.toJSON()];
+const baseCommands = [
+  ...commands,
+  onMemeData.toJSON(),
+  offMemeData.toJSON(),
+  helpData.toJSON(),
+  purgeConfigData.toJSON(),
+  lowoEnableData.toJSON(),
+  lowoDisableData.toJSON(),
+  lowoDynamicEnableData.toJSON(),
+  lowoDynamicDisableData.toJSON(),
+];
 
 function buildCommandList(): unknown[] {
   const list: unknown[] = [...baseCommands];
@@ -291,6 +304,8 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   purgeconfig: executePurgeConfig,
   lowoenable: (i) => executeLowoEnable(i, reregisterPrimaryGuild),
   lowodisable: (i) => executeLowoDisable(i, reregisterPrimaryGuild),
+  lowodynamicenable: executeLowoDynamicEnable,
+  lowodynamicdisable: executeLowoDynamicDisable,
 };
 
 const PRIMARY_GUILD_ID = "1479910330669990025";
