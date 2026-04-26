@@ -2,11 +2,16 @@ import type { Message } from "discord.js";
 import { getUser, updateUser } from "./storage.js";
 import { ANIMAL_BY_ID, rollWeapon, BOX_DEFS, rollWeaponFromBox, type BoxTier } from "./data.js";
 
-// Auto-hunt nerf: now runs every 2 minutes (was 1) and luck is halved while
-// active (see luckMultiplier(...,autohuntActive=true) callers).
-const AUTOHUNT_INTERVAL_MS = 2 * 60 * 1000;
+// Auto-hunt nerf: defaults to 2 minutes per tick. Owners of the
+// `gp_autohunt_2` gamepass run on the upgraded 1-minute schedule.
+// Luck is halved while active (see luckMultiplier(...,autohuntActive=true) callers).
+const AUTOHUNT_INTERVAL_DEFAULT_MS = 2 * 60 * 1000;
+const AUTOHUNT_INTERVAL_UPGRADED_MS = 1 * 60 * 1000;
 const AUTOHUNT_DURATION_MS = 30 * 60 * 1000; // 30 min auto-hunt
 const autoHunters = new Map<string, NodeJS.Timeout>();
+function autohuntIntervalFor(userId: string): number {
+  return getUser(userId).gamepasses["gp_autohunt_2"] ? AUTOHUNT_INTERVAL_UPGRADED_MS : AUTOHUNT_INTERVAL_DEFAULT_MS;
+}
 
 /** Whether the given user currently has an autohunt loop running. */
 export function isAutohuntActive(userId: string): boolean {
@@ -21,7 +26,10 @@ export async function cmdAutohunt(message: Message): Promise<void> {
     await message.reply("🛑 Auto-hunt **disabled**.");
     return;
   }
-  await message.reply(`🤖 Auto-hunt **enabled** for 30 minutes (every 2 minutes, ½ luck). Run again to stop.`);
+  const interval = autohuntIntervalFor(message.author.id);
+  const minutesPerTick = Math.round(interval / 60000);
+  const upgraded = interval === AUTOHUNT_INTERVAL_UPGRADED_MS;
+  await message.reply(`🤖 Auto-hunt **enabled** for 30 minutes (every ${minutesPerTick} minute${minutesPerTick === 1 ? "" : "s"}, ½ luck).${upgraded ? " *(Auto-Hunt Upgrade gamepass active!)*" : ""} Run again to stop.`);
   const ch = message.channel;
   const start = Date.now();
   const id = setInterval(() => {
@@ -36,7 +44,7 @@ export async function cmdAutohunt(message: Message): Promise<void> {
       x.zoo[a.id] = (x.zoo[a.id] ?? 0) + 1;
       if (!x.dex.includes(a.id)) x.dex.push(a.id);
     });
-  }, AUTOHUNT_INTERVAL_MS);
+  }, interval);
   autoHunters.set(message.author.id, id);
 }
 

@@ -71,8 +71,17 @@ export async function cmdHunt(message: Message): Promise<void> {
     return;
   }
 
-  const area = u.huntArea;
-  const drops = eventBonus("hunt") > 1 ? Math.round(eventBonus("hunt")) : 1;
+  // Defensive: stage-hunt bug — snap u.huntArea back to "default" if the user
+  // somehow has a huntArea they haven't unlocked (data drift, old saves, etc).
+  // Without this, the picker pool is empty and hunts silently fail.
+  let area: HuntArea = u.huntArea;
+  if (area !== "default" && !u.unlockedAreas.includes(area)) {
+    area = "default";
+    updateUser(message.author.id, (x) => { x.huntArea = "default"; });
+  }
+  let drops = eventBonus("hunt") > 1 ? Math.round(eventBonus("hunt")) : 1;
+  // Triple Drop gamepass: 25% chance per hunt to roll one bonus animal.
+  if (u.gamepasses["gp_triple_drop"] && Math.random() < 0.25) drops += 1;
   const autohuntOn = isAutohuntActive(message.author.id);
   let luck = luckMultiplier(u.arcuesUnlocked, u.luckUntil, u.megaLuckUntil, autohuntOn);
   const lucky = eventBonus("luck"); if (lucky > 1) luck *= lucky;
@@ -82,7 +91,9 @@ export async function cmdHunt(message: Message): Promise<void> {
   for (let i = 0; i < drops; i++) {
     let a = rollWithRareRush(area, luck);
     const currentPity = (u.pity ?? 0) + caught.filter((c) => c.rarity !== "legendary").length;
-    if (currentPity >= PITY_THRESHOLD) {
+    // Pity Pro gamepass halves the pity threshold (from 200 → 100).
+    const pityCap = u.gamepasses["gp_pity_pro"] ? Math.floor(PITY_THRESHOLD / 2) : PITY_THRESHOLD;
+    if (currentPity >= pityCap) {
       const pool = poolForArea(area);
       const legendaries = pool.filter((x) => x.rarity === "legendary");
       if (legendaries.length) { a = legendaries[Math.floor(Math.random() * legendaries.length)]; pityTriggered = true; }

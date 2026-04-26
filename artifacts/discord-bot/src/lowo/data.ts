@@ -339,12 +339,48 @@ const FISH_ANIMALS: Animal[] = [
   { id: "megalodon",  name: "Megalodon",  emoji: "🦈🌊", rarity: "legendary", hp: 600, atk: 90, def: 50, mag: 60, sellPrice: 28000, essence: 160, huntable: false, aquatic: true, signatureSkill: "vampiric_bite" },
 ];
 
-// ─── Glitched (event-only) + Pepsodent (secret, any-area) ─────────────────────
+// ─── Glitched (event-only) + Pepsodent + Internet (secret, any-area) ─────────
 const SPECIAL_ANIMALS: Animal[] = [
   // Glitched — fixed price (was suspiciously low for its rarity)
   { id: "glitchfox",  name: "Glitch Fox", emoji: "🟥🦊", rarity: "glitched", hp: 666, atk: 99, def: 99, mag: 99, sellPrice: 750000, essence: 4500, eventOnly: true, huntable: false, signatureSkill: "flurry" },
   // Pepsodent — secret rarity, 0.000045% chance in ANY area, can't be sold cheap
   { id: "pepsodent",  name: "Pepsodent", emoji: "🦷✨", rarity: "secret", hp: 999, atk: 222, def: 222, mag: 222, sellPrice: 5000000, essence: 25000, area: "any", signatureSkill: "blessed_aura" },
+  // Internet — NEW secret pet (The New Era). Even rarer than Pepsodent. Sells for 6.7M.
+  { id: "internet",   name: "Internet",  emoji: "🌐⚡", rarity: "secret", hp: 1200, atk: 280, def: 280, mag: 280, sellPrice: 6700000, essence: 33000, area: "any", signatureSkill: "fire_breath" },
+];
+
+// ─── Aquatic (additional fish) — THE NEW ERA ─────────────────────────────────
+const NEW_ERA_FISH: Animal[] = [
+  { id: "minnow",      name: "Minnow",        emoji: "🐟",  rarity: "common",   hp: 30,  atk: 3,  def: 2,  mag: 2,  sellPrice: 12,   essence: 1, huntable: false, aquatic: true },
+  { id: "guppy",       name: "Guppy",         emoji: "🐠",  rarity: "common",   hp: 32,  atk: 4,  def: 2,  mag: 3,  sellPrice: 14,   essence: 1, huntable: false, aquatic: true },
+  { id: "bass",        name: "Bass",          emoji: "🐟",  rarity: "common",   hp: 50,  atk: 7,  def: 4,  mag: 3,  sellPrice: 22,   essence: 1, huntable: false, aquatic: true },
+  { id: "trout",       name: "Trout",         emoji: "🐟",  rarity: "common",   hp: 55,  atk: 8,  def: 5,  mag: 4,  sellPrice: 24,   essence: 1, huntable: false, aquatic: true },
+  { id: "carp",        name: "Carp",          emoji: "🐟",  rarity: "common",   hp: 60,  atk: 6,  def: 7,  mag: 4,  sellPrice: 25,   essence: 1, huntable: false, aquatic: true },
+  { id: "snapper",     name: "Snapper",       emoji: "🐠",  rarity: "uncommon", hp: 80,  atk: 12, def: 8,  mag: 9,  sellPrice: 65,   essence: 2, huntable: false, aquatic: true },
+  { id: "mackerel",    name: "Mackerel",      emoji: "🐟",  rarity: "uncommon", hp: 70,  atk: 13, def: 7,  mag: 10, sellPrice: 68,   essence: 2, huntable: false, aquatic: true },
+  { id: "sardine",     name: "Sardine",       emoji: "🐟",  rarity: "common",   hp: 28,  atk: 5,  def: 2,  mag: 3,  sellPrice: 16,   essence: 1, huntable: false, aquatic: true },
+  { id: "herring",     name: "Herring",       emoji: "🐟",  rarity: "uncommon", hp: 65,  atk: 11, def: 6,  mag: 8,  sellPrice: 60,   essence: 2, huntable: false, aquatic: true },
+  { id: "catfish",     name: "Catfish",       emoji: "🐟",  rarity: "uncommon", hp: 95,  atk: 12, def: 12, mag: 7,  sellPrice: 72,   essence: 2, huntable: false, aquatic: true, signatureSkill: "iron_wall" },
+  { id: "piranha",     name: "Piranha",       emoji: "🦷",  rarity: "rare",     hp: 100, atk: 28, def: 8,  mag: 12, sellPrice: 230,  essence: 6, huntable: false, aquatic: true, signatureSkill: "vampiric_bite" },
+  { id: "barracuda",   name: "Barracuda",     emoji: "🦈",  rarity: "rare",     hp: 130, atk: 30, def: 10, mag: 12, sellPrice: 240,  essence: 6, huntable: false, aquatic: true, signatureSkill: "piercing_strike" },
+  { id: "marlin",      name: "Marlin",        emoji: "🐟",  rarity: "rare",     hp: 140, atk: 26, def: 12, mag: 14, sellPrice: 245,  essence: 6, huntable: false, aquatic: true, signatureSkill: "piercing_strike" },
+  { id: "octopus",     name: "Octopus",       emoji: "🐙",  rarity: "rare",     hp: 130, atk: 22, def: 14, mag: 24, sellPrice: 235,  essence: 6, huntable: false, aquatic: true, signatureSkill: "petrify" },
+  { id: "shrimp",      name: "Shrimp",        emoji: "🦐",  rarity: "common",   hp: 25,  atk: 4,  def: 3,  mag: 3,  sellPrice: 14,   essence: 1, huntable: false, aquatic: true },
+  { id: "starfish",    name: "Starfish",      emoji: "⭐",   rarity: "uncommon", hp: 85,  atk: 8,  def: 16, mag: 8,  sellPrice: 70,   essence: 2, huntable: false, aquatic: true, signatureSkill: "blessed_aura" },
+  { id: "clownfish",   name: "Clownfish",     emoji: "🐠",  rarity: "uncommon", hp: 60,  atk: 10, def: 6,  mag: 12, sellPrice: 70,   essence: 2, huntable: false, aquatic: true },
+  { id: "parrotfish",  name: "Parrotfish",    emoji: "🐠",  rarity: "uncommon", hp: 80,  atk: 11, def: 9,  mag: 10, sellPrice: 72,   essence: 2, huntable: false, aquatic: true },
+  { id: "sunfish",     name: "Sunfish",       emoji: "🌞🐟", rarity: "rare",    hp: 220, atk: 18, def: 24, mag: 14, sellPrice: 250,  essence: 7, huntable: false, aquatic: true, signatureSkill: "iron_wall" },
+  { id: "mantashark",  name: "Manta Shark",   emoji: "🦈🪼", rarity: "epic",    hp: 230, atk: 38, def: 22, mag: 24, sellPrice: 850,  essence: 13, huntable: false, aquatic: true, signatureSkill: "piercing_strike" },
+  { id: "kraken",      name: "Kraken",        emoji: "🐙🌊", rarity: "mythic",  hp: 500, atk: 60, def: 40, mag: 70, sellPrice: 4200, essence: 36, huntable: false, aquatic: true, signatureSkill: "petrify" },
+  { id: "leviathan_jr",name: "Leviathan Jr.", emoji: "🐉🌊", rarity: "mythic",  hp: 520, atk: 58, def: 44, mag: 60, sellPrice: 4300, essence: 36, huntable: false, aquatic: true, signatureSkill: "fire_breath" },
+  { id: "mermaid",     name: "Mermaid",       emoji: "🧜",   rarity: "epic",    hp: 200, atk: 30, def: 24, mag: 38, sellPrice: 880,  essence: 13, huntable: false, aquatic: true, signatureSkill: "blessed_aura" },
+  { id: "siren",       name: "Siren",         emoji: "🧜‍♀️", rarity: "epic",   hp: 195, atk: 28, def: 22, mag: 42, sellPrice: 880,  essence: 13, huntable: false, aquatic: true, signatureSkill: "petrify" },
+  { id: "abyssfish",   name: "Abyss Fish",    emoji: "🕳️🐟", rarity: "epic",   hp: 220, atk: 40, def: 22, mag: 30, sellPrice: 900,  essence: 14, huntable: false, aquatic: true, signatureSkill: "vampiric_bite" },
+  { id: "sea_dragon",  name: "Sea Dragon",    emoji: "🐉🌊", rarity: "legendary", hp: 600, atk: 92, def: 56, mag: 80, sellPrice: 30000, essence: 170, huntable: false, aquatic: true, signatureSkill: "fire_breath" },
+  { id: "leviathan",   name: "Leviathan",     emoji: "🌊🐉", rarity: "legendary", hp: 660, atk: 95, def: 60, mag: 78, sellPrice: 32000, essence: 175, huntable: false, aquatic: true, signatureSkill: "petrify" },
+  { id: "ocean_god",   name: "Ocean God",     emoji: "🔱",   rarity: "legendary", hp: 700, atk: 100, def: 70, mag: 100, sellPrice: 36000, essence: 200, huntable: false, aquatic: true, signatureSkill: "blessed_aura" },
+  { id: "abyss_titan", name: "Abyss Titan",   emoji: "🕳️🐋", rarity: "cosmic", hp: 1100, atk: 165, def: 115, mag: 165, sellPrice: 720000, essence: 3600, huntable: false, aquatic: true, signatureSkill: "vampiric_bite" },
+  { id: "deep_one",    name: "Deep One",      emoji: "👁️🌊", rarity: "void",   hp: 1500, atk: 215, def: 155, mag: 225, sellPrice: 2400000, essence: 11500, huntable: false, aquatic: true, signatureSkill: "petrify" },
 ];
 
 // Mark area on every animal (default fallback for legacy entries)
@@ -352,12 +388,77 @@ function tagArea(arr: Animal[], area: HuntArea): Animal[] {
   return arr.map((a) => ({ ...a, area: a.area ?? area }));
 }
 
+// ─── 100 Fusion Pets — THE NEW ERA ───────────────────────────────────────────
+// Procedurally generated by combining base pet pairs. Not huntable — only
+// obtainable via `lowo fuse`. Stored in u.zoo like normal animals.
+function buildFusionPets(): Animal[] {
+  // 25 hand-picked base parent pairs × 4 emoji blends = 100 fusions
+  const PARENTS: Array<[string, string, string]> = [
+    ["Tiger",   "Fox",     "🐯🦊"],
+    ["Wolf",    "Owl",     "🐺🦉"],
+    ["Lion",    "Eagle",   "🦁🦅"],
+    ["Panda",   "Penguin", "🐼🐧"],
+    ["Dragon",  "Phoenix", "🐉🔥"],
+    ["Shark",   "Octopus", "🦈🐙"],
+    ["Bear",    "Hawk",    "🐻🦅"],
+    ["Snake",   "Lizard",  "🐍🦎"],
+    ["Wolf",    "Fox",     "🐺🦊"],
+    ["Eagle",   "Hawk",    "🦅🦅"],
+    ["Tiger",   "Lion",    "🐯🦁"],
+    ["Panther", "Cheetah", "🐆🐆"],
+    ["Crow",    "Raven",   "🐦‍⬛🐦‍⬛"],
+    ["Bunny",   "Squirrel","🐰🐿️"],
+    ["Cat",     "Bat",     "🐱🦇"],
+    ["Fox",     "Crystal", "🦊💎"],
+    ["Wolf",    "Star",    "🐺⭐"],
+    ["Bear",    "Moon",    "🐻🌙"],
+    ["Tiger",   "Sun",     "🐯☀️"],
+    ["Eagle",   "Storm",   "🦅⚡"],
+    ["Dragon",  "Void",    "🐉🕳️"],
+    ["Lion",    "Comet",   "🦁☄️"],
+    ["Phoenix", "Galaxy",  "🔥🌌"],
+    ["Hydra",   "Inferno", "🐍🔥"],
+    ["Kraken",  "Cosmos",  "🐙🌌"],
+  ];
+  const SUFFIXES = ["", "Lord", "King", "Spirit"]; // 25 × 4 = 100
+  const RARITIES: Rarity[] = ["epic", "mythic", "mythic", "legendary"];
+  const fusions: Animal[] = [];
+  for (let i = 0; i < PARENTS.length; i++) {
+    const [a, b, em] = PARENTS[i];
+    for (let j = 0; j < SUFFIXES.length; j++) {
+      const tier = j;
+      const r = RARITIES[tier];
+      const suffix = SUFFIXES[j];
+      const name = suffix ? `${a}-${b} ${suffix}` : `${a}-${b}`;
+      const id = `fusion_${a.toLowerCase()}_${b.toLowerCase()}_${tier}`;
+      // Stat profile ramps with tier
+      const baseHp = 200 + tier * 200 + i * 5;
+      const baseAtk = 35 + tier * 25 + i;
+      const baseDef = 25 + tier * 20 + i;
+      const baseMag = 30 + tier * 22 + i;
+      const sell = ({ epic: 1500, mythic: 12000, legendary: 90000 } as const)[r as "epic"] + i * 50;
+      const ess  = ({ epic: 18, mythic: 80, legendary: 420 } as const)[r as "epic"] + i;
+      fusions.push({
+        id, name, emoji: em, rarity: r,
+        hp: baseHp, atk: baseAtk, def: baseDef, mag: baseMag,
+        sellPrice: sell, essence: ess,
+        area: "any", huntable: false,
+        signatureSkill: ["fire_breath","vampiric_bite","piercing_strike","blessed_aura","petrify","flurry","iron_wall","cinder_burn"][i % 8],
+      });
+    }
+  }
+  return fusions;
+}
+export const FUSION_PETS: Animal[] = buildFusionPets();
+
 export const ANIMALS: Animal[] = [
   ...tagArea(DEFAULT_ANIMALS, "default"),
   ...tagArea(VOLCANIC_ANIMALS, "volcanic"),
   ...tagArea(SPACE_ANIMALS, "space"),
   ...FISH_ANIMALS,
+  ...NEW_ERA_FISH,
   ...SPECIAL_ANIMALS,
+  ...FUSION_PETS,
 ];
 
 export const ANIMAL_BY_ID: Record<string, Animal> = Object.fromEntries(ANIMALS.map((a) => [a.id, a]));
@@ -432,9 +533,16 @@ function pickRarityFromPool(pool: Animal[], luck: number): Rarity {
 
 // 0.000045% per roll
 export const SECRET_PEPSODENT_CHANCE = 4.5e-7;
+// 0.000010% per roll — Internet is even rarer than Pepsodent
+export const SECRET_INTERNET_CHANCE = 1.0e-7;
 
 export function rollAnimalInArea(area: HuntArea, luck = 1): Animal {
-  // Secret animal can drop in any area before regular roll
+  // Internet (rarest secret) can drop in any area
+  if (Math.random() < SECRET_INTERNET_CHANCE * luck) {
+    const net = ANIMAL_BY_ID["internet"];
+    if (net) return net;
+  }
+  // Pepsodent secret
   if (Math.random() < SECRET_PEPSODENT_CHANCE * luck) {
     const peps = ANIMAL_BY_ID["pepsodent"];
     if (peps) return peps;
@@ -455,6 +563,10 @@ export function rollAnimal(luck = 1): Animal {
 
 export function rollFish(luck = 1): Animal {
   // Secret bypass works for fishing too — fairness across activities.
+  if (Math.random() < SECRET_INTERNET_CHANCE * luck) {
+    const net = ANIMAL_BY_ID["internet"];
+    if (net) return net;
+  }
   if (Math.random() < SECRET_PEPSODENT_CHANCE * luck) {
     const peps = ANIMAL_BY_ID["pepsodent"];
     if (peps) return peps;
@@ -519,7 +631,7 @@ export function rollWeaponFromBox(tier: BoxTier): ReturnType<typeof rollWeapon> 
 
 // ─── Profile Backgrounds (now with patterns) ─────────────────────────────────
 export type BgPattern = "none" | "stars" | "hex" | "waves" | "flames" | "sakura" | "dots" | "circuit" | "aurora";
-export interface Background { id: string; name: string; price: number; gradient: [string, string]; accent: string; pattern: BgPattern }
+export interface Background { id: string; name: string; price: number; lowoCashPrice?: number; gradient: [string, string]; accent: string; pattern: BgPattern }
 export const BACKGROUNDS: Background[] = [
   { id: "bg_dark",     name: "Midnight",   price: 0,      gradient: ["#0f1117", "#1a1d26"], accent: "#5865f2", pattern: "none" },
   { id: "bg_sakura",   name: "Sakura",     price: 8000,   gradient: ["#3a1c2e", "#7a3a52"], accent: "#ff7eb6", pattern: "sakura" },
@@ -531,6 +643,17 @@ export const BACKGROUNDS: Background[] = [
   { id: "bg_aurora",   name: "Aurora",     price: 80000,  gradient: ["#08221d", "#0f4d52"], accent: "#7df0c8", pattern: "aurora" },
   { id: "bg_circuit",  name: "Circuit",    price: 60000,  gradient: ["#0a1a14", "#143b2e"], accent: "#41ff9f", pattern: "circuit" },
   { id: "bg_inferno",  name: "Inferno",    price: 0,      gradient: ["#1a0303", "#a82200"], accent: "#ffb000", pattern: "flames" },
+  // ── THE NEW ERA — bonus backgrounds ──
+  { id: "bg_void",     name: "Void Realm",  price: 150000, gradient: ["#000000", "#1a0033"], accent: "#7e22ce", pattern: "stars" },
+  { id: "bg_galaxy",   name: "Galaxy",      price: 120000, gradient: ["#0a0322", "#3b0764"], accent: "#a78bfa", pattern: "stars" },
+  { id: "bg_pixel",    name: "Pixel Art",   price: 45000,  gradient: ["#1f2937", "#0f766e"], accent: "#34d399", pattern: "dots" },
+  { id: "bg_blood",    name: "Blood Moon",  price: 75000,  gradient: ["#1a0707", "#7f1d1d"], accent: "#ef4444", pattern: "flames" },
+  { id: "bg_crystal",  name: "Crystal Cave",price: 90000,  gradient: ["#0c1d33", "#1e3a8a"], accent: "#60a5fa", pattern: "hex" },
+  { id: "bg_neon",     name: "Neon City",   price: 95000,  gradient: ["#0d0d1f", "#4c1d95"], accent: "#f0abfc", pattern: "circuit" },
+  { id: "bg_zen",      name: "Zen Garden",  price: 35000,  gradient: ["#1a2e1f", "#365314"], accent: "#bef264", pattern: "sakura" },
+  { id: "bg_internet", name: "Internet Era",price: 0,      lowoCashPrice: 25, gradient: ["#0f172a", "#0369a1"], accent: "#22d3ee", pattern: "circuit" },
+  { id: "bg_supernova",name: "Supernova",   price: 200000, gradient: ["#1c0030", "#be185d"], accent: "#fde047", pattern: "stars" },
+  { id: "bg_oblivion", name: "Oblivion",    price: 250000, gradient: ["#000000", "#3f0f0f"], accent: "#dc2626", pattern: "flames" },
 ];
 export const BACKGROUND_BY_ID: Record<string, Background> = Object.fromEntries(BACKGROUNDS.map((b) => [b.id, b]));
 
@@ -709,7 +832,56 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
 export const CRAFT_RECIPE_BY_ID: Record<string, CraftRecipe> = Object.fromEntries(CRAFT_RECIPES.map((r) => [r.id, r]));
 
 // ─── Shop items (now categorized) ─────────────────────────────────────────────
-export type ShopCategory = "items" | "potions" | "events" | "equips" | "premium" | "pets" | "mining" | "skills";
+export type ShopCategory = "items" | "potions" | "events" | "equips" | "premium" | "pets" | "mining" | "skills" | "gamepasses" | "essence";
+
+// ─── GAMEPASSES — permanent server-bought perks (THE NEW ERA) ────────────────
+export interface GamepassDef {
+  id: string;
+  name: string;
+  emoji: string;
+  cowoncyPrice: number;
+  lowoCashPrice?: number;
+  description: string;
+}
+export const GAMEPASS_DEFS: GamepassDef[] = [
+  { id: "gp_double_luck",    name: "Double Luck Pass",     emoji: "🍀💫", cowoncyPrice: 1500000, lowoCashPrice: 100, description: "Permanent ×2 luck multiplier on all hunts/fishing." },
+  { id: "gp_secret_hunter",  name: "Secret Hunter Pass",   emoji: "🤫🔍", cowoncyPrice: 3000000, lowoCashPrice: 200, description: "Secret-pet (Pepsodent + Internet) drop chance ×10." },
+  { id: "gp_autohunt_2",     name: "Auto-Hunt Upgrade",    emoji: "🤖⏱️", cowoncyPrice: 1200000, lowoCashPrice: 80,  description: "Auto-hunt fires every 1 minute (was 2)." },
+  { id: "gp_triple_drop",    name: "Triple Drop Pass",     emoji: "📦📦", cowoncyPrice: 2000000, lowoCashPrice: 150, description: "25% chance every hunt drops an extra animal." },
+  { id: "gp_essence_master", name: "Essence Master",       emoji: "✨👑", cowoncyPrice: 900000,  lowoCashPrice: 60,  description: "+50% essence from sacrifices (stacks with Arcues)." },
+  { id: "gp_coin_magnet",    name: "Coin Magnet",          emoji: "🧲💰", cowoncyPrice: 750000,  lowoCashPrice: 50,  description: "+50% cowoncy from selling animals." },
+  { id: "gp_shop_discount",  name: "VIP Shop Card",        emoji: "💳",   cowoncyPrice: 1100000, lowoCashPrice: 80,  description: "Permanent −10% on all cowoncy shop prices." },
+  { id: "gp_battle_master",  name: "Battle Master",        emoji: "⚔️🏆", cowoncyPrice: 1000000, lowoCashPrice: 70,  description: "+50% Battle Token rewards from `lowo battle`." },
+  { id: "gp_mythic_chance",  name: "Mythic Tracker",       emoji: "🟡🎯", cowoncyPrice: 1800000, lowoCashPrice: 120, description: "Mythic+ rarity weight ×2 on every hunt." },
+  { id: "gp_pity_pro",       name: "Pity Pro",             emoji: "🎁⚡", cowoncyPrice: 1300000, lowoCashPrice: 90,  description: "Halves your pity threshold (200→100 hunts to guaranteed legendary)." },
+  { id: "gp_crate_lover",    name: "Crate Lover",          emoji: "📦💖", cowoncyPrice: 700000,  lowoCashPrice: 50,  description: "Every paid crate gives +1 bonus weapon roll." },
+  { id: "gp_event_lover",    name: "Event Enthusiast",     emoji: "🌍✨", cowoncyPrice: 850000,  lowoCashPrice: 60,  description: "Personal events run twice as long for you." },
+];
+export const GAMEPASS_BY_ID: Record<string, GamepassDef> = Object.fromEntries(GAMEPASS_DEFS.map((g) => [g.id, g]));
+
+// ─── ESSENCE SHOP ITEMS — OP perks bought with essence (THE NEW ERA) ─────────
+// Each `cost` here is in essence (not cowoncy). Surfaced as price=essenceCost in the shop.
+export interface EssenceItemDef {
+  id: string;
+  name: string;
+  emoji: string;
+  essenceCost: number;
+  description: string;
+}
+export const ESSENCE_ITEMS: EssenceItemDef[] = [
+  { id: "ess_legendary_crate", name: "Essence Legendary Crate",  emoji: "✨📦", essenceCost: 5000,  description: "Open instantly — guaranteed legendary-rarity weapon." },
+  { id: "ess_full_pity",       name: "Pity Wipe",                emoji: "✨🎁", essenceCost: 2000,  description: "Instantly fills your hunt pity bar — next hunt = guaranteed legendary." },
+  { id: "ess_random_legend",   name: "Summon Random Legendary",  emoji: "🌈🦁", essenceCost: 8000,  description: "Adds a random legendary-rarity animal to your zoo." },
+  { id: "ess_secret_chance",   name: "Secret Whisper Token",     emoji: "🤫✨", essenceCost: 3500,  description: "Triggers `Secret Whisper` event for 30 minutes (×100 secret-pet chance)." },
+  { id: "ess_megaluck_2h",     name: "Mega Luck (2h)",           emoji: "🍀🍀", essenceCost: 1500,  description: "+25% luck for 2 full hours." },
+  { id: "ess_battletokens",    name: "Battle Token Bundle",      emoji: "🪙⚔️", essenceCost: 1000,  description: "Convert essence → 500 Battle Tokens instantly." },
+  { id: "ess_lowocash",        name: "Lowo Cash Bundle",         emoji: "✨💎", essenceCost: 6000,  description: "Convert essence → 5 Lowo Cash." },
+  { id: "ess_pet_materials",   name: "Pet Materials Bundle",     emoji: "🧬",  essenceCost: 800,   description: "Convert essence → 200 Pet Materials (for fusion/recycle system)." },
+  { id: "ess_random_fusion",   name: "Mystery Fusion Pet",       emoji: "🧬⭐", essenceCost: 12000, description: "Spawns a random epic-tier fusion pet directly into your zoo." },
+  { id: "ess_skill_legend",    name: "Skill Tome (Legendary)",   emoji: "📜🌠", essenceCost: 9000,  description: "Learn a random legendary active skill." },
+  { id: "ess_godsave",         name: "Godsave Insurance",        emoji: "🛡️✨", essenceCost: 4500,  description: "Permanently grants +1 free pity reset per day." },
+];
+export const ESSENCE_ITEM_BY_ID: Record<string, EssenceItemDef> = Object.fromEntries(ESSENCE_ITEMS.map((e) => [e.id, e]));
 export interface ShopItem {
   id: string; name: string; emoji: string;
   price: number;                 // cowoncy price (0 if premium-only)
@@ -739,8 +911,30 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "mega_luck",    name: "Mega Luck Potion",emoji: "🍀", price: 60000,  category: "potions", description: "+25% luck for 30 minutes." },
   { id: "haste_potion", name: "Haste Potion",    emoji: "💨", price: 18000,  category: "potions", description: "Hunt cooldown −30% for 20 minutes." },
   { id: "shield_potion",name: "Shield Potion",   emoji: "🛡️", price: 15000,  category: "potions", description: "Battle DEF +20% for 20 minutes." },
-  // events
-  { id: "event_scroll", name: "Event Scroll",  emoji: "📜", price: 60000, category: "events", description: "Triggers a server-wide ×2 cowoncy event for 30 minutes." },
+  // events — THE NEW ERA expanded event-shop items (10+)
+  { id: "event_scroll",       name: "Event Scroll",         emoji: "📜",  price: 60000,  category: "events", description: "Triggers a server-wide ×2 cowoncy event for 30 minutes." },
+  { id: "event_doublehunt",   name: "Double Hunt Scroll",   emoji: "🎯",  price: 70000,  category: "events", description: "Triggers Double Hunt event server-wide for 60m." },
+  { id: "event_rarerush",     name: "Rare Rush Scroll",     emoji: "💎",  price: 90000,  category: "events", description: "Triggers Rare Rush event server-wide for 60m (rare+ ×3)." },
+  { id: "event_essence",      name: "Essence Storm Scroll", emoji: "✨",  price: 80000,  category: "events", description: "Triggers Essence Storm server-wide for 90m (×2 essence)." },
+  { id: "event_battle",       name: "Battle Frenzy Scroll", emoji: "⚔️", price: 75000,  category: "events", description: "Triggers Battle Frenzy server-wide for 60m (×2 cowoncy in battle)." },
+  { id: "event_mineral",      name: "Mineral Rush Scroll",  emoji: "⛏️", price: 65000,  category: "events", description: "Triggers Mineral Rush server-wide for 60m (×2 minerals)." },
+  { id: "event_lucky",        name: "Lucky Skies Scroll",   emoji: "🍀",  price: 85000,  category: "events", description: "Triggers Lucky Skies server-wide for 45m (×1.5 luck)." },
+  { id: "event_blood",        name: "Blood Moon Scroll",    emoji: "🩸",  price: 95000,  category: "events", description: "Triggers Blood Moon server-wide for 60m (battle dmg ×1.5)." },
+  { id: "event_skillstorm",   name: "Skill Storm Scroll",   emoji: "🌟",  price: 100000, category: "events", description: "Triggers Skill Storm server-wide for 60m (skill cooldowns halved)." },
+  { id: "event_shopsale",     name: "Shop Sale Scroll",     emoji: "🏷️", price: 50000,  category: "events", description: "Triggers Shop Sale server-wide for 60m (−20% shop prices)." },
+  { id: "event_xpbonanza",    name: "XP Bonanza Scroll",    emoji: "📈",  price: 70000,  category: "events", description: "Triggers XP Bonanza server-wide for 60m (×2 animal XP)." },
+  { id: "event_void",         name: "Void Breach Scroll",   emoji: "🕳️", price: 250000, category: "events", description: "Triggers Void Breach server-wide for 30m (cosmic+void weight ×4)." },
+  { id: "event_secret",       name: "Secret Whisper Scroll",emoji: "🤫",  price: 400000, category: "events", description: "Triggers Secret Whisper server-wide for 15m (secret-pet chance ×100!)." },
+  // gamepasses — NEW expensive permanent perks
+  ...GAMEPASS_DEFS.map<ShopItem>((g) => ({
+    id: g.id, name: g.name, emoji: g.emoji, price: g.cowoncyPrice, lowoCashPrice: g.lowoCashPrice, category: "gamepasses",
+    description: `${g.description} *(or ${g.lowoCashPrice ?? "—"} Lowo Cash)*`,
+  })),
+  // essence shop — buy with essence
+  ...ESSENCE_ITEMS.map<ShopItem>((e) => ({
+    id: e.id, name: e.name, emoji: e.emoji, price: e.essenceCost, category: "essence",
+    description: `${e.description} *(costs ${e.essenceCost.toLocaleString()} ✨ essence)*`,
+  })),
   // equips (armor / charms)
   ...ARMOR_DEFS.filter((a) => a.price > 0).map<ShopItem>((a) => ({
     id: a.id, name: a.name, emoji: a.emoji, price: a.price, category: "equips",
@@ -775,7 +969,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   })),
 ];
 export const SHOP_BY_ID: Record<string, ShopItem> = Object.fromEntries(SHOP_ITEMS.map((i) => [i.id, i]));
-export const SHOP_CATEGORIES: ShopCategory[] = ["items", "potions", "events", "equips", "pets", "mining", "skills", "premium"];
+export const SHOP_CATEGORIES: ShopCategory[] = ["items", "potions", "events", "equips", "pets", "mining", "skills", "gamepasses", "essence", "premium"];
 
 // ─── Luck helper (Arcues + potions + events) ──────────────────────────────────
 // Returns a multiplier applied to rare+ rarity weights when rolling.

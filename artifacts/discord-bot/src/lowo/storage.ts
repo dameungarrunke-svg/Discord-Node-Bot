@@ -91,6 +91,12 @@ export interface UserData {
   bossKills: number;
   sbWins: number;
   sbLosses: number;
+  // ── THE NEW ERA ──
+  battleTokens: number;            // new currency from `lowo battle`
+  gamepasses: Record<string, boolean>; // owned permanent gamepasses
+  petMaterials: number;            // currency from recycling pets
+  fusionPetCount: number;          // total fusions performed (lifetime)
+  ownedGamepassesPurchased: number; // total gamepasses bought (achievement)
 }
 
 interface Store {
@@ -134,6 +140,12 @@ function defaultUser(): UserData {
     megaLuckUntil: 0, hasteUntil: 0, shieldUntil: 0,
     lastHuntArea: "default",
     bossKills: 0, sbWins: 0, sbLosses: 0,
+    // The New Era
+    battleTokens: 0,
+    gamepasses: {},
+    petMaterials: 0,
+    fusionPetCount: 0,
+    ownedGamepassesPurchased: 0,
   };
 }
 

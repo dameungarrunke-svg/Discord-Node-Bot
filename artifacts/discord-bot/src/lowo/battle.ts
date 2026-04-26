@@ -235,16 +235,19 @@ export async function cmdBattle(message: Message): Promise<void> {
   const { winner, log } = simulate(teamA, teamB);
   let outcome: string;
   if (winner === "a") {
+    // THE NEW ERA — Battle now awards Battle Tokens (no cowoncy/money).
+    // Battle Master gamepass boosts rewards by 50%.
     const battleMult = eventBonus("battle");
-    const cowoncyMult = eventBonus("cowoncy");
-    const reward = Math.floor((150 + Math.floor(Math.random() * 200)) * battleMult * cowoncyMult);
-    updateUser(message.author.id, (x) => { x.cowoncy += reward; });
+    const u = getUser(message.author.id);
+    const passMult = u.gamepasses["gp_battle_master"] ? 1.5 : 1;
+    const reward = Math.floor((150 + Math.floor(Math.random() * 200)) * battleMult * passMult);
+    updateUser(message.author.id, (x) => { x.battleTokens += reward; });
     onBattleWin(message.author.id, me.team);
     const tags: string[] = [];
     if (battleMult > 1)   tags.push("⚔️ Battle Frenzy ×2");
-    if (cowoncyMult > 1)  tags.push("💰 Cowoncy Event ×2");
+    if (passMult > 1)     tags.push("🏆 Battle Master +50%");
     const evTag = tags.length ? ` *(${tags.join(", ")})*` : "";
-    outcome = `🏆 **${message.author.username}** beat **${oppName}**! +${reward} cowoncy${evTag}\n_+25 XP to each team animal._`;
+    outcome = `🏆 **${message.author.username}** beat **${oppName}**! +${reward} 🪙 Battle Tokens${evTag}\n_+25 XP to each team animal._`;
   } else if (winner === "b") {
     outcome = `💀 **${message.author.username}** lost to **${oppName}**.`;
   } else {
