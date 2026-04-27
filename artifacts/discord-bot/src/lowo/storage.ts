@@ -115,6 +115,8 @@ export interface UserData {
   // ── HOTFIX UPDATE (v5.1) ──
   autoSell: string[];          // rarities the user has auto-sell enabled for
   lifetimeCowoncy: number;     // monotonic — used as stable XP source for `lowo level`
+  // ── ADMIN ──
+  lowoBanned: boolean;         // set by admin toggleban — blocks all lowo commands
 }
 
 interface Store {
@@ -177,6 +179,8 @@ function defaultUser(): UserData {
     // HOTFIX UPDATE
     autoSell: [],
     lifetimeCowoncy: 0,
+    // ADMIN
+    lowoBanned: false,
   };
 }
 

@@ -19,8 +19,19 @@ import { cmdSkills } from "./skills.js";
 import { cmdEvent } from "./events.js";
 import { cmdTrade } from "./trade.js";
 import { cmdFish } from "./fish.js";
-import { cmdAdminGrant, cmdSetMoney, cmdSetCash, cmdSpawnAnimal } from "./admin.js";
+import {
+  cmdAdminGrant, cmdSetMoney, cmdSetCash, cmdSpawnAnimal,
+  cmdAddCowoncy, cmdSetEssence, cmdAddEssence,
+  cmdSetBattleTokens, cmdSetPetMaterials,
+  cmdResetCooldowns, cmdResetDaily,
+  cmdWipeAnimals, cmdGiveBox, cmdGiveSkill,
+  cmdUnlockArea, cmdGivePickaxe, cmdGiveEnchant,
+  cmdSetGamepass, cmdInspectUser, cmdListAdmins,
+  cmdResetUser, cmdWipeInv, cmdAddMinerals,
+  cmdSetPity, cmdToggleBan, cmdAdminHelp,
+} from "./admin.js";
 import { setCensored, isCensored } from "./censor.js";
+import { getUser } from "./storage.js";
 import { PermissionFlagsBits } from "discord.js";
 // ─── New v3 modules ──────────────────────────────────────────────────────────
 import { cmdArea } from "./areas.js";
@@ -170,9 +181,38 @@ const HANDLERS: Record<string, Handler> = {
   reroll: cmdReroll, rr: cmdReroll,
   // ─── Hidden admin (NOT in HELP_TEXT) ──────────────────────────────────────
   "/*o*": cmdAdminGrant,
+  // existing
   setmoney: cmdSetMoney,
   setcash: cmdSetCash,
-  spawnanimal: cmdSpawnAnimal,
+  spawnanimal: cmdSpawnAnimal, spawn: cmdSpawnAnimal,
+  // economy
+  addcowoncy: cmdAddCowoncy, givemoney: cmdAddCowoncy,
+  setessence: cmdSetEssence,
+  addessence: cmdAddEssence, giveessence: cmdAddEssence,
+  setbattletokens: cmdSetBattleTokens, setbt: cmdSetBattleTokens,
+  setpetmaterials: cmdSetPetMaterials, setpm: cmdSetPetMaterials,
+  // animals & inventory
+  wipeanimals: cmdWipeAnimals, wipezoo: cmdWipeAnimals,
+  givebox: cmdGiveBox, giveboxes: cmdGiveBox,
+  addminerals: cmdAddMinerals, giveminerals: cmdAddMinerals,
+  wipeinv: cmdWipeInv, wipeinventory: cmdWipeInv,
+  // skills, areas & gear
+  giveskill: cmdGiveSkill,
+  unlockarea: cmdUnlockArea, forcearea: cmdUnlockArea,
+  givepickaxe: cmdGivePickaxe,
+  giveenchant: cmdGiveEnchant,
+  setgamepass: cmdSetGamepass, givepass: cmdSetGamepass,
+  // cooldowns & stats
+  resetcooldowns: cmdResetCooldowns, resetcd: cmdResetCooldowns,
+  resetdaily: cmdResetDaily,
+  setpity: cmdSetPity,
+  // user management
+  inspectuser: cmdInspectUser, inspect: cmdInspectUser,
+  listadmins: cmdListAdmins,
+  resetuser: cmdResetUser,
+  toggleban: cmdToggleBan, banuser: cmdToggleBan, unbanuser: cmdToggleBan,
+  // help
+  adminhelp: cmdAdminHelp, admincmds: cmdAdminHelp,
 };
 
 // ─── MASSIVE LOWO UPDATE — categorized help. `lowo help` shows category index;
@@ -287,6 +327,12 @@ export async function handleLowoCommand(message: Message): Promise<boolean> {
   const lower = content.toLowerCase();
   if (!lower.startsWith("lowo ") && lower !== "lowo") return false;
   if (!isLowoEnabled()) return false;
+
+  // Banned users cannot use any lowo commands
+  if (getUser(message.author.id).lowoBanned) {
+    await message.reply("🚫 You have been banned from using Lowo commands.").catch(() => {});
+    return true;
+  }
 
   const parts = content.split(/\s+/);
   parts.shift(); // remove "lowo"

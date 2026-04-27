@@ -88,6 +88,13 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - Storage additions (auto-backfilled): `heavenDex`, `voidUnknownDex`, `enchantments`, `mutations`, `enchantTomes`, `extraTeamSlots`, `defeatedBossPets`, `opChests`, `dinoSummonUntil`.
 - Validation: `pnpm --filter @workspace/discord-bot run typecheck` passes with zero errors.
 
+## Lowo Admin Panel (v5.2)
+- `/lowoadmin user:@u password:***` — slash command, ephemeral, toggles `isAdmin` if password matches `LOWO_ADMIN_PASSWORD` Railway env var.
+- All admin text commands are hidden from public help. Use `lowo adminhelp` (or `lowo admincmds`) to see the full list.
+- Ban check: `lowoBanned` field on UserData; router blocks all lowo commands for banned users before dispatch.
+- New commands (prefix `lowo`): `addcowoncy`, `setessence`, `addessence`, `setbattletokens`, `setpetmaterials`, `resetcooldowns`(`resetcd`), `resetdaily`, `wipeanimals`(`wipezoo`) [CONFIRM], `givebox`, `giveskill`, `unlockarea`(`forcearea`), `givepickaxe`, `giveenchant`, `setgamepass`(`givepass`), `inspectuser`(`inspect`), `listadmins`, `resetuser` [CONFIRM], `wipeinv`(`wipeinventory`) [CONFIRM], `addminerals`(`giveminerals`), `setpity`, `toggleban`(`banuser`/`unbanuser`), `adminhelp`(`admincmds`).
+- Storage: added `lowoBanned: boolean` (auto-backfilled, default `false`).
+
 ## Lowo v5.1 — HOTFIX (QoL & Bug Sweep)
 - **Above-Omni catch bonus**: catching any rarity strictly above Omni (Divine/Glitched/Inferno/Cosmic/Void/Transcendent/Supreme/Secret) grants +1 Lowo Cash on the spot. The 50-hunt milestone bonus is unchanged.
 - **`lowo autosell <rarity>`** (alias `as`) toggles a rarity. Caught animals of that rarity are auto-sold for cowoncy on the spot — Dex still credits. `autosell list` / `autosell clear` supported.
