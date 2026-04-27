@@ -87,3 +87,19 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - New modules: `dynamic.ts`, `suggest.ts`, `mutations.ts`, `enchant.ts`, `petCard.ts`, `opItems.ts`.
 - Storage additions (auto-backfilled): `heavenDex`, `voidUnknownDex`, `enchantments`, `mutations`, `enchantTomes`, `extraTeamSlots`, `defeatedBossPets`, `opChests`, `dinoSummonUntil`.
 - Validation: `pnpm --filter @workspace/discord-bot run typecheck` passes with zero errors.
+
+## Lowo v5.1 — HOTFIX (QoL & Bug Sweep)
+- **Above-Omni catch bonus**: catching any rarity strictly above Omni (Divine/Glitched/Inferno/Cosmic/Void/Transcendent/Supreme/Secret) grants +1 Lowo Cash on the spot. The 50-hunt milestone bonus is unchanged.
+- **`lowo autosell <rarity>`** (alias `as`) toggles a rarity. Caught animals of that rarity are auto-sold for cowoncy on the spot — Dex still credits. `autosell list` / `autosell clear` supported.
+- **`lowo bulk sell <rarity>`** (alias `bulksell`) sells every animal of a rarity in your zoo at once.
+- **`lowo dex <area|1-5>`** filters the lowodex by area (1=Forest, 2=Volcanic, 3=Space, 4=Heaven, 5=Unknown Void). Output is now grouped by rarity and auto-paginated to multiple messages — fixes silent truncation.
+- **`lowo animalstat <name>`** (aliases `astat`, `animal`, `info`) shows price, essence value, damage range, HP/DEF/MAG, and signature ability.
+- **Profile potion timers**: `lowo profile` now lists every active buff with remaining time (Luck, Mega Luck, Haste, Shield, Dino Summon).
+- **Luck stacks additively**: Arcues +5%, Luck +10%, Mega Luck +25% combine to +40% (was multiplicative). Autohunt nerf (×0.5) still applies after.
+- **`lowo shop` truncation fix**: chunked into multiple messages so categories with 27+ items show in full.
+- **Shop fix — team slots**: buying `team_slot_1/2/3` now correctly increments `extraTeamSlots` (cap 3 → team cap 6).
+- **Shop fix — OP items**: `op_pet_chest`, `op_god_chest`, `op_void_chest`, `op_attribute_seal` now land in `opChests`; Dino Summon Stone applies a 1h `dinoSummonUntil`; Essence Brick credits +50,000 essence; enchant tomes credit `enchantTomes[id]`.
+- **`lowo level` fix**: XP formula switched to monotonic stats (`huntsTotal*10 + bossKills*100 + dex.length*50 + sum(animalXp)`) so level can no longer go DOWN after spending cowoncy/essence.
+- **Storage additions (auto-backfilled)**: `autoSell: string[]`, `lifetimeCowoncy: number`.
+- **New module**: `autoSell.ts` (cmdAutoSell, cmdBulkSell, cmdAnimalStat, autoSellOne, getAutoSellRarities, resolveAreaArg).
+- Validation: `pnpm --filter @workspace/discord-bot run typecheck` passes with zero errors.

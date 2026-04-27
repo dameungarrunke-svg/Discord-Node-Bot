@@ -41,7 +41,19 @@ export async function cmdShop(message: Message, args: string[]): Promise<void> {
     lines.push(`${it.emoji} \`${it.id}\` — **${it.name}** ${emoji("bullet")} ${cost}\n  *${it.description}*`);
   }
   lines.push(`\nBuy with \`lowo buy <itemId>\`.`);
-  await message.reply(lines.join("\n").slice(0, 1900));
+  // HOTFIX: chunk into multiple replies so all items show (was truncating at 20/27).
+  const chunks: string[] = [];
+  let buf = "";
+  for (const line of lines) {
+    if (buf.length + line.length + 1 > 1900) { chunks.push(buf); buf = ""; }
+    buf += (buf ? "\n" : "") + line;
+  }
+  if (buf) chunks.push(buf);
+  await message.reply(chunks[0]);
+  const ch = message.channel;
+  if ("send" in ch) {
+    for (let i = 1; i < chunks.length; i++) await ch.send(chunks[i]).catch(() => {});
+  }
 }
 
 function priceForUser(item: typeof SHOP_ITEMS[number]): number {
@@ -319,6 +331,68 @@ async function applyPurchase(message: Message, item: typeof SHOP_ITEMS[number], 
     await message.reply(`${def.emoji} Bought **${def.name}** — see your armor with \`lowo inv\`. Equip via \`lowo equip <animal> armor <idx>\`.`);
     return;
   }
+  // ── HOTFIX: Team slot expansions (4th/5th/6th slot) ───────────────────────
+  // Was falling into the generic block which only added `boxes`. Now correctly
+  // increments `extraTeamSlots` (capped 0..3 → max team size of 6).
+  if (item.id === "team_slot_1" || item.id === "team_slot_2" || item.id === "team_slot_3") {
+    const u2 = getUser(message.author.id);
+    if (u2.extraTeamSlots >= 3) {
+      await message.reply(`${emoji("ok")} You already own all 3 extra team slots — your team cap is **6**.`);
+      return;
+    }
+    updateUser(message.author.id, (x) => {
+      if (premium) x.lowoCash -= item.lowoCashPrice ?? 0;
+      else x.cowoncy -= cost;
+      x.extraTeamSlots = Math.min(3, (x.extraTeamSlots ?? 0) + 1);
+    });
+    const newCap = 3 + Math.min(3, (u2.extraTeamSlots ?? 0) + 1);
+    await message.reply(`${emoji("success")} **${item.name}** purchased — your team cap is now **${newCap}/6**.`);
+    return;
+  }
+  // ── HOTFIX: OP chests/seals — add to opChests inventory so `op_open` works.
+  if (item.id === "op_pet_chest" || item.id === "op_god_chest" || item.id === "op_void_chest" || item.id === "op_attribute_seal") {
+    updateUser(message.author.id, (x) => {
+      if (premium) x.lowoCash -= item.lowoCashPrice ?? 0;
+      else x.cowoncy -= cost;
+      x.opChests[item.id] = (x.opChests[item.id] ?? 0) + 1;
+    });
+    const opener = item.id === "op_attribute_seal" ? "lowo reroll <petId>" : `lowo op_open ${item.id}`;
+    await message.reply(`${item.emoji} **${item.name}** purchased! Open with \`${opener}\`.`);
+    return;
+  }
+  // ── HOTFIX: OP Dino Summon Stone — single-use 1h luck buff for Dino Leo.
+  if (item.id === "op_dino_summon") {
+    updateUser(message.author.id, (x) => {
+      if (premium) x.lowoCash -= item.lowoCashPrice ?? 0;
+      else x.cowoncy -= cost;
+      const base = Math.max(Date.now(), x.dinoSummonUntil ?? 0);
+      x.dinoSummonUntil = base + 60 * 60 * 1000;
+    });
+    await message.reply(`🦖✨ **OP Dino Summon Stone** activated — Dino Leo drop chance dramatically boosted for **1 hour**!`);
+    return;
+  }
+  // ── HOTFIX: OP Essence Brick — converts cowoncy → 50,000 essence.
+  if (item.id === "op_essence_brick") {
+    updateUser(message.author.id, (x) => {
+      if (premium) x.lowoCash -= item.lowoCashPrice ?? 0;
+      else x.cowoncy -= cost;
+      x.essence += 50_000;
+    });
+    await message.reply(`✨🧱 **OP Essence Brick** consumed — **+50,000** ✨ essence.`);
+    return;
+  }
+  // ── HOTFIX: Enchant tomes — add to enchantTomes inventory for `lowo enchant`.
+  if (item.id.startsWith("enchant_")) {
+    updateUser(message.author.id, (x) => {
+      if (premium) x.lowoCash -= item.lowoCashPrice ?? 0;
+      else x.cowoncy -= cost;
+      x.enchantTomes[item.id] = (x.enchantTomes[item.id] ?? 0) + 1;
+    });
+    const enchantId = item.id.slice("enchant_".length);
+    await message.reply(`${item.emoji} **${item.name}** purchased! Apply with \`lowo enchant <petId> ${enchantId}\` *(also costs essence)*.`);
+    return;
+  }
+
   // Generic items (rings, crates, food, etc.)
   updateUser(message.author.id, (x) => {
     if (premium) x.lowoCash -= item.lowoCashPrice ?? 0;

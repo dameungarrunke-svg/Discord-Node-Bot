@@ -10,6 +10,27 @@ export interface UpdateEntry {
 // Newest first.
 export const UPDATE_LOGS: UpdateEntry[] = [
   {
+    version: "v5.1",
+    date: "2026-04-27",
+    title: "🩹 HOTFIX — QoL & Major Bug Sweep",
+    highlights: [
+      "**✨ ADDED**",
+      "  • **Above-Omni catch bonus** — every animal of a rarity *strictly above Omni* (Divine/Glitched/Inferno/Cosmic/Void/Transcendent/Supreme/Secret) now drops **+1 🪙 Lowo Cash** the moment you catch it. The classic *50-hunt = +1 Lowo Cash* milestone is unchanged.",
+      "  • **`lowo autosell <rarity>`** — toggle a rarity ON or OFF. Anything you catch of that rarity is auto-sold for cowoncy on the spot (Dex still credits!). Use `lowo autosell list` / `lowo autosell clear`. Aliases: `lowo as`.",
+      "  • **`lowo bulk sell <rarity>`** — sell every animal of a rarity in your zoo at once. Aliases: `lowo bulksell <rarity>`.",
+      "  • **`lowo dex <area>`** — filter your dex by area. Use `1` Forest / `2` Volcanic / `3` Space / `4` Heaven / `5` Unknown Void (or the area name). Now grouped by rarity and auto-paginated.",
+      "  • **`lowo animalstat <name>`** — quick lookup: sell price, essence value, damage range, HP/DEF/MAG, and the unique signature ability. Aliases: `lowo astat`, `lowo animal`, `lowo info`.",
+      "  • **Profile potion timers** — `lowo profile` now lists every active buff with remaining time (Luck, Mega Luck, Haste, Shield, Dino Summon).",
+      "**🐛 FIXED**",
+      "  • **Luck bonuses now stack additively** — Arcues +5%, Luck Potion +10%, Mega Luck +25% combine to **+40%** (was multiplicative & confusing). Autohunt nerf still applies after.",
+      "  • **`lowo shop` truncation** — categories with 27+ items (e.g. Premium / OP) were silently cut off at ~20. Output is now chunked into multiple messages so the full catalog always shows.",
+      "  • **Team-slot purchases** — buying `team_slot_1/2/3` now correctly raises your team cap (3 → 6) instead of silently doing nothing.",
+      "  • **OP chest purchases** — `op_pet_chest`, `op_god_chest`, `op_void_chest`, `op_attribute_seal` now actually land in your inventory and can be opened with `lowo op_open`.",
+      "  • **OP Dino Summon Stone, OP Essence Brick, all enchant tomes** — now apply correctly when bought.",
+      "  • **`lowo level` random jumps** — XP formula no longer counts current cowoncy/essence (which spend down). Replaced with a monotonic mix of total hunts, boss kills, dex completion and accumulated pet XP — your level can no longer go DOWN after a big spend.",
+    ],
+  },
+  {
     version: "v4.0",
     date: "2026-04-26",
     title: "✨ THE NEW ERA",

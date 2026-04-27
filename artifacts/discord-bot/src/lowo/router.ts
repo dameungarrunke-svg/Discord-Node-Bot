@@ -2,6 +2,7 @@ import type { Message } from "discord.js";
 import { isLowoEnabled } from "./toggle.js";
 import { cmdCowoncy, cmdDaily, cmdGive, cmdVote, cmdRep, cmdTag, cmdCash } from "./economy.js";
 import { cmdHunt, cmdZoo, cmdSell, cmdSacrifice, cmdLowodex } from "./hunt.js";
+import { cmdAutoSell, cmdBulkSell, cmdAnimalStat } from "./autoSell.js";
 import { cmdTeam, cmdBattle, cmdCrate, cmdWeapon, cmdEquip } from "./battle.js";
 import { cmdSlots, cmdCoinflip, cmdBlackjack, cmdLottery } from "./gambling.js";
 import { cmdPiku, cmdPikuReset, cmdPet, cmdFeed } from "./minigames.js";
@@ -73,6 +74,10 @@ const HANDLERS: Record<string, Handler> = {
   zoo: cmdZoo, z: cmdZoo,
   sell: cmdSell, s: cmdSell, sacrifice: cmdSacrifice, sac: cmdSacrifice,
   lowodex: cmdLowodex, dex: cmdLowodex,
+  // HOTFIX v5.1 — auto-sell, bulk sell, animal stat lookup
+  autosell: cmdAutoSell, as: cmdAutoSell,
+  bulk: cmdBulkSell, bulksell: cmdBulkSell,
+  animalstat: cmdAnimalStat, astat: cmdAnimalStat, animal: cmdAnimalStat, info: cmdAnimalStat,
   // areas
   area: cmdArea, areas: cmdArea, region: cmdArea,
   // fishing + aquarium
@@ -186,6 +191,11 @@ const HELP_CATEGORIES: Record<string, { title: string; lines: string[] }> = {
     title: "🎯 Hunt, Areas & Mutations",
     lines: [
       "**Hunt / Zoo** — `hunt`(h) `zoo`(z) `sell`(s) `<name> [n|all]` `sacrifice`(sac) `<name>` `lowodex`(dex)",
+      "**Above-Omni Bonus** — every catch of a rarity *strictly above Omni* drops **+1 🪙 Lowo Cash** instantly. The 50-hunt milestone bonus still applies on top.",
+      "**Auto-Sell** — `autosell <rarity>`(as) toggles a rarity • `autosell list` / `autosell clear`. Caught animals of that rarity are sold instantly (Dex still credits!).",
+      "**Bulk Sell** — `bulk sell <rarity>` (or `bulksell <rarity>`) sells every animal of that rarity in your zoo at once.",
+      "**Animal Lookup** — `animalstat <name>`(astat / animal / info) shows price, damage range, HP/DEF/MAG, signature ability.",
+      "**Dex Filter** — `dex <area>` or `dex <1..5>` (1=Forest, 2=Volcanic, 3=Space, 4=Heaven, 5=Unknown Void).",
       "**Auto** — `autohunt`(ah) — *2-min interval (1-min with Auto-Hunt Upgrade gamepass), ½ luck*",
       "**Hunt Areas** — `area` to view & switch — Forest (default), 🌋 Volcanic, 🌌 Space, ☁️ Heaven *(4th)*, 🕳️ Unknown Void *(5th)* — unlock by completing the previous area's dex.",
       "**Fishing** — `fish`(f) — fish go to your **aquarium** • `aquarium`(aq) view tank • `fishdex`(fd) fish-only dex",

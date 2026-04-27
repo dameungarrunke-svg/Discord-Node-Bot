@@ -112,6 +112,9 @@ export interface UserData {
   defeatedBossPets: Record<string, number>;         // bossPetId -> times awarded
   opChests: Record<string, number>;                 // opChestId -> count owned
   dinoSummonUntil: number;                          // OP Dino Summon Stone end ts
+  // ── HOTFIX UPDATE (v5.1) ──
+  autoSell: string[];          // rarities the user has auto-sell enabled for
+  lifetimeCowoncy: number;     // monotonic — used as stable XP source for `lowo level`
 }
 
 interface Store {
@@ -171,6 +174,9 @@ function defaultUser(): UserData {
     defeatedBossPets: {},
     opChests: {},
     dinoSummonUntil: 0,
+    // HOTFIX UPDATE
+    autoSell: [],
+    lifetimeCowoncy: 0,
   };
 }
 

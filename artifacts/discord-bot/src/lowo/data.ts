@@ -1171,12 +1171,16 @@ export const SHOP_CATEGORIES: ShopCategory[] = ["items", "potions", "events", "e
 
 // ─── Luck helper (Arcues + potions + events) ──────────────────────────────────
 // Returns a multiplier applied to rare+ rarity weights when rolling.
+// HOTFIX: luck potion + mega luck potion bonuses now stack ADDITIVELY so both
+// effects clearly add together (Luck +10% + Mega Luck +25% + Arcues +5% = +40%).
+// Autohunt then halves the resulting multiplier per the existing nerf.
 export function luckMultiplier(arcuesUnlocked: boolean, luckUntil: number, megaLuckUntil = 0, autohuntActive = false): number {
-  let m = 1;
-  if (arcuesUnlocked) m *= 1.05;
-  if (Date.now() < luckUntil)     m *= 1.10;
-  if (Date.now() < megaLuckUntil) m *= 1.25;
-  // Autohunt halves your effective luck (the user-requested nerf).
+  const now = Date.now();
+  let bonus = 0;
+  if (arcuesUnlocked)        bonus += 0.05;
+  if (now < luckUntil)       bonus += 0.10;
+  if (now < megaLuckUntil)   bonus += 0.25;
+  let m = 1 + bonus;
   if (autohuntActive) m *= 0.5;
   return m;
 }

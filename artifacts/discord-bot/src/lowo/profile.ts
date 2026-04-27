@@ -7,6 +7,18 @@ import { isCensored } from "./censor.js";
 import { PermissionFlagsBits } from "discord.js";
 import { emoji, allEmojiKeys, isOverridden, saveOverrides, catalogKeys, mergeOverrides } from "./emojis.js";
 
+// HOTFIX helper: pretty mm:ss / Hh Mm remaining for a future timestamp.
+function fmtRemaining(untilMs: number): string | null {
+  const ms = untilMs - Date.now();
+  if (ms <= 0) return null;
+  const s = Math.ceil(ms / 1000);
+  if (s < 60)    return `${s}s`;
+  if (s < 3600)  return `${Math.floor(s / 60)}m ${s % 60}s`;
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
 export async function cmdProfile(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
@@ -14,6 +26,17 @@ export async function cmdProfile(message: Message): Promise<void> {
   const married = u.marriedTo ? `<@${u.marriedTo}>` : "single";
   const bg = BACKGROUND_BY_ID[u.background ?? "bg_dark"]?.name ?? "Midnight";
   const pityPct = Math.min(100, Math.floor(((u.pity ?? 0) / PITY_THRESHOLD) * 100));
+
+  // HOTFIX: surface active potion / buff timers on the profile.
+  const buffParts: string[] = [];
+  const luckLeft       = fmtRemaining(u.luckUntil ?? 0);       if (luckLeft)       buffParts.push(`🍀 Luck **${luckLeft}**`);
+  const megaLuckLeft   = fmtRemaining(u.megaLuckUntil ?? 0);   if (megaLuckLeft)   buffParts.push(`🌟 Mega Luck **${megaLuckLeft}**`);
+  const hasteLeft      = fmtRemaining(u.hasteUntil ?? 0);      if (hasteLeft)      buffParts.push(`💨 Haste **${hasteLeft}**`);
+  const shieldLeft     = fmtRemaining(u.shieldUntil ?? 0);     if (shieldLeft)     buffParts.push(`🛡️ Shield **${shieldLeft}**`);
+  const dinoLeft       = fmtRemaining(u.dinoSummonUntil ?? 0); if (dinoLeft)       buffParts.push(`🦖 Dino Summon **${dinoLeft}**`);
+  const buffSep = `  ${emoji("bullet")}  `;
+  const buffsLine = buffParts.length ? `${emoji("info")} Active: ${buffParts.join(buffSep)}` : null;
+
   await message.reply([
     `${emoji("profile")} **${target.username}'s Lowo Profile**`,
     u.tag ? `*"${u.tag}"*` : null,
@@ -23,6 +46,7 @@ export async function cmdProfile(message: Message): Promise<void> {
     `${emoji("streak")} Daily streak: **${u.dailyStreak}**  ${emoji("bullet")}  ${emoji("rep")} Rep: **${u.rep}**`,
     `${emoji("pity")} Pity: **${u.pity}/${PITY_THRESHOLD}** (${pityPct}%)  ${emoji("bullet")}  ${emoji("bg")} BG: **${bg}**`,
     `${emoji("marry")} Married to: ${married}`,
+    buffsLine,
     `\n_Try \`lowo card\` for the visual version._`,
   ].filter(Boolean).join("\n"));
 }
@@ -47,10 +71,22 @@ export async function cmdCard(message: Message): Promise<void> {
 export async function cmdLevel(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
-  const xp = u.cowoncy + u.essence * 10 + Object.values(u.zoo).reduce((a, b) => a + b, 0) * 5;
+  // HOTFIX: previous formula used current cowoncy/essence — values fluctuate
+  // every spend so level kept jumping. Use only MONOTONIC stats so level can
+  // never drop: total hunts, boss kills, dex completion, and pet XP.
+  const animalXpSum = Object.values(u.animalXp ?? {}).reduce((a, b) => a + b, 0);
+  const xp =
+    (u.huntsTotal ?? 0) * 10 +
+    (u.bossKills  ?? 0) * 100 +
+    (u.dex.length      ) * 50 +
+    animalXpSum;
   const level = Math.floor(Math.sqrt(xp / 100));
   const nextXp = Math.pow(level + 1, 2) * 100;
-  await message.reply(`📈 **${target.username}** — Lowo Level **${level}**\nXP: ${xp.toLocaleString()} / ${nextXp.toLocaleString()}`);
+  await message.reply([
+    `📈 **${target.username}** — Lowo Level **${level}**`,
+    `XP: ${xp.toLocaleString()} / ${nextXp.toLocaleString()}`,
+    `${emoji("dot")} Hunts ${u.huntsTotal ?? 0}  ${emoji("bullet")}  Bosses ${u.bossKills ?? 0}  ${emoji("bullet")}  Dex ${u.dex.length}  ${emoji("bullet")}  Pet XP ${animalXpSum.toLocaleString()}`,
+  ].join("\n"));
 }
 
 export async function cmdAvatar(message: Message): Promise<void> {

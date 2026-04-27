@@ -12,10 +12,18 @@ import { isAutohuntActive } from "./extra.js";
 import { refreshAreaUnlocks } from "./areas.js";
 import { teamEnchantLuck } from "./enchant.js";
 import { maybeRollMutationDuringEvent, mutationLabel } from "./mutations.js";
+import { autoSellOne, getAutoSellRarities, resolveAreaArg } from "./autoSell.js";
 import { emoji } from "./emojis.js";
 
 const BASE_HUNT_COOLDOWN_MS = 15_000;
 const HUNTS_PER_LOWOCASH = 50;
+// HOTFIX: rarities strictly above `omni` in RARITY_ORDER also award +1 Lowo Cash on catch.
+// RARITY_ORDER lists rarest first → "above omni" = lower index than omni's index.
+const OMNI_INDEX = RARITY_ORDER.indexOf("omni");
+function isAboveOmni(r: Rarity): boolean {
+  const i = RARITY_ORDER.indexOf(r);
+  return i >= 0 && i < OMNI_INDEX;
+}
 
 // ─── Tolerant animal lookup (multi-word + case/punct-insensitive) ─────────────
 const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -116,6 +124,10 @@ export async function cmdHunt(message: Message): Promise<void> {
 
   let cashGained = 0;
   let arcuesJustUnlocked = false;
+  // HOTFIX: track which catches were auto-sold for the result message.
+  const autoSellSet = getAutoSellRarities(message.author.id);
+  const autoSoldFlags: boolean[] = caught.map((a) => autoSellSet.has(a.rarity));
+  let aboveOmniBonus = 0;
   updateUser(message.author.id, (x) => {
     x.lastHunt = now;
     x.lastHuntArea = area;
@@ -125,22 +137,36 @@ export async function cmdHunt(message: Message): Promise<void> {
     if (newMilestones > 0) { x.lowoCash += newMilestones; cashGained = newMilestones; }
     for (let idx = 0; idx < caught.length; idx++) {
       const a = caught[idx];
-      x.zoo[a.id] = (x.zoo[a.id] ?? 0) + 1;
+      // HOTFIX: above-omni catches grant +1 Lowo Cash each (regardless of autosell).
+      if (isAboveOmni(a.rarity)) { x.lowoCash += 1; aboveOmniBonus += 1; }
+      // Dex always credited even if auto-sold so progress isn't lost.
       if (!x.dex.includes(a.id)) x.dex.push(a.id);
-      // Per-area dex (additive, helps unlock checks)
       if (area === "volcanic"     && !x.volcanicDex.includes(a.id))    x.volcanicDex.push(a.id);
       if (area === "space"        && !x.spaceDex.includes(a.id))       x.spaceDex.push(a.id);
       if (area === "heaven"       && !x.heavenDex.includes(a.id))      x.heavenDex.push(a.id);
       if (area === "void_unknown" && !x.voidUnknownDex.includes(a.id)) x.voidUnknownDex.push(a.id);
+      // Auto-sell skips zoo storage entirely.
+      if (!autoSoldFlags[idx]) {
+        x.zoo[a.id] = (x.zoo[a.id] ?? 0) + 1;
+      }
       if (a.rarity === "legendary") x.pity = 0;
       else x.pity = (x.pity ?? 0) + 1;
       if (a.id === "arcues" && !x.arcuesUnlocked) { x.arcuesUnlocked = true; arcuesJustUnlocked = true; }
-      // Persist mutation if one rolled this hunt
+      // Persist mutation if one rolled this hunt (only if kept in zoo)
       const mid = caughtMutations[idx]?.mutation;
-      if (mid && !x.mutations[a.id]) x.mutations[a.id] = { mutationId: mid, appliedAt: Date.now() };
+      if (!autoSoldFlags[idx] && mid && !x.mutations[a.id]) {
+        x.mutations[a.id] = { mutationId: mid, appliedAt: Date.now() };
+      }
     }
   });
   for (const a of caught) onHuntCaught(message.author.id, a.id);
+
+  // Apply auto-sell credits AFTER the main updateUser block so each call uses
+  // the freshly-updated user state (multipliers + lifetimeCowoncy track).
+  let autoSellTotal = 0;
+  for (let idx = 0; idx < caught.length; idx++) {
+    if (autoSoldFlags[idx]) autoSellTotal += autoSellOne(message.author.id, caught[idx].id);
+  }
 
   // After updating dex, check if a new area is now unlocked.
   const { newlyUnlocked } = refreshAreaUnlocks(message.author.id);
@@ -149,6 +175,10 @@ export async function cmdHunt(message: Message): Promise<void> {
   const evNote = ev ? `\n${ev.emoji} *${ev.name} active*` : "";
   const pityNote = pityTriggered ? `\n${emoji("pity")} **PITY!** Guaranteed legendary triggered!` : "";
   const cashNote = cashGained > 0 ? `\n${emoji("cash")} **+${cashGained}** Lowo Cash *(50-hunt milestone!)*` : "";
+  const aboveOmniNote = aboveOmniBonus > 0 ? `\n${emoji("cash")} **+${aboveOmniBonus}** Lowo Cash *(above-omni catch bonus!)*` : "";
+  const autoSellNote = autoSellTotal > 0
+    ? `\n${emoji("sell")} Auto-sold caught animals for **${autoSellTotal.toLocaleString()}** ${emoji("cowoncy")} cowoncy.`
+    : "";
   const arcuesNote = arcuesJustUnlocked ? `\n${emoji("rocket")} **ARCUES UNLOCKED!** Permanent **+5% Luck** & **+10% Essence** on sacrifices!` : "";
   const unlockNote = newlyUnlocked.length
     ? `\n${emoji("flag")} **AREA UNLOCKED:** ${newlyUnlocked.map((id) => `${AREA_BY_ID[id].emoji} **${AREA_BY_ID[id].name}**`).join(", ")} — switch via \`lowo area\`.`
@@ -160,11 +190,15 @@ export async function cmdHunt(message: Message): Promise<void> {
     const mTag = m ? ` ${mutationLabel(m)}` : "";
     return `${RARITY_COLOR[a.rarity]} ${a.emoji} **${a.name}**${mTag} *(${a.rarity})*`;
   };
+  const fmtCatchWithSold = (a: Animal, idx: number): string => {
+    const base = fmtCatch(a, idx);
+    return autoSoldFlags[idx] ? `${base} ${emoji("sell")}*[auto-sold]*` : base;
+  };
   if (caught.length === 1) {
-    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught a ${fmtCatch(caught[0], 0)}${evNote}${pityNote}${cashNote}${arcuesNote}${unlockNote}`);
+    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught a ${fmtCatchWithSold(caught[0], 0)}${evNote}${pityNote}${cashNote}${aboveOmniNote}${autoSellNote}${arcuesNote}${unlockNote}`);
   } else {
-    const list = caught.map((a, i) => fmtCatch(a, i)).join(" + ");
-    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught **${caught.length}** animals!\n${list}${evNote}${pityNote}${cashNote}${arcuesNote}${unlockNote}`);
+    const list = caught.map((a, i) => fmtCatchWithSold(a, i)).join(" + ");
+    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught **${caught.length}** animals!\n${list}${evNote}${pityNote}${cashNote}${aboveOmniNote}${autoSellNote}${arcuesNote}${unlockNote}`);
   }
 }
 
@@ -235,19 +269,64 @@ export async function cmdSacrifice(message: Message, args: string[]): Promise<vo
   await message.reply(`${emoji("essence")} Sacrificed ${count}× ${a.emoji} **${a.name}** → +**${total.toLocaleString()}** essence${tag}.`);
 }
 
-export async function cmdLowodex(message: Message): Promise<void> {
+/**
+ * `lowo dex` — full lowodex.
+ * `lowo dex <area name | stage 1-5>` — HOTFIX: filter to a specific area's
+ * animals (1=Forest, 2=Volcanic, 3=Space, 4=Heaven, 5=Unknown Void).
+ * Output is auto-chunked into multiple replies so nothing ever truncates.
+ */
+export async function cmdLowodex(message: Message, args: string[]): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
-  const total = ANIMALS.length;
-  const owned = u.dex.length;
-  const pct = Math.round((owned / total) * 100);
-  const lines = [`${emoji("dex")} **${target.username}'s Lowodex** — ${owned}/${total} (${pct}%)`];
-  for (const a of ANIMALS) {
+
+  // Strip a leading user mention from args so `lowo dex @user 2` still parses.
+  const filterArg = args.find((a) => !/^<@!?\d+>$/.test(a));
+  const areaInfo = filterArg ? resolveAreaArg(filterArg) : null;
+  if (filterArg && !areaInfo) {
+    await message.reply([
+      `${emoji("fail")} Unknown area \`${filterArg}\`.`,
+      `Try: \`1\` Forest, \`2\` Volcanic, \`3\` Space, \`4\` Heaven, \`5\` Unknown Void.`,
+      `Example: \`lowo dex 4\` or \`lowo dex heaven\`.`,
+    ].join("\n"));
+    return;
+  }
+
+  const pool: Animal[] = areaInfo ? areaInfo.pool : ANIMALS;
+  const ownedInPool = pool.filter((a) => u.dex.includes(a.id)).length;
+  const pct = pool.length === 0 ? 0 : Math.round((ownedInPool / pool.length) * 100);
+  const header = areaInfo
+    ? `${emoji("dex")} **${target.username}'s Lowodex — ${areaInfo.label}** — ${ownedInPool}/${pool.length} (${pct}%)`
+    : `${emoji("dex")} **${target.username}'s Lowodex** — ${ownedInPool}/${pool.length} (${pct}%)`;
+
+  // Group by rarity (rarest first) for readability.
+  const grouped: Partial<Record<Rarity, string[]>> = {};
+  for (const a of pool) {
     const got = u.dex.includes(a.id);
     const tags: string[] = [];
     if (a.aquatic)   tags.push(emoji("fishCaught"));
     if (a.eventOnly) tags.push(emoji("event"));
-    lines.push(`${got ? emoji("dexFound") : emoji("dexMissing")} ${a.emoji} ${a.name} \`${a.id}\` ${RARITY_COLOR[a.rarity]}${tags.length ? ` ${tags.join("")}` : ""}`);
+    const line = `${got ? emoji("dexFound") : emoji("dexMissing")} ${a.emoji} ${a.name} \`${a.id}\` ${RARITY_COLOR[a.rarity]}${tags.length ? ` ${tags.join("")}` : ""}`;
+    (grouped[a.rarity] ??= []).push(line);
   }
-  await message.reply(lines.join("\n").slice(0, 1900));
+  const allLines: string[] = [header];
+  for (const r of RARITY_ORDER) {
+    const arr = grouped[r];
+    if (!arr || arr.length === 0) continue;
+    allLines.push(`\n${RARITY_COLOR[r]} **${r.toUpperCase()}** *(${arr.length})*`);
+    allLines.push(...arr);
+  }
+
+  // Chunk into <=1900-char messages so nothing is ever silently truncated.
+  const chunks: string[] = [];
+  let buf = "";
+  for (const line of allLines) {
+    if (buf.length + line.length + 1 > 1900) { chunks.push(buf); buf = ""; }
+    buf += (buf ? "\n" : "") + line;
+  }
+  if (buf) chunks.push(buf);
+  await message.reply(chunks[0]);
+  const ch = message.channel;
+  if ("send" in ch) {
+    for (let i = 1; i < chunks.length; i++) await ch.send(chunks[i]).catch(() => {});
+  }
 }
