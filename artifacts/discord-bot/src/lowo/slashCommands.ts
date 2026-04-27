@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits, type ChatInputCommandInteraction } from "discord.js";
 import { setLowoEnabled, isLowoEnabled } from "./toggle.js";
 import { setDynamic, isDynamic } from "./dynamic.js";
+import { executeLowoadmin } from "./admin.js";
 
 export const lowoEnableData = new SlashCommandBuilder()
   .setName("lowoenable")
@@ -52,4 +53,14 @@ export async function executeLowoDynamicDisable(interaction: ChatInputCommandInt
   await interaction.editReply({ content: "🌑 **Lowo Dynamic Mode: OFF** — quiet mode restored." });
 }
 
-export { isLowoEnabled, isDynamic };
+export const lowoadminData = new SlashCommandBuilder()
+  .setName("lowoadmin")
+  .setDescription("Grant or revoke Lowo admin for a user (password required)")
+  .addUserOption((o) =>
+    o.setName("user").setDescription("The user to grant/revoke admin").setRequired(true),
+  )
+  .addStringOption((o) =>
+    o.setName("password").setDescription("Admin panel password").setRequired(true),
+  );
+
+export { isLowoEnabled, isDynamic, executeLowoadmin };

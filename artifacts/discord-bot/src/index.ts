@@ -92,6 +92,7 @@ import { handleLowoCommand } from "./lowo/router.js";
 import {
   lowoEnableData, lowoDisableData, executeLowoEnable, executeLowoDisable,
   lowoDynamicEnableData, lowoDynamicDisableData, executeLowoDynamicEnable, executeLowoDynamicDisable,
+  lowoadminData, executeLowoadmin,
 } from "./lowo/slashCommands.js";
 import { isLowoEnabled } from "./lowo/toggle.js";
 import { startLowoCron } from "./lowo/cron.js";
@@ -226,6 +227,7 @@ const baseCommands = [
   lowoDisableData.toJSON(),
   lowoDynamicEnableData.toJSON(),
   lowoDynamicDisableData.toJSON(),
+  lowoadminData.toJSON(),
 ];
 
 function buildCommandList(): unknown[] {
@@ -306,6 +308,7 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   lowodisable: (i) => executeLowoDisable(i, reregisterPrimaryGuild),
   lowodynamicenable: executeLowoDynamicEnable,
   lowodynamicdisable: executeLowoDynamicDisable,
+  lowoadmin: executeLowoadmin,
 };
 
 const PRIMARY_GUILD_ID = "1479910330669990025";

@@ -1,4 +1,4 @@
-import type { Message } from "discord.js";
+import type { Message, ChatInputCommandInteraction } from "discord.js";
 import { getUser, updateUser } from "./storage.js";
 import { ANIMAL_BY_ID, ANIMALS } from "./data.js";
 
@@ -71,6 +71,27 @@ export async function cmdSetCash(message: Message, args: string[]): Promise<void
   const amt = Math.max(0, parseInt(amtStr, 10));
   updateUser(target.id, (x) => { x.lowoCash = amt; });
   await message.reply(`💎 Set **${target.username}**'s Lowo Cash to **${amt.toLocaleString()}**.`);
+}
+
+// ─── /lowoadmin — slash command, password-gated admin grant ──────────────────
+export async function executeLowoadmin(interaction: ChatInputCommandInteraction): Promise<void> {
+  const pw = process.env.LOWO_ADMIN_PASSWORD;
+  if (!pw) {
+    await interaction.editReply("⚠️ `LOWO_ADMIN_PASSWORD` is not set on this deployment. Add it as an environment variable in Railway.");
+    return;
+  }
+  const entered = interaction.options.getString("password", true);
+  if (entered !== pw) {
+    await interaction.editReply("❌ Incorrect password.");
+    return;
+  }
+  const target = interaction.options.getUser("user", true);
+  const u = getUser(target.id);
+  const newState = !u.isAdmin;
+  updateUser(target.id, (x) => { x.isAdmin = newState; });
+  await interaction.editReply(
+    `🔐 **${target.username}** Lowo admin: ${newState ? "**GRANTED** ✅" : "**REVOKED** ❌"}`,
+  );
 }
 
 export async function cmdSpawnAnimal(message: Message, args: string[]): Promise<void> {
