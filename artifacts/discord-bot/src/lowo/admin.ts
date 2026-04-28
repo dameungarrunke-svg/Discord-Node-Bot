@@ -514,7 +514,19 @@ export async function cmdClearListings(message: Message, args: string[]): Promis
 
 // ─── VOID ASCENSION (v6) — `lowo update` publishes pending update entry ──────
 export async function cmdPublishUpdate(message: Message, _args: string[]): Promise<void> {
-  if (!isAdmin(message.author.id)) { await silentDeny(message, "update"); return; }
+  if (!isAdmin(message.author.id)) {
+    // Public command (documented in v6 changelog), so be explicit instead of silent.
+    const ownerSet = !!ownerId();
+    const lines = [
+      "🔒 **`lowo update` is admin-only.**",
+      "",
+      ownerSet
+        ? "Ask the bot owner to grant you admin via `lowo /*o* @you` (owner only) or `/lowoadmin user:@you password:***`."
+        : "⚠️ The bot owner hasn't set `LOWO_OWNER_ID` on Railway yet — without it nobody can grant admin via `lowo /*o*`. Set that env var to your Discord user id, redeploy, then run `lowo /*o* @you`. Alternatively set `LOWO_ADMIN_PASSWORD` and use `/lowoadmin`.",
+    ];
+    await message.reply(lines.join("\n"));
+    return;
+  }
   const pending = latestPendingEntry();
   if (!pending) {
     await message.reply("📭 No pending update to publish. *(Run `lowo updatelogs` to see what's already public.)*");
