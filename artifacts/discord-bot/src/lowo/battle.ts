@@ -8,6 +8,8 @@ import { getAnimalMultiplier, onBattleWin, getAnimalPerk } from "./skills.js";
 import { eventBonus } from "./events.js";
 import { emoji } from "./emojis.js";
 import { petEnchantStats } from "./enchant.js";
+import { prestigeStatMultiplier } from "./prestige.js";
+import { petBattleAtkBonus, hideStatsInBattle } from "./areaTraits.js";
 
 const BATTLE_COOLDOWN_MS = 30_000;
 const SKILL_TRIGGER_CHANCE = 0.25;
@@ -125,6 +127,21 @@ function buildTeam(u: UserData, ownerId: string | null): CombatUnit[] {
 
     const perkCrit = ownerId ? !!getAnimalPerk(ownerId, id, "crit") : false;
     if (perkCrit) critChance += 0.18;
+
+    // ─── VOID ASCENSION (v6) — pet prestige permanent stat doubling ─────────
+    if (ownerId) {
+      const hpM  = prestigeStatMultiplier(ownerId, id, "hp");
+      const atkM = prestigeStatMultiplier(ownerId, id, "atk");
+      const defM = prestigeStatMultiplier(ownerId, id, "def");
+      const magM = prestigeStatMultiplier(ownerId, id, "mag");
+      hp  = Math.floor(hp  * hpM);
+      atk = Math.floor(atk * atkM);
+      def = Math.floor(def * defM);
+      mag = Math.floor(mag * magM);
+    }
+    // ─── VOID ASCENSION (v6) — area trait: volcanic +20% ATK for fire pets ──
+    atk = Math.floor(atk * petBattleAtkBonus(id, u.huntArea));
+
     team.push({
       id, name: a.name, emoji: a.emoji,
       hp, maxHp: hp, atk, def, mag,
@@ -304,10 +321,17 @@ export async function cmdBattle(message: Message): Promise<void> {
     outcome = `🤝 Draw with **${oppName}**.`;
   }
 
+  // ─── VOID ASCENSION (v6) — Unknown Void hides battle stats ──────────────
+  const hide = hideStatsInBattle(me.huntArea);
+  const cleanLog = hide
+    ? log.map((l) => l.replace(/\b\d+\b/g, "???").replace(/💥CRIT/g, "💥???"))
+    : log;
+  const outcomeFinal = hide ? `🕳️ *Unknown Void — stats hidden.*\n${outcome}` : outcome;
+
   if (me.instantBattle) {
-    await message.reply(outcome);
+    await message.reply(outcomeFinal);
   } else {
-    await message.reply(`${outcome}\n\`\`\`${log.slice(-12).join("\n").slice(0, 1500) || "(quick battle)"}\`\`\``);
+    await message.reply(`${outcomeFinal}\n\`\`\`${cleanLog.slice(-12).join("\n").slice(0, 1500) || "(quick battle)"}\`\`\``);
   }
 }
 

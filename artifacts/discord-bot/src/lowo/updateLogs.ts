@@ -1,14 +1,57 @@
 import type { Message } from "discord.js";
+import { getLowoMeta, updateLowoMeta } from "./storage.js";
 
 export interface UpdateEntry {
   version: string;
   date: string;
   title: string;
   highlights: string[];
+  /** When true, this entry stays HIDDEN from `lowo updatelogs` until an admin
+   *  publishes it via `lowo update`. */
+  pending?: boolean;
 }
+
+// The newest version we ship in code that is still "pending" until an admin
+// types `lowo update`. Updated whenever we cut a new release.
+export const LATEST_PENDING_VERSION = "v6.0";
 
 // Newest first.
 export const UPDATE_LOGS: UpdateEntry[] = [
+  {
+    version: "v6.0",
+    date: "2026-04-28",
+    title: "🕳️ LOWO: VOID ASCENSION UPDATE",
+    pending: true,
+    highlights: [
+      "**🐾 SENTIENT PETS** — pets now have **moods** and **loyalty**.",
+      "  • `lowo interact <pet>` *(aliases `play` / `talk`)* — feed them attention. **+15 mood, +10 loyalty** per interaction. **1h cooldown per pet**.",
+      "  • `lowo petmood [pet]` — view a single pet's stats or your top-loyal roster.",
+      "  • Hunting with a pet on your team raises its mood/loyalty too.",
+      "  • Pets at **Loyalty ≥ 800** become 💖 **Devoted** — every hunt has a **0.5% chance per devoted pet** to find a hidden mineral or box for you.",
+      "**🌟 PET ASCENSION (PRESTIGE)** — push a pet past the cap.",
+      "  • `lowo prestige <pet>` *(alias `ascend`)* — costs **50,000 ✨ essence**, requires the pet to be at the **level cap**.",
+      "  • Pet resets to **Lv 1** but gains a **Permanent Mutation** that **doubles ONE random stat (HP / ATK / DEF / MAG) forever**.",
+      "  • Stack ascensions on the same pet — capped at **×16** on a single stat to keep things sane.",
+      "  • `lowo prestige` (no args) lists every pet you've ascended.",
+      "**🗺️ AREA TRAITS** — areas now affect gameplay mechanically.",
+      "  • 🌋 **Volcanic** — Fire-type pets gain **+20% ATK** in battle. Hunt cooldown **+2s** *(heat penalty)*.",
+      "  • ☁️ **Heaven** — Hunt luck **+10%**, but sacrifices return **−20% essence** *(it's a holy place!)*.",
+      "  • 🕳️ **Unknown Void** — All battle stats are **hidden** during fights. Feel the fight.",
+      "  • View traits any time with `lowo area`.",
+      "**🛒 GLOBAL MARKETPLACE** — async player-to-player trading at last.",
+      "  • `lowo market` — browse all listings *(newest first)*.",
+      "  • `lowo market post <pet name> <price>` — list a pet for cowoncy. **48h auto-expiry**.",
+      "  • `lowo market search <rarity>` — filter by rarity (e.g. `epic`, `mythic`, `secret`).",
+      "  • `lowo market buy <id>` — buy instantly. **5% market tax** on the seller.",
+      "  • `lowo market mine` / `lowo market cancel <id>` — manage your listings.",
+      "  • Each user can have up to **10 active listings**. Expired listings refund the pet to your zoo.",
+      "**🦊 EASTER EGG — HUNGRY BOT** — if you forgot to claim `lowo daily`, the bot has a **1% chance** to *snatch your catch* and tease you about it. Keep your daily streak alive!",
+      "**🛡️ ADMIN TOOLS**",
+      "  • `lowo update` — **publish** the latest pending update entry to your server *(admin only)*. Until you publish, this entry stays hidden from `lowo updatelogs`.",
+      "  • `lowo checkmarket` — list every active marketplace listing across the server *(admin)*.",
+      "  • `lowo clearlistings` — wipe the marketplace and refund every pet to its seller *(admin)*.",
+    ],
+  },
   {
     version: "v5.1",
     date: "2026-04-27",
@@ -106,21 +149,73 @@ export const UPDATE_LOGS: UpdateEntry[] = [
   },
 ];
 
+// ─── Release-gate helpers ────────────────────────────────────────────────────
+function isReleased(entry: UpdateEntry): boolean {
+  if (!entry.pending) return true;
+  return getLowoMeta().releasedVersions.includes(entry.version);
+}
+
+/** Returns the visible entries for `lowo updatelogs` (releases hidden until published). */
+export function visibleEntries(): UpdateEntry[] {
+  return UPDATE_LOGS.filter(isReleased);
+}
+
+/** Find the latest pending entry that has not yet been published. */
+export function latestPendingEntry(): UpdateEntry | null {
+  for (const e of UPDATE_LOGS) {
+    if (e.pending && !isReleased(e)) return e;
+  }
+  return null;
+}
+
+/** Mark a version as released. Idempotent. */
+export function markReleased(version: string): void {
+  updateLowoMeta((m) => {
+    if (!m.releasedVersions.includes(version)) m.releasedVersions.push(version);
+  });
+}
+
+/** Format a single update entry for posting. */
+export function formatEntryFull(entry: UpdateEntry): string {
+  const lines: string[] = [];
+  lines.push(`📰 **Lowo Update Log — ${entry.version} (${entry.date})**`);
+  lines.push(`### ${entry.title}`);
+  for (const h of entry.highlights) lines.push(`• ${h}`);
+  return lines.join("\n");
+}
+
 export async function cmdUpdateLogs(message: Message, args: string[]): Promise<void> {
   const filter = args[0]?.toLowerCase();
-  const entries = filter ? UPDATE_LOGS.filter((e) => e.version.toLowerCase().includes(filter)) : UPDATE_LOGS;
-  if (entries.length === 0) { await message.reply(`📭 No updates matching \`${filter}\`.`); return; }
-  // Show only the newest entry in full; older entries get a one-line summary.
+  const visible = visibleEntries();
+  const entries = filter ? visible.filter((e) => e.version.toLowerCase().includes(filter)) : visible;
+  if (entries.length === 0) { await message.reply(`📭 No updates matching \`${filter ?? ""}\`.`); return; }
   const [latest, ...rest] = entries;
   const lines: string[] = [];
-  lines.push(`📰 **Lowo Update Log — ${latest.version} (${latest.date})**`);
-  lines.push(`### ${latest.title}`);
-  for (const h of latest.highlights) lines.push(`• ${h}`);
+  lines.push(formatEntryFull(latest));
   if (rest.length) {
     lines.push("");
     lines.push(`__Older versions__`);
     for (const e of rest) lines.push(`• \`${e.version}\` *(${e.date})* — ${e.title}`);
     lines.push(`Use \`lowo updatelogs <version>\` to read details.`);
   }
-  await message.reply(lines.join("\n").slice(0, 1950));
+  const text = lines.join("\n");
+  // Auto-chunk to avoid Discord 2000 char limit on huge entries.
+  const MAX = 1900;
+  if (text.length <= MAX) { await message.reply(text); return; }
+  let cut = text.lastIndexOf("\n", MAX);
+  if (cut < 1000) cut = MAX;
+  await message.reply(text.slice(0, cut));
+  const ch = message.channel;
+  if ("send" in ch) {
+    let rem = text.slice(cut).trim();
+    while (rem.length) {
+      let take = rem.length;
+      if (take > MAX) {
+        take = rem.lastIndexOf("\n", MAX);
+        if (take < 1000) take = MAX;
+      }
+      await ch.send(rem.slice(0, take)).catch(() => {});
+      rem = rem.slice(take).trim();
+    }
+  }
 }

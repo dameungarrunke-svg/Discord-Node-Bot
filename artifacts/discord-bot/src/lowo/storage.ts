@@ -117,12 +117,30 @@ export interface UserData {
   lifetimeCowoncy: number;     // monotonic — used as stable XP source for `lowo level`
   // ── ADMIN ──
   lowoBanned: boolean;         // set by admin toggleban — blocks all lowo commands
+  // ── VOID ASCENSION (v6) ──
+  petMood: Record<string, number>;        // animalId -> 0..100
+  petLoyalty: Record<string, number>;     // animalId -> 0..1000
+  lastInteract: Record<string, number>;   // animalId -> ts of last lowo interact
+  prestige: Record<string, { count: number; statBuff: "hp" | "atk" | "def" | "mag"; perm_mutation: boolean }>;
+}
+
+export interface MarketListingRecord {
+  id: number;
+  sellerId: string;
+  sellerTag: string;
+  animalId: string;
+  price: number;
+  postedAt: number;
+  expiresAt: number;
 }
 
 interface Store {
   users: Record<string, UserData>;
   lottery: { pot: number; tickets: Array<{ userId: string; count: number }>; lastDraw: number };
   event: { id: string | null; until: number };
+  // ── VOID ASCENSION (v6) ──
+  market: { nextId: number; listings: MarketListingRecord[] };
+  lowoMeta: { releasedVersions: string[] };
 }
 
 function defaultUser(): UserData {
@@ -181,6 +199,11 @@ function defaultUser(): UserData {
     lifetimeCowoncy: 0,
     // ADMIN
     lowoBanned: false,
+    // VOID ASCENSION (v6)
+    petMood: {},
+    petLoyalty: {},
+    lastInteract: {},
+    prestige: {},
   };
 }
 
@@ -194,10 +217,18 @@ function load(): Store {
       if (!cache.users) cache.users = {};
       if (!cache.lottery) cache.lottery = { pot: 0, tickets: [], lastDraw: 0 };
       if (!cache.event) cache.event = { id: null, until: 0 };
+      if (!cache.market) cache.market = { nextId: 0, listings: [] };
+      if (!cache.lowoMeta) cache.lowoMeta = { releasedVersions: [] };
       return cache;
     }
   } catch { /* fallthrough */ }
-  cache = { users: {}, lottery: { pot: 0, tickets: [], lastDraw: 0 }, event: { id: null, until: 0 } };
+  cache = {
+    users: {},
+    lottery: { pot: 0, tickets: [], lastDraw: 0 },
+    event: { id: null, until: 0 },
+    market: { nextId: 0, listings: [] },
+    lowoMeta: { releasedVersions: [] },
+  };
   return cache;
 }
 
@@ -258,6 +289,24 @@ export function updateEvent(fn: (e: Store["event"]) => void): void {
 
 export function allUsers(): Record<string, UserData> {
   return load().users;
+}
+
+// ─── Market store accessors ──────────────────────────────────────────────────
+export function getMarket() {
+  return load().market;
+}
+export function updateMarket(fn: (m: Store["market"]) => void): void {
+  fn(load().market);
+  save();
+}
+
+// ─── Update-log "release" gate ───────────────────────────────────────────────
+export function getLowoMeta() {
+  return load().lowoMeta;
+}
+export function updateLowoMeta(fn: (m: Store["lowoMeta"]) => void): void {
+  fn(load().lowoMeta);
+  save();
 }
 
 export function flush(): void {

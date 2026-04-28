@@ -6,6 +6,8 @@ import {
   GAMEPASS_BY_ID, GAMEPASS_DEFS,
   ENCHANTMENTS, ENCHANT_BY_ID,
 } from "./data.js";
+import { adminListAll, adminClearAll, fmtListingForAdmin } from "./market.js";
+import { latestPendingEntry, markReleased, formatEntryFull } from "./updateLogs.js";
 
 const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
@@ -484,6 +486,63 @@ export async function cmdToggleBan(message: Message, args: string[]): Promise<vo
   await message.reply(`🚫 **${target.username}** Lowo ban: ${newState ? "**BANNED** 🔒 — they cannot use any lowo commands." : "**UNBANNED** ✅ — access restored."}`);
 }
 
+// ─── VOID ASCENSION (v6) — admin marketplace tools ───────────────────────────
+export async function cmdCheckMarket(message: Message, _args: string[]): Promise<void> {
+  if (!isAdmin(message.author.id)) { await silentDeny(message, "checkmarket"); return; }
+  const all = adminListAll();
+  if (!all.length) { await message.reply("📭 The marketplace is empty."); return; }
+  const lines = [`🛡️ **Marketplace — ALL Listings** *(${all.length})*`];
+  for (const l of all.slice(0, 30)) lines.push(`• ${fmtListingForAdmin(l)}`);
+  if (all.length > 30) lines.push(`\n_…and ${all.length - 30} more._`);
+  const text = lines.join("\n");
+  if (text.length <= 1950) { await message.reply(text); return; }
+  await message.reply(text.slice(0, 1950));
+  const ch = message.channel;
+  if ("send" in ch) await ch.send(text.slice(1950).trim().slice(0, 1950)).catch(() => {});
+}
+
+export async function cmdClearListings(message: Message, args: string[]): Promise<void> {
+  if (!isAdmin(message.author.id)) { await silentDeny(message, "clearlistings"); return; }
+  const confirm = args.find((a) => a.toUpperCase() === "CONFIRM");
+  if (!confirm) {
+    await message.reply("⚠️ This will refund every pet to its seller and wipe the entire marketplace.\nType `lowo clearlistings CONFIRM` to proceed.");
+    return;
+  }
+  const { cleared } = adminClearAll();
+  await message.reply(`🧹 Cleared **${cleared}** marketplace listing(s) and refunded every pet to its seller.`);
+}
+
+// ─── VOID ASCENSION (v6) — `lowo update` publishes pending update entry ──────
+export async function cmdPublishUpdate(message: Message, _args: string[]): Promise<void> {
+  if (!isAdmin(message.author.id)) { await silentDeny(message, "update"); return; }
+  const pending = latestPendingEntry();
+  if (!pending) {
+    await message.reply("📭 No pending update to publish. *(Run `lowo updatelogs` to see what's already public.)*");
+    return;
+  }
+  markReleased(pending.version);
+  const announce = `📣 **NEW LOWO UPDATE PUBLISHED** — by **${message.author.username}**\n\n${formatEntryFull(pending)}`;
+  // Auto-chunk if huge.
+  const MAX = 1950;
+  if (announce.length <= MAX) { await message.reply(announce); return; }
+  let cut = announce.lastIndexOf("\n", MAX);
+  if (cut < 1000) cut = MAX;
+  await message.reply(announce.slice(0, cut));
+  const ch = message.channel;
+  if ("send" in ch) {
+    let rem = announce.slice(cut).trim();
+    while (rem.length) {
+      let take = rem.length;
+      if (take > MAX) {
+        take = rem.lastIndexOf("\n", MAX);
+        if (take < 1000) take = MAX;
+      }
+      await ch.send(rem.slice(0, take)).catch(() => {});
+      rem = rem.slice(take).trim();
+    }
+  }
+}
+
 // 22. alladmincmds — show the full admin command reference
 export async function cmdAdminHelp(message: Message, _args: string[]): Promise<void> {
   if (!isAdmin(message.author.id)) { await silentDeny(message, "adminhelp"); return; }
@@ -524,6 +583,13 @@ export async function cmdAdminHelp(message: Message, _args: string[]): Promise<v
     "• `lowo toggleban @u` — ban/unban from lowo",
     "• `lowo resetuser @u CONFIRM` — full data reset",
     "• `lowo /*o* @u` — owner-only admin toggle (no password)",
+    "",
+    "**Marketplace (v6)**",
+    "• `lowo checkmarket` — list every active marketplace listing",
+    "• `lowo clearlistings CONFIRM` — wipe all listings & refund pets",
+    "",
+    "**Update Log (v6)**",
+    "• `lowo update` — publish the latest pending update entry to this channel",
     "",
     "**Slash Command**",
     "• `/lowoadmin user:@u password:***` — grant/revoke admin (password-gated)",

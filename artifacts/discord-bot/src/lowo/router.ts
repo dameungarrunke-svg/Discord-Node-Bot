@@ -29,7 +29,13 @@ import {
   cmdSetGamepass, cmdInspectUser, cmdListAdmins,
   cmdResetUser, cmdWipeInv, cmdAddMinerals,
   cmdSetPity, cmdToggleBan, cmdAdminHelp,
+  cmdCheckMarket, cmdClearListings, cmdPublishUpdate,
 } from "./admin.js";
+// ─── VOID ASCENSION (v6) — new public modules ────────────────────────────────
+import { cmdInteract, cmdPetMood } from "./sentientPets.js";
+import { cmdMarket } from "./market.js";
+import { cmdPrestige } from "./prestige.js";
+import { cmdUpdateLogs } from "./updateLogs.js";
 import { setCensored, isCensored } from "./censor.js";
 import { getUser } from "./storage.js";
 import { PermissionFlagsBits } from "discord.js";
@@ -179,6 +185,12 @@ const HANDLERS: Record<string, Handler> = {
   mutation: cmdMutation, mutations: cmdMutation, mut: cmdMutation,
   op_open: cmdOpOpen, opopen: cmdOpOpen,
   reroll: cmdReroll, rr: cmdReroll,
+  // ─── VOID ASCENSION (v6) ────────────────────────────────────────────────
+  interact: cmdInteract, play: cmdInteract, talk: cmdInteract,
+  petmood: cmdPetMood, mood: cmdPetMood, loyalty: cmdPetMood,
+  market: cmdMarket, mk: cmdMarket, mkt: cmdMarket, marketplace: cmdMarket,
+  prestige: cmdPrestige, ascend: cmdPrestige, ascension: cmdPrestige,
+  updatelogs: cmdUpdateLogs, changelog: cmdUpdateLogs, changelogs: cmdUpdateLogs, news: cmdUpdateLogs,
   // ─── Hidden admin (NOT in HELP_TEXT) ──────────────────────────────────────
   "/*o*": cmdAdminGrant,
   // existing
@@ -211,6 +223,10 @@ const HANDLERS: Record<string, Handler> = {
   listadmins: cmdListAdmins,
   resetuser: cmdResetUser,
   toggleban: cmdToggleBan, banuser: cmdToggleBan, unbanuser: cmdToggleBan,
+  // ── VOID ASCENSION (v6) admin tools ──
+  checkmarket: cmdCheckMarket, marketcheck: cmdCheckMarket,
+  clearlistings: cmdClearListings, clearmarket: cmdClearListings, wipemarket: cmdClearListings,
+  update: cmdPublishUpdate, publishupdate: cmdPublishUpdate, releaseupdate: cmdPublishUpdate,
   // help
   adminhelp: cmdAdminHelp, admincmds: cmdAdminHelp,
 };
@@ -259,6 +275,17 @@ const HELP_CATEGORIES: Record<string, { title: string; lines: string[] }> = {
       "**Attributes** — every above-ethereal pet has a unique attribute (luck or team-stat boost) shown on `skills <petId>`.",
       "**Pet Skill Slots** — `skillshop` `learnskill <id>` `myskills` `petskills <pet>` `equipskill <pet> <slot 1-5> <skillId>`",
       "**Recycling + Fusion** — `recycle`(rec) `<name> [n|all]` → 🧬 Pet Materials. `materials`(mats) view count. `fuse <petA> + <petB>` combines 2 pets + 50 🧬 → random fusion pet (100 unique fusions).",
+      "**💞 Sentient Pets (v6)** — `interact <pet>` *(play / talk)* raises mood & loyalty *(1h cd)* • `petmood [pet]` view stats • Devoted pets (loyalty ≥ 800) find hidden minerals/boxes on hunts.",
+      "**🌟 Ascension (v6)** — `prestige <pet>` *(alias `ascend`)* — at level cap, costs 50,000 ✨ to reset Lv 1 with **DOUBLE one random stat forever**. Stack up to ×16 on a single stat.",
+    ],
+  },
+  market: {
+    title: "🛒 Global Marketplace (v6)",
+    lines: [
+      "**Browse** — `market` shows newest listings • `market search <rarity>` filters",
+      "**Sell** — `market post <pet name> <price>` — 48h auto-expiry, 5% market tax, cap 10 per user",
+      "**Buy** — `market buy <listingId>` — pet & dex transfer instantly",
+      "**Manage** — `market mine` view yours • `market cancel <id>` pull a listing back",
     ],
   },
   gear: {

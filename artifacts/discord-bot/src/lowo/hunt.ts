@@ -14,6 +14,11 @@ import { teamEnchantLuck } from "./enchant.js";
 import { maybeRollMutationDuringEvent, mutationLabel } from "./mutations.js";
 import { autoSellOne, getAutoSellRarities, resolveAreaArg } from "./autoSell.js";
 import { emoji } from "./emojis.js";
+import { huntCooldownPenaltyMs, huntLuckMultiplier, sacrificeAreaMultiplier } from "./areaTraits.js";
+import { onHuntForTeam } from "./sentientPets.js";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const NO_DAILY_STEAL_CHANCE = 0.01;
 
 const BASE_HUNT_COOLDOWN_MS = 15_000;
 const HUNTS_PER_LOWOCASH = 50;
@@ -76,10 +81,23 @@ export async function cmdHunt(message: Message): Promise<void> {
   const u = getUser(message.author.id);
   const now = Date.now();
   const cdMult = bestHuntCdMultiplier(message.author.id);
-  const cooldown = Math.floor(BASE_HUNT_COOLDOWN_MS * cdMult);
+  // VOID ASCENSION (v6): area trait — volcanic adds a "Heat" cooldown penalty.
+  const cooldown = Math.floor(BASE_HUNT_COOLDOWN_MS * cdMult) + huntCooldownPenaltyMs(u.huntArea);
   if (now - u.lastHunt < cooldown) {
     const left = Math.ceil((cooldown - (now - u.lastHunt)) / 1000);
     await message.reply(`${emoji("hourglass")} Slow down! Hunt again in **${left}s**.`);
+    return;
+  }
+
+  // ─── VOID ASCENSION (v6) — Easter egg: hungry bot steals if no daily ─────
+  // 1% chance — only when the user hasn't claimed daily for 24h+.
+  if (now - (u.lastDaily ?? 0) > DAY_MS && Math.random() < NO_DAILY_STEAL_CHANCE) {
+    updateUser(message.author.id, (x) => { x.lastHunt = now; });
+    await message.reply([
+      `🦊 *A wild Lowo darts in and snatches your catch right out of your hands!*`,
+      `> "Tee-hee! You forgot \`lowo daily\` again — finder's keepers!"`,
+      `_Tip: claim \`lowo daily\` regularly so the bot doesn't get hungry._`,
+    ].join("\n"));
     return;
   }
 
@@ -100,6 +118,8 @@ export async function cmdHunt(message: Message): Promise<void> {
   // Pet-attribute team luck (above-ethereal pets) + enchantment team luck.
   luck *= teamAttributeLuck(u.team);
   luck *= teamEnchantLuck(message.author.id);
+  // VOID ASCENSION (v6) — area trait: heaven grants +10% luck.
+  luck *= huntLuckMultiplier(area);
   // OP Dino Summon Stone temporarily boosts Dino Leo chance via overall luck.
   if (Date.now() < u.dinoSummonUntil) luck *= 5;
   const caught: Animal[] = [];
@@ -168,6 +188,9 @@ export async function cmdHunt(message: Message): Promise<void> {
     if (autoSoldFlags[idx]) autoSellTotal += autoSellOne(message.author.id, caught[idx].id);
   }
 
+  // ─── VOID ASCENSION (v6) — sentient pets get mood + loyalty + find bonus ─
+  const finds = onHuntForTeam(message.author.id, u.team);
+
   // After updating dex, check if a new area is now unlocked.
   const { newlyUnlocked } = refreshAreaUnlocks(message.author.id);
 
@@ -183,6 +206,10 @@ export async function cmdHunt(message: Message): Promise<void> {
   const unlockNote = newlyUnlocked.length
     ? `\n${emoji("flag")} **AREA UNLOCKED:** ${newlyUnlocked.map((id) => `${AREA_BY_ID[id].emoji} **${AREA_BY_ID[id].name}**`).join(", ")} — switch via \`lowo area\`.`
     : "";
+  // VOID ASCENSION (v6) — devoted pets find hidden loot.
+  const findsNote = finds.length
+    ? "\n" + finds.map((f) => `💖 ${f.petEmoji} **${f.petName}** found a hidden ${f.emoji} **${f.name}** while hunting!`).join("\n")
+    : "";
   const areaTag = `*[${AREA_BY_ID[area].emoji} ${AREA_BY_ID[area].name}]*`;
 
   const fmtCatch = (a: Animal, idx: number): string => {
@@ -195,10 +222,10 @@ export async function cmdHunt(message: Message): Promise<void> {
     return autoSoldFlags[idx] ? `${base} ${emoji("sell")}*[auto-sold]*` : base;
   };
   if (caught.length === 1) {
-    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught a ${fmtCatchWithSold(caught[0], 0)}${evNote}${pityNote}${cashNote}${aboveOmniNote}${autoSellNote}${arcuesNote}${unlockNote}`);
+    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught a ${fmtCatchWithSold(caught[0], 0)}${evNote}${pityNote}${cashNote}${aboveOmniNote}${autoSellNote}${arcuesNote}${unlockNote}${findsNote}`);
   } else {
     const list = caught.map((a, i) => fmtCatchWithSold(a, i)).join(" + ");
-    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught **${caught.length}** animals!\n${list}${evNote}${pityNote}${cashNote}${aboveOmniNote}${autoSellNote}${arcuesNote}${unlockNote}`);
+    await message.reply(`${emoji("hunt")} ${areaTag} **${message.author.username}** went hunting and caught **${caught.length}** animals!\n${list}${evNote}${pityNote}${cashNote}${aboveOmniNote}${autoSellNote}${arcuesNote}${unlockNote}${findsNote}`);
   }
 }
 
@@ -259,12 +286,15 @@ export async function cmdSacrifice(message: Message, args: string[]): Promise<vo
   const evMult = eventBonus("essence");
   const perkMult = essenceMultiplier(message.author.id, a.id);
   const arcuesMult = essenceArcuesMultiplier(u.arcuesUnlocked);
-  const total = Math.floor(count * a.essence * evMult * perkMult * arcuesMult);
+  // VOID ASCENSION (v6) — heaven sacrifices return -20% essence.
+  const areaMult = sacrificeAreaMultiplier(u.huntArea);
+  const total = Math.floor(count * a.essence * evMult * perkMult * arcuesMult * areaMult);
   updateUser(message.author.id, (x) => { x.zoo[a.id] -= count; x.essence += total; });
   const tags: string[] = [];
   if (evMult > 1)      tags.push(`${emoji("essence")} Essence Storm ×2`);
   if (perkMult > 1)    tags.push("Lv 10 perk ×2");
   if (arcuesMult > 1)  tags.push(`${emoji("rocket")} Arcues +10%`);
+  if (areaMult < 1)    tags.push("☁️ Heaven −20% *(holy place)*");
   const tag = tags.length ? ` *(${tags.join(", ")})*` : "";
   await message.reply(`${emoji("essence")} Sacrificed ${count}× ${a.emoji} **${a.name}** → +**${total.toLocaleString()}** essence${tag}.`);
 }

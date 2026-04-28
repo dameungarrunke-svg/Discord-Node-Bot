@@ -6,6 +6,7 @@ import {
   type HuntArea, type AreaDexCount,
 } from "./data.js";
 import { emoji, progressBar } from "./emojis.js";
+import { AREA_TRAITS } from "./areaTraits.js";
 
 function dexCounts(u: UserData): AreaDexCount {
   const defaultIds = new Set(HUNT_POOL.map((a) => a.id));
@@ -70,6 +71,8 @@ export async function cmdArea(message: Message, args: string[]): Promise<void> {
       const lock = unlocked ? "✅" : "🔒";
       lines.push(`${lock} ${def.emoji} **${def.name}** — \`${bar}\` ${cur}/${total} dex`);
       lines.push(`  *${def.description}*`);
+      const traits = AREA_TRAITS[def.id];
+      if (traits && traits.length) for (const t of traits) lines.push(`  ${t}`);
       if (!unlocked) lines.push(`  🔓 *${def.unlockHint}*`);
     }
     lines.push("");
