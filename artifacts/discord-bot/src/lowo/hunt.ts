@@ -281,8 +281,27 @@ export async function cmdLowodex(message: Message, args: string[]): Promise<void
 
   // Strip a leading user mention from args so `lowo dex @user 2` still parses.
   const filterArg = args.find((a) => !/^<@!?\d+>$/.test(a));
-  const areaInfo = filterArg ? resolveAreaArg(filterArg) : null;
-  if (filterArg && !areaInfo) {
+
+  // If no area given, show a stage picker instead of flooding with all animals.
+  if (!filterArg) {
+    const STAGE_LINES = [
+      "🗺️ **Which stage's dex do you want to view?**",
+      "Reply with: `lowo dex <stage>`",
+      "",
+      "`lowo dex 1` — 🌲 **Forest** (default area)",
+      "`lowo dex 2` — 🌋 **Volcanic**",
+      "`lowo dex 3` — 🌌 **Space**",
+      "`lowo dex 4` — ☁️ **Heaven**",
+      "`lowo dex 5` — 🕳️ **Unknown Void**",
+      "",
+      "_You can also type the area name, e.g. `lowo dex volcanic` or `lowo dex heaven`._",
+    ];
+    await message.reply(STAGE_LINES.join("\n"));
+    return;
+  }
+
+  const areaInfo = resolveAreaArg(filterArg);
+  if (!areaInfo) {
     await message.reply([
       `${emoji("fail")} Unknown area \`${filterArg}\`.`,
       `Try: \`1\` Forest, \`2\` Volcanic, \`3\` Space, \`4\` Heaven, \`5\` Unknown Void.`,
@@ -291,7 +310,7 @@ export async function cmdLowodex(message: Message, args: string[]): Promise<void
     return;
   }
 
-  const pool: Animal[] = areaInfo ? areaInfo.pool : ANIMALS;
+  const pool: Animal[] = areaInfo.pool;
   const ownedInPool = pool.filter((a) => u.dex.includes(a.id)).length;
   const pct = pool.length === 0 ? 0 : Math.round((ownedInPool / pool.length) * 100);
   const header = areaInfo
