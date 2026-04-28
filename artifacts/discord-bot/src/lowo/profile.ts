@@ -6,6 +6,9 @@ import { generateProfileCard } from "./profileCard.js";
 import { isCensored } from "./censor.js";
 import { PermissionFlagsBits } from "discord.js";
 import { emoji, allEmojiKeys, isOverridden, saveOverrides, catalogKeys, mergeOverrides } from "./emojis.js";
+import {
+  baseEmbed, replyEmbed, successEmbed, errorEmbed, warnEmbed, val, COLOR, progressBar,
+} from "./embeds.js";
 
 // HOTFIX helper: pretty mm:ss / Hh Mm remaining for a future timestamp.
 function fmtRemaining(untilMs: number): string | null {
@@ -25,30 +28,37 @@ export async function cmdProfile(message: Message): Promise<void> {
   const animals = Object.values(u.zoo).reduce((a, b) => a + b, 0);
   const married = u.marriedTo ? `<@${u.marriedTo}>` : "single";
   const bg = BACKGROUND_BY_ID[u.background ?? "bg_dark"]?.name ?? "Midnight";
-  const pityPct = Math.min(100, Math.floor(((u.pity ?? 0) / PITY_THRESHOLD) * 100));
 
-  // HOTFIX: surface active potion / buff timers on the profile.
-  const buffParts: string[] = [];
-  const luckLeft       = fmtRemaining(u.luckUntil ?? 0);       if (luckLeft)       buffParts.push(`🍀 Luck **${luckLeft}**`);
-  const megaLuckLeft   = fmtRemaining(u.megaLuckUntil ?? 0);   if (megaLuckLeft)   buffParts.push(`🌟 Mega Luck **${megaLuckLeft}**`);
-  const hasteLeft      = fmtRemaining(u.hasteUntil ?? 0);      if (hasteLeft)      buffParts.push(`💨 Haste **${hasteLeft}**`);
-  const shieldLeft     = fmtRemaining(u.shieldUntil ?? 0);     if (shieldLeft)     buffParts.push(`🛡️ Shield **${shieldLeft}**`);
-  const dinoLeft       = fmtRemaining(u.dinoSummonUntil ?? 0); if (dinoLeft)       buffParts.push(`🦖 Dino Summon **${dinoLeft}**`);
-  const buffSep = `  ${emoji("bullet")}  `;
-  const buffsLine = buffParts.length ? `${emoji("info")} Active: ${buffParts.join(buffSep)}` : null;
+  // Active potion / buff timers
+  const buffs: string[] = [];
+  const luckLeft       = fmtRemaining(u.luckUntil ?? 0);       if (luckLeft)       buffs.push(`🍀 Luck \`${luckLeft}\``);
+  const megaLuckLeft   = fmtRemaining(u.megaLuckUntil ?? 0);   if (megaLuckLeft)   buffs.push(`🌟 MegaLuck \`${megaLuckLeft}\``);
+  const hasteLeft      = fmtRemaining(u.hasteUntil ?? 0);      if (hasteLeft)      buffs.push(`💨 Haste \`${hasteLeft}\``);
+  const shieldLeft     = fmtRemaining(u.shieldUntil ?? 0);     if (shieldLeft)     buffs.push(`🛡️ Shield \`${shieldLeft}\``);
+  const dinoLeft       = fmtRemaining(u.dinoSummonUntil ?? 0); if (dinoLeft)       buffs.push(`🦖 Dino \`${dinoLeft}\``);
 
-  await message.reply([
-    `${emoji("profile")} **${target.username}'s Lowo Profile**`,
-    u.tag ? `*"${u.tag}"*` : null,
-    `${emoji("cowoncy")} Cowoncy: **${u.cowoncy.toLocaleString()}**  ${emoji("bullet")}  ${emoji("essence")} Essence: **${u.essence.toLocaleString()}**`,
-    `${emoji("pet")} Animals: **${animals}** (${u.dex.length} unique)  ${emoji("bullet")}  ${emoji("weapon")} Weapons: **${u.weapons.length}**`,
-    `${emoji("zoo")} Pet streak: **${u.pet.streak}**  ${emoji("bullet")}  ${emoji("carrot")} Garden: **${u.piku.harvested}**  ${emoji("bullet")}  ${emoji("ticket")} Tickets: **${u.lotteryTickets}**`,
-    `${emoji("streak")} Daily streak: **${u.dailyStreak}**  ${emoji("bullet")}  ${emoji("rep")} Rep: **${u.rep}**`,
-    `${emoji("pity")} Pity: **${u.pity}/${PITY_THRESHOLD}** (${pityPct}%)  ${emoji("bullet")}  ${emoji("bg")} BG: **${bg}**`,
-    `${emoji("marry")} Married to: ${married}`,
-    buffsLine,
-    `\n_Try \`lowo card\` for the visual version._`,
-  ].filter(Boolean).join("\n"));
+  const e = baseEmbed(message, COLOR.profile)
+    .setAuthor({ name: `${target.username}'s Lowo Profile`, iconURL: target.displayAvatarURL({ size: 128 }) })
+    .setThumbnail(target.displayAvatarURL({ size: 256 }))
+    .setTitle(u.tag ? `🏷️ *"${u.tag}"*` : "🪪 Trainer Profile")
+    .addFields(
+      { name: "🪙 Cowoncy",     value: val(u.cowoncy),  inline: true },
+      { name: "✨ Essence",     value: val(u.essence),  inline: true },
+      { name: "💎 Lowo Cash",   value: val(u.lowoCash), inline: true },
+      { name: "🐾 Animals",     value: `${val(animals)} *(${u.dex.length} unique)*`, inline: true },
+      { name: "⚔️ Weapons",     value: val(u.weapons.length), inline: true },
+      { name: "🎟️ Tickets",     value: val(u.lotteryTickets), inline: true },
+      { name: "🔥 Daily Streak", value: val(u.dailyStreak),    inline: true },
+      { name: "⭐ Rep",          value: val(u.rep),            inline: true },
+      { name: "💍 Married To",   value: married,               inline: true },
+      { name: `🎯 Pity Bar (${u.pity}/${PITY_THRESHOLD})`, value: progressBar(u.pity ?? 0, PITY_THRESHOLD), inline: false },
+      { name: "🖼️ Background",   value: bg, inline: true },
+      { name: "🌱 Garden",       value: val(u.piku.harvested), inline: true },
+      { name: "🐕 Pet Streak",   value: val(u.pet.streak),     inline: true },
+    );
+  if (buffs.length) e.addFields({ name: "⚡ Active Buffs", value: buffs.join("  •  "), inline: false });
+  e.setDescription(`*Try \`lowo card\` for the visual version.*`);
+  await replyEmbed(message, e);
 }
 
 export async function cmdCard(message: Message): Promise<void> {
@@ -71,9 +81,6 @@ export async function cmdCard(message: Message): Promise<void> {
 export async function cmdLevel(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
-  // HOTFIX: previous formula used current cowoncy/essence — values fluctuate
-  // every spend so level kept jumping. Use only MONOTONIC stats so level can
-  // never drop: total hunts, boss kills, dex completion, and pet XP.
   const animalXpSum = Object.values(u.animalXp ?? {}).reduce((a, b) => a + b, 0);
   const xp =
     (u.huntsTotal ?? 0) * 10 +
@@ -81,12 +88,23 @@ export async function cmdLevel(message: Message): Promise<void> {
     (u.dex.length      ) * 50 +
     animalXpSum;
   const level = Math.floor(Math.sqrt(xp / 100));
+  const prevXp = Math.pow(level, 2) * 100;
   const nextXp = Math.pow(level + 1, 2) * 100;
-  await message.reply([
-    `📈 **${target.username}** — Lowo Level **${level}**`,
-    `XP: ${xp.toLocaleString()} / ${nextXp.toLocaleString()}`,
-    `${emoji("dot")} Hunts ${u.huntsTotal ?? 0}  ${emoji("bullet")}  Bosses ${u.bossKills ?? 0}  ${emoji("bullet")}  Dex ${u.dex.length}  ${emoji("bullet")}  Pet XP ${animalXpSum.toLocaleString()}`,
-  ].join("\n"));
+  const inLevel = xp - prevXp;
+  const need = nextXp - prevXp;
+
+  const e = baseEmbed(message, COLOR.profile)
+    .setAuthor({ name: `${target.username} — Lowo Level ${level}`, iconURL: target.displayAvatarURL({ size: 128 }) })
+    .setThumbnail(target.displayAvatarURL({ size: 256 }))
+    .setTitle(`📈 Level ${level}`)
+    .setDescription(`**XP:** ${val(xp)} / ${val(nextXp)}\n${progressBar(inLevel, need)}`)
+    .addFields(
+      { name: "🏹 Hunts",   value: val(u.huntsTotal ?? 0), inline: true },
+      { name: "👹 Bosses",  value: val(u.bossKills ?? 0),  inline: true },
+      { name: "📖 Dex",     value: val(u.dex.length),      inline: true },
+      { name: "🐾 Pet XP",  value: val(animalXpSum),       inline: true },
+    );
+  await replyEmbed(message, e);
 }
 
 export async function cmdAvatar(message: Message): Promise<void> {
@@ -150,9 +168,14 @@ export async function cmdTop(message: Message, args: string[]): Promise<void> {
     .filter((s) => s.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
-  if (sorted.length === 0) { await message.reply("📊 Empty leaderboard."); return; }
-  const lines = sorted.map((s, i) => `**${i + 1}.** <@${s.id}>${s.tag ? ` *"${s.tag.slice(0, 24)}"*` : ""} — ${s.score.toLocaleString()}`);
-  await message.reply(`🏆 **Top Lowo (${kind})**\n${lines.join("\n")}\n\n_Try: \`cowoncy | essence | dex | animals | rep | streak\`_`);
+  if (sorted.length === 0) { await replyEmbed(message, warnEmbed(message, "Empty Leaderboard")); return; }
+  const medals = ["🥇", "🥈", "🥉"];
+  const lines = sorted.map((s, i) => `${medals[i] ?? `**${i + 1}.**`} <@${s.id}>${s.tag ? ` *"${s.tag.slice(0, 24)}"*` : ""} — ${val(s.score)}`);
+  const e = baseEmbed(message, COLOR.brand)
+    .setTitle(`🏆 Top Lowo — ${kind.toUpperCase()}`)
+    .setDescription(lines.join("\n"))
+    .addFields({ name: "Try other categories", value: "`cowoncy` • `essence` • `dex` • `animals` • `rep` • `streak`" });
+  await replyEmbed(message, e);
 }
 
 export async function cmdMy(message: Message): Promise<void> {

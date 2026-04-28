@@ -2,6 +2,9 @@ import type { Message } from "discord.js";
 import { getUser, updateUser } from "./storage.js";
 import { ANIMAL_BY_ID, ANIMALS, RARITY_ORDER, MINERALS, BOX_DEFS, type Rarity, type BoxTier } from "./data.js";
 import { emoji } from "./emojis.js";
+import {
+  baseEmbed, replyEmbed, errorEmbed, warnEmbed, val, COLOR, rarityColor, progressBar,
+} from "./embeds.js";
 
 // ─── Tunables ────────────────────────────────────────────────────────────────
 export const MOOD_MAX = 100;
@@ -132,22 +135,21 @@ function rollFindBonus(): { kind: "mineral" | "box"; id: string; emoji: string; 
 export async function cmdInteract(message: Message, args: string[]): Promise<void> {
   const query = args.join(" ").trim();
   if (!query) {
-    await message.reply("Usage: `lowo interact <pet name>` *(aliases: `play`, `talk`)*");
-    return;
+    await replyEmbed(message, errorEmbed(message, "Usage", "`lowo interact <pet name>` *(aliases: `play`, `talk`)*")); return;
   }
   const id = resolveAnimalId(query);
-  if (!id) { await message.reply(`❌ I don't know any pet named \`${query}\`.`); return; }
+  if (!id) { await replyEmbed(message, errorEmbed(message, "Unknown Pet", `I don't know any pet named \`${query}\`.`)); return; }
   const a = ANIMAL_BY_ID[id]!;
   const u = getUser(message.author.id);
   if ((u.zoo[id] ?? 0) <= 0) {
-    await message.reply(`${emoji("fail")} You don't own a ${a.emoji} **${a.name}** to interact with.`);
+    await replyEmbed(message, errorEmbed(message, "Don't Own", `You don't own a ${a.emoji} **${a.name}** to interact with.`));
     return;
   }
   const now = Date.now();
   const last = u.lastInteract[id] ?? 0;
   if (now - last < INTERACT_COOLDOWN_MS) {
     const left = Math.ceil((INTERACT_COOLDOWN_MS - (now - last)) / 60_000);
-    await message.reply(`⏳ ${a.emoji} **${a.name}** wants some space. Try again in **${left}m**.`);
+    await replyEmbed(message, warnEmbed(message, "Cooldown", `${a.emoji} **${a.name}** wants some space. Try again in **${left}m**.`));
     return;
   }
   let newMood = 0, newLoyalty = 0;
@@ -159,13 +161,18 @@ export async function cmdInteract(message: Message, args: string[]): Promise<voi
     newLoyalty = x.petLoyalty[id];
   });
   const line = dialogueFor(a.rarity);
-  const tag = newLoyalty >= HIGH_LOYALTY_THRESHOLD
-    ? `\n💖 **${a.name}** is **devoted** — it'll occasionally find hidden minerals/boxes during hunts.`
-    : "";
-  await message.reply(
-    `${a.emoji} **${a.name}** ${line}\n` +
-    `Mood: ${moodLabel(newMood)} (${newMood}/${MOOD_MAX})  •  Loyalty: ${loyaltyLabel(newLoyalty)} (${newLoyalty}/${LOYALTY_MAX})${tag}`,
-  );
+  const e = baseEmbed(message, rarityColor(a.rarity))
+    .setAuthor({ name: `${a.name} reacts...`, iconURL: message.author.displayAvatarURL({ size: 64 }) })
+    .setTitle(`${a.emoji} ${a.name}`)
+    .setDescription(`> ${line}`)
+    .addFields(
+      { name: `Mood — ${moodLabel(newMood)}`,     value: `${progressBar(newMood, MOOD_MAX)}\n${val(`${newMood}/${MOOD_MAX}`)}`,    inline: true },
+      { name: `Loyalty — ${loyaltyLabel(newLoyalty)}`, value: `${progressBar(newLoyalty, LOYALTY_MAX)}\n${val(`${newLoyalty}/${LOYALTY_MAX}`)}`, inline: true },
+    );
+  if (newLoyalty >= HIGH_LOYALTY_THRESHOLD) {
+    e.addFields({ name: "💖 Devoted", value: `${a.name} will occasionally find hidden minerals/boxes during hunts.`, inline: false });
+  }
+  await replyEmbed(message, e);
 }
 
 export async function cmdPetMood(message: Message, args: string[]): Promise<void> {
@@ -173,30 +180,33 @@ export async function cmdPetMood(message: Message, args: string[]): Promise<void
   const query = args.join(" ").trim();
 
   if (!query) {
-    // List all owned pets with mood/loyalty (top 15 by loyalty).
     const owned = Object.keys(u.zoo).filter((k) => (u.zoo[k] ?? 0) > 0);
-    if (!owned.length) { await message.reply("📭 You don't own any pets yet."); return; }
+    if (!owned.length) { await replyEmbed(message, warnEmbed(message, "No Pets Yet", "You don't own any pets yet.")); return; }
     owned.sort((a, b) => (u.petLoyalty[b] ?? 0) - (u.petLoyalty[a] ?? 0));
-    const lines = ["💞 **Pet Mood & Loyalty** *(top 15)*"];
-    for (const id of owned.slice(0, 15)) {
-      const a = ANIMAL_BY_ID[id]; if (!a) continue;
+    const lines = owned.slice(0, 15).map((id) => {
+      const a = ANIMAL_BY_ID[id]; if (!a) return null;
       const m = u.petMood[id]    ?? 50;
       const l = u.petLoyalty[id] ?? 0;
-      lines.push(`${a.emoji} **${a.name}** — ${moodLabel(m)} ${m}/${MOOD_MAX} • ${loyaltyLabel(l)} ${l}/${LOYALTY_MAX}`);
-    }
-    lines.push("\n_Use `lowo interact <pet>` (1h cooldown) to raise both._");
-    await message.reply(lines.join("\n").slice(0, 1900));
+      return `${a.emoji} **${a.name}** — ${moodLabel(m)} \`${m}/${MOOD_MAX}\` • ${loyaltyLabel(l)} \`${l}/${LOYALTY_MAX}\``;
+    }).filter(Boolean);
+    const e = baseEmbed(message, COLOR.profile)
+      .setTitle("💞 Pet Mood & Loyalty *(top 15)*")
+      .setDescription(lines.join("\n").slice(0, 3900))
+      .addFields({ name: "Tip", value: "Use `lowo interact <pet>` *(1h cooldown)* to raise both." });
+    await replyEmbed(message, e);
     return;
   }
 
   const id = resolveAnimalId(query);
-  if (!id) { await message.reply(`❌ Unknown pet \`${query}\`.`); return; }
+  if (!id) { await replyEmbed(message, errorEmbed(message, "Unknown Pet", `\`${query}\` not found.`)); return; }
   const a = ANIMAL_BY_ID[id]!;
   const m = u.petMood[id]    ?? 50;
   const l = u.petLoyalty[id] ?? 0;
-  await message.reply(
-    `${a.emoji} **${a.name}**\n` +
-    `Mood: ${moodLabel(m)} (${m}/${MOOD_MAX})\n` +
-    `Loyalty: ${loyaltyLabel(l)} (${l}/${LOYALTY_MAX})${l >= HIGH_LOYALTY_THRESHOLD ? "  💖 *devoted!*" : ""}`,
-  );
+  const e = baseEmbed(message, rarityColor(a.rarity))
+    .setTitle(`${a.emoji} ${a.name}`)
+    .addFields(
+      { name: `Mood — ${moodLabel(m)}`,     value: `${progressBar(m, MOOD_MAX)}\n${val(`${m}/${MOOD_MAX}`)}`,    inline: true },
+      { name: `Loyalty — ${loyaltyLabel(l)}${l >= HIGH_LOYALTY_THRESHOLD ? " 💖" : ""}`, value: `${progressBar(l, LOYALTY_MAX)}\n${val(`${l}/${LOYALTY_MAX}`)}`, inline: true },
+    );
+  await replyEmbed(message, e);
 }

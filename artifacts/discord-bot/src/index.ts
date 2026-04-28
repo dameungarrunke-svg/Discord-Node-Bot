@@ -89,6 +89,9 @@ import { isFunEnabled, setFunEnabled } from "./fun/toggle.js";
 import { helpData, executeHelp } from "./commands/help.js";
 import { handlePurgeCommand, purgeConfigData, executePurgeConfig } from "./moderation/purge.js";
 import { handleLowoCommand } from "./lowo/router.js";
+import { formatShopCategory } from "./lowo/shop.js";
+import { SHOP_CATEGORIES, type ShopCategory } from "./lowo/data.js";
+import { SHOP_BUTTON_PREFIX } from "./lowo/embeds.js";
 import {
   lowoEnableData, lowoDisableData, executeLowoEnable, executeLowoDisable,
   lowoDynamicEnableData, lowoDynamicDisableData, executeLowoDynamicEnable, executeLowoDynamicDisable,
@@ -692,6 +695,35 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     }
 
     console.log(`[INTERACTION] button:${btn.customId} — deferred in ${Date.now() - t0}ms, running handler`);
+
+    // ── v6.1 — Lowo shop main-menu buttons (`lowo:shop:<cat>:<userId>`) ─────
+    if (btn.customId.startsWith(SHOP_BUTTON_PREFIX)) {
+      try {
+        const rest = btn.customId.slice(SHOP_BUTTON_PREFIX.length);
+        const [cat, invokerId] = rest.split(":");
+        if (invokerId && btn.user.id !== invokerId) {
+          await btn.editReply({ content: "❌ These shop buttons are for the user who opened the menu — type `lowo shop` to open your own." });
+          return;
+        }
+        if (!cat || !(SHOP_CATEGORIES as string[]).includes(cat)) {
+          await btn.editReply({ content: `❌ Unknown shop category \`${cat}\`.` });
+          return;
+        }
+        const chunks = formatShopCategory(cat as ShopCategory);
+        if (chunks.length === 0) {
+          await btn.editReply({ content: `📭 No items in **${cat}** yet.` });
+          return;
+        }
+        await btn.editReply({ content: chunks[0] });
+        for (let i = 1; i < chunks.length; i++) {
+          await btn.followUp({ content: chunks[i], flags: MessageFlags.Ephemeral }).catch(() => {});
+        }
+      } catch (err) {
+        console.error(`[ERROR] lowo:shop button [${btn.customId}]:`, err);
+        try { await btn.editReply({ content: "❌ Couldn't load that shop category." }); } catch { /* ignore */ }
+      }
+      return;
+    }
 
     const handler = buttonHandlers[btn.customId];
     if (handler) {

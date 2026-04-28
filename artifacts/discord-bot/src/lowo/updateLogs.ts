@@ -1,5 +1,6 @@
 import type { Message } from "discord.js";
 import { getLowoMeta, updateLowoMeta } from "./storage.js";
+import { baseEmbed, replyEmbed, warnEmbed, COLOR } from "./embeds.js";
 
 export interface UpdateEntry {
   version: string;
@@ -13,10 +14,31 @@ export interface UpdateEntry {
 
 // The newest version we ship in code that is still "pending" until an admin
 // types `lowo update`. Updated whenever we cut a new release.
-export const LATEST_PENDING_VERSION = "v6.0";
+export const LATEST_PENDING_VERSION = "v6.1";
 
 // Newest first.
 export const UPDATE_LOGS: UpdateEntry[] = [
+  {
+    version: "v6.1",
+    date: "2026-04-28",
+    title: "🎨 LOWO: THE UI/UX OVERHAUL",
+    pending: true,
+    highlights: [
+      "**🎨 EVERY COMMAND IS NOW A RICH EMBED** — one consistent, premium look across the whole bot.",
+      "  • **Rarity-accent colors** — every embed picks a fixed hex by rarity (Legendary `#F97316`, Divine `#FDE047`, Void `#000000`, …).",
+      "  • **Grid stat layouts** — inline fields instead of vertical text walls (your zoo, profile, hunt card, market all scan at a glance now).",
+      "  • **Code-block values** — every number/currency wrapped in backticks for readability (`5,000 cowoncy`).",
+      "  • **Custom progress bars** — `[▰▰▰▱▱▱▱▱▱▱]` style on **pity**, **XP**, **mood**, **loyalty**, **daily-streak cycle**.",
+      "  • **Session footer everywhere** — every reply footers your live stats (`Hunts • Cwn • Ess • Cash • Pets`).",
+      "  • **Thumbnails** — your avatar in the top-right of profile / zoo / wallet embeds.",
+      "  • **✨ NEW CATCH ✨ Catch Cards** — `lowo hunt` now ships a rarity-colored card with the animal's emoji, stats, mutation tag, and pity/auto-sold flags. Multi-catches get a stats grid.",
+      "**🛒 SHOP MAIN MENU = BUTTONS** — `lowo shop` opens a clickable Action Row with **Items / Equips / Pets / Premium / Gamepasses / Events / Essence / Mining / Skills / Team Slots**. Buttons are scoped to the invoker.",
+      "**🃏 HOLOGRAPHIC PET CARDS** — `Divine` and `Omni` rarity pet cards now render with a **holographic shimmer overlay** plus a *gamer-styled* heading on the canvas (Orbitron-style fallback).",
+      "**🔒 ADMIN-GATE FEEDBACK** — `lowo update` now explains *why* you're blocked (and how to fix `LOWO_OWNER_ID` on Railway) instead of pretending to be an unknown command.",
+      "**✅/❌ INTERACTION FEEDBACK** — successes start with ✅ / ✨, errors with ❌ / ⚠️, utility errors auto-delete after **8 seconds** to keep channels tidy.",
+      "**🧠 BUILT ON A SHARED `embeds.ts` LIBRARY** — every future command is one helper call away from looking like the rest. No more visual drift.",
+    ],
+  },
   {
     version: "v6.0",
     date: "2026-04-28",
@@ -188,34 +210,31 @@ export async function cmdUpdateLogs(message: Message, args: string[]): Promise<v
   const filter = args[0]?.toLowerCase();
   const visible = visibleEntries();
   const entries = filter ? visible.filter((e) => e.version.toLowerCase().includes(filter)) : visible;
-  if (entries.length === 0) { await message.reply(`📭 No updates matching \`${filter ?? ""}\`.`); return; }
+  if (entries.length === 0) {
+    await replyEmbed(message, warnEmbed(message, "No Updates Found", `No updates matching \`${filter ?? ""}\`.`));
+    return;
+  }
   const [latest, ...rest] = entries;
-  const lines: string[] = [];
-  lines.push(formatEntryFull(latest));
+  const e = baseEmbed(message, COLOR.brand)
+    .setTitle(`📰 ${latest.title}`)
+    .setDescription(`**Version:** \`${latest.version}\`  •  **Date:** \`${latest.date}\``);
+  // Group highlights into chunks of <=1024 chars (field-value cap).
+  let buf = "";
+  let group = 1;
+  const flush = (): void => {
+    if (!buf) return;
+    e.addFields({ name: `Highlights ${group > 1 ? `(${group})` : ""}`.trim(), value: buf.slice(0, 1024), inline: false });
+    buf = ""; group += 1;
+  };
+  for (const h of latest.highlights) {
+    const line = `• ${h}\n`;
+    if (buf.length + line.length > 1000) flush();
+    buf += line;
+  }
+  flush();
   if (rest.length) {
-    lines.push("");
-    lines.push(`__Older versions__`);
-    for (const e of rest) lines.push(`• \`${e.version}\` *(${e.date})* — ${e.title}`);
-    lines.push(`Use \`lowo updatelogs <version>\` to read details.`);
+    const olderLines = rest.map((r) => `• \`${r.version}\` *(${r.date})* — ${r.title}`).join("\n");
+    e.addFields({ name: "Older Versions", value: `${olderLines.slice(0, 950)}\n\n_Use \`lowo updatelogs <version>\` to read details._`, inline: false });
   }
-  const text = lines.join("\n");
-  // Auto-chunk to avoid Discord 2000 char limit on huge entries.
-  const MAX = 1900;
-  if (text.length <= MAX) { await message.reply(text); return; }
-  let cut = text.lastIndexOf("\n", MAX);
-  if (cut < 1000) cut = MAX;
-  await message.reply(text.slice(0, cut));
-  const ch = message.channel;
-  if ("send" in ch) {
-    let rem = text.slice(cut).trim();
-    while (rem.length) {
-      let take = rem.length;
-      if (take > MAX) {
-        take = rem.lastIndexOf("\n", MAX);
-        if (take < 1000) take = MAX;
-      }
-      await ch.send(rem.slice(0, take)).catch(() => {});
-      rem = rem.slice(take).trim();
-    }
-  }
+  await replyEmbed(message, e);
 }

@@ -8,6 +8,9 @@ import {
 import { getUser, updateUser, updateEvent, getEvent } from "./storage.js";
 import { eventBonus } from "./events.js";
 import { emoji } from "./emojis.js";
+import {
+  baseEmbed, replyEmbed, errorEmbed, COLOR, val, shopButtonsRows,
+} from "./embeds.js";
 
 const LUCK_POTION_MS = 30 * 60 * 1000;
 const MEGA_LUCK_POTION_MS = 30 * 60 * 1000;
@@ -16,22 +19,54 @@ const SCROLL_EVENT_MS = 30 * 60 * 1000;
 export async function cmdShop(message: Message, args: string[]): Promise<void> {
   const cat = (args[0]?.toLowerCase() ?? "") as ShopCategory | "";
   if (!cat) {
-    const lines = [`${emoji("shop")} **Lowo Shop** — *categories:*`];
-    for (const c of SHOP_CATEGORIES) {
-      const count = SHOP_ITEMS.filter((i) => i.category === c).length;
-      lines.push(`${emoji("bullet")} \`lowo shop ${c}\` — *${count} item${count === 1 ? "" : "s"}*`);
-    }
-    lines.push(`\nBuy with \`lowo buy <itemId>\` *(premium items spend ${emoji("cash")} Lowo Cash)*.`);
-    await message.reply(lines.join("\n"));
+    // ─── v6.1 — Button-based shop main menu (with category counts) ───────
+    const u = getUser(message.author.id);
+    const counts: Record<string, number> = {};
+    for (const c of SHOP_CATEGORIES) counts[c] = SHOP_ITEMS.filter((i) => i.category === c).length;
+    const e = baseEmbed(message, COLOR.shop)
+      .setAuthor({ name: `${message.author.username}'s Shop`, iconURL: message.author.displayAvatarURL({ size: 64 }) })
+      .setThumbnail(message.author.displayAvatarURL({ size: 256 }))
+      .setTitle(`${emoji("shop")} Lowo Shop`)
+      .setDescription([
+        `**Click a button below** to browse a category — or type \`lowo shop <category>\` directly.`,
+        ``,
+        `Buy with \`lowo buy <itemId>\` *(premium items spend ${emoji("cash")} Lowo Cash)*.`,
+      ].join("\n"))
+      .addFields(
+        { name: "🪙 Cowoncy",   value: val(u.cowoncy),  inline: true },
+        { name: "✨ Essence",   value: val(u.essence),  inline: true },
+        { name: "💎 Lowo Cash", value: val(u.lowoCash), inline: true },
+      );
+    // Compact category-counts grid for at-a-glance scanning.
+    const grid = SHOP_CATEGORIES.map((c) => `\`${c}\` *${counts[c]}*`).join("  •  ");
+    e.addFields({ name: "📚 All Categories", value: grid, inline: false });
+    await replyEmbed(message, e, shopButtonsRows(message.author.id));
     return;
   }
   if (!(SHOP_CATEGORIES as string[]).includes(cat)) {
-    await message.reply(`${emoji("fail")} Unknown category \`${cat}\`. Try: ${SHOP_CATEGORIES.map((c) => `\`${c}\``).join(", ")}`);
+    await replyEmbed(message, errorEmbed(message, "Unknown Category",
+      `Try: ${SHOP_CATEGORIES.map((c) => `\`${c}\``).join(", ")}`));
     return;
   }
+  const chunks = formatShopCategory(cat as ShopCategory);
+  if (chunks.length === 0) { await message.reply(`${emoji("empty")} No items in **${cat}** yet.`); return; }
+  await message.reply(chunks[0]);
+  const ch = message.channel;
+  if ("send" in ch) {
+    for (let i = 1; i < chunks.length; i++) await ch.send(chunks[i]).catch(() => {});
+  }
+}
+
+/**
+ * Build the text chunks for a single shop category.
+ *
+ * Exported so the v6.1 shop-button handler in src/index.ts can reuse it
+ * without re-implementing pricing/sale logic.
+ */
+export function formatShopCategory(cat: ShopCategory): string[] {
   const items = SHOP_ITEMS.filter((i) => i.category === cat);
-  if (items.length === 0) { await message.reply(`${emoji("empty")} No items in **${cat}** yet.`); return; }
-  const sale = eventBonus("shop_sale"); // 0.8 if active else 1
+  if (items.length === 0) return [];
+  const sale = eventBonus("shop_sale");
   const lines = [`${emoji("shop")} **Lowo Shop — ${cat.toUpperCase()}**${sale < 1 ? ` *(${emoji("sale")} SHOP SALE −20% active!)*` : ""}`];
   for (const it of items) {
     const cowoncyEffective = sale < 1 && it.price > 0 ? Math.floor(it.price * sale) : it.price;
@@ -41,7 +76,6 @@ export async function cmdShop(message: Message, args: string[]): Promise<void> {
     lines.push(`${it.emoji} \`${it.id}\` — **${it.name}** ${emoji("bullet")} ${cost}\n  *${it.description}*`);
   }
   lines.push(`\nBuy with \`lowo buy <itemId>\`.`);
-  // HOTFIX: chunk into multiple replies so all items show (was truncating at 20/27).
   const chunks: string[] = [];
   let buf = "";
   for (const line of lines) {
@@ -49,11 +83,7 @@ export async function cmdShop(message: Message, args: string[]): Promise<void> {
     buf += (buf ? "\n" : "") + line;
   }
   if (buf) chunks.push(buf);
-  await message.reply(chunks[0]);
-  const ch = message.channel;
-  if ("send" in ch) {
-    for (let i = 1; i < chunks.length; i++) await ch.send(chunks[i]).catch(() => {});
-  }
+  return chunks;
 }
 
 function priceForUser(item: typeof SHOP_ITEMS[number]): number {
