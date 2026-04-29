@@ -103,40 +103,43 @@ export async function cmdInv(message: Message): Promise<void> {
   const accCount   = u.accessories?.length ?? 0;
   const craftedCnt = u.craftedWeapons?.length ?? 0;
 
-  // ── Line 1 — Economy (always visible) ────────────────────────────────────
-  const econLine = `💰 ${val(u.cowoncy)} | 🪙 ${val(u.lowoCash)} | ✨ ${val(u.essence)}`;
+  // ── Line 2 — Currencies + pets (always shown; hide zero non-core values) ───
+  // Icons: 💰 Cowoncy | 💎 Cash (premium) | ✨ Essence | 🦊 Pets
+  const line2: string[] = [
+    `💰 ${val(u.cowoncy)}`,
+    `💎 ${val(u.lowoCash)}`,
+    `✨ ${val(u.essence)}`,
+    `🦊 ${val(animals)} Pets`,
+  ];
 
-  // ── Line 2 — Collection (only non-zero entries) ───────────────────────────
-  const collection: string[] = [];
-  collection.push(`🦊 ${val(animals)} Pets *(${u.dex.length} unique)*`);
-  if (fishCount  > 0) collection.push(`🐟 ${val(fishCount)} Fish`);
-  if (mineralCnt > 0) collection.push(`⚒️ ${val(mineralCnt)} Ores`);
-
-  // ── Line 3 — Gear (only non-zero entries) ─────────────────────────────────
-  const gear: string[] = [];
-  if (u.weapons.length > 0) {
+  // ── Line 3 — Battle currency + collection + gear (hide if 0) ─────────────
+  // Icons: 🪙 Battle Tokens | 🐟 Fish | ⚒️ Ores | ⚔️ Weapons | 🛡️ Armor | ⛏️ Pickaxe
+  const line3: string[] = [];
+  if ((u.battleTokens ?? 0) > 0)   line3.push(`🪙 ${val(u.battleTokens)}`);
+  if (fishCount              > 0)   line3.push(`🐟 ${val(fishCount)} Fish`);
+  if (mineralCnt             > 0)   line3.push(`⚒️ ${val(mineralCnt)} Ores`);
+  if (u.weapons.length       > 0) {
     const craftStr = craftedCnt > 0 ? ` *(${craftedCnt} crafted)*` : "";
-    gear.push(`⚔️ ${val(u.weapons.length)} Weapons${craftStr}`);
+    line3.push(`⚔️ ${val(u.weapons.length)} Weapons${craftStr}`);
   }
-  if (u.armor.length > 0) gear.push(`🛡️ ${val(u.armor.length)} Armor`);
-  if (accCount        > 0) gear.push(`🧿 ${val(accCount)} Accs`);
-  if (u.lotteryTickets > 0) gear.push(`🎟️ ${val(u.lotteryTickets)} Tkts`);
-  if (u.hasPickaxe)         gear.push(`⛏️ Tier \`${u.pickaxeTier}\` Pickaxe`);
-  if (u.pet.streak   > 0)  gear.push(`🐕 \`${u.pet.streak}\` Pet Streak`);
+  if (u.armor.length > 0)           line3.push(`🛡️ ${val(u.armor.length)} Armor`);
+  if (u.hasPickaxe)                  line3.push(`⛏️ Tier \`${u.pickaxeTier}\``);
 
-  // ── Line 4 — Consumables & crates (only non-zero) ─────────────────────────
-  const consum: string[] = [];
-  if (u.rings   > 0) consum.push(`💍 ${val(u.rings)} Rings`);
-  if (u.carrots > 0) consum.push(`🥕 ${val(u.carrots)} Carrots`);
-  if (u.petfood > 0) consum.push(`🍖 ${val(u.petfood)} Food`);
+  // ── Line 4 — Misc / consumables (hide if all zero) ────────────────────────
+  const line4: string[] = [];
+  if (u.lotteryTickets > 0)  line4.push(`🎟️ ${val(u.lotteryTickets)} Tkts`);
+  if (accCount > 0) line4.push(`🧿 ${val(accCount)} Accs`);
+  if (u.pet.streak     > 0)  line4.push(`🐕 \`${u.pet.streak}\` Streak`);
+  if (u.rings          > 0)  line4.push(`💍 ${val(u.rings)} Rings`);
+  if (u.carrots        > 0)  line4.push(`🥕 ${val(u.carrots)} Carrots`);
+  if (u.petfood        > 0)  line4.push(`🍖 ${val(u.petfood)} Food`);
   for (const t of Object.keys(BOX_DEFS) as BoxTier[]) {
-    if ((u.boxes[t] ?? 0) > 0) consum.push(`${BOX_DEFS[t].emoji} ${val(u.boxes[t])} ${BOX_DEFS[t].name}`);
+    if ((u.boxes[t] ?? 0) > 0) line4.push(`${BOX_DEFS[t].emoji} ${val(u.boxes[t])} ${BOX_DEFS[t].name}`);
   }
 
-  const lines: string[] = [`🎒 **${target.username}'s Inventory**`, econLine];
-  if (collection.length) lines.push(collection.join(" | "));
-  if (gear.length)       lines.push(gear.join(" | "));
-  if (consum.length)     lines.push(consum.join(" | "));
+  const lines: string[] = [`🎒 **${target.username}'s Inventory**`, line2.join(" | ")];
+  if (line3.length) lines.push(line3.join(" | "));
+  if (line4.length) lines.push(line4.join(" | "));
 
   await message.reply({ content: lines.join("\n"), allowedMentions: { repliedUser: false, parse: [] } });
 }
