@@ -7,16 +7,32 @@ const __dirname = dirname(__filename);
 const DATA_DIR = resolve(__dirname, "../../data");
 const FILE = join(DATA_DIR, "lowo_channels.json");
 
-type State = Record<string, string[]>; // guildId → channelId[]
+/**
+ * whitelistMode: guild IDs that have ever called "lowo enable all".
+ *   Once a guild enters whitelist mode it NEVER leaves it automatically.
+ *   An empty channels list + whitelistMode = total silence (only bypass cmds work).
+ *
+ * channels: the actual per-guild allow-list.
+ */
+interface State {
+  whitelistMode: string[];
+  channels: Record<string, string[]>;
+}
 
 let cache: State | null = null;
 
 function readStore(): State {
   if (cache) return cache;
   try {
-    if (existsSync(FILE)) cache = JSON.parse(readFileSync(FILE, "utf-8")) as State;
+    if (existsSync(FILE)) {
+      const raw = JSON.parse(readFileSync(FILE, "utf-8")) as Partial<State>;
+      cache = {
+        whitelistMode: raw.whitelistMode ?? [],
+        channels: raw.channels ?? {},
+      };
+    }
   } catch { /* fallthrough */ }
-  if (!cache) cache = {};
+  if (!cache) cache = { whitelistMode: [], channels: {} };
   return cache;
 }
 
@@ -28,40 +44,48 @@ function writeStore(): void {
 
 /**
  * Returns true if Lowo should respond in this channel.
- * If no whitelist is set for the guild, all channels are allowed.
+ *
+ * Rules:
+ *  - Guild NOT in whitelistMode → always allowed (no restrictions configured yet).
+ *  - Guild IN whitelistMode     → allowed only if channelId is in the list.
+ *    An empty list means the guild is in full-silence mode.
  */
 export function isChannelAllowed(guildId: string | null, channelId: string): boolean {
   if (!guildId) return true;
-  const list = readStore()[guildId];
-  if (!list || list.length === 0) return true;
-  return list.includes(channelId);
+  const s = readStore();
+  if (!s.whitelistMode.includes(guildId)) return true; // no restrictions configured
+  return (s.channels[guildId] ?? []).includes(channelId);
 }
 
-/** Returns the full whitelist for a guild (empty = no restriction). */
+/** Returns the current allow-list for a guild (may be empty). */
 export function getChannelList(guildId: string): string[] {
-  return readStore()[guildId] ?? [];
+  return readStore().channels[guildId] ?? [];
 }
 
-/** Adds a channel to the whitelist. Creates the entry if needed. */
+/** Returns true if the guild has ever enabled the whitelist. */
+export function isWhitelistMode(guildId: string): boolean {
+  return readStore().whitelistMode.includes(guildId);
+}
+
+/**
+ * Enables the current channel for a guild.
+ * Also marks the guild as being in whitelistMode (irreversible).
+ */
 export function enableChannel(guildId: string, channelId: string): void {
   const s = readStore();
-  const set = new Set(s[guildId] ?? []);
+  if (!s.whitelistMode.includes(guildId)) s.whitelistMode.push(guildId);
+  const set = new Set(s.channels[guildId] ?? []);
   set.add(channelId);
-  s[guildId] = Array.from(set);
+  s.channels[guildId] = Array.from(set);
   writeStore();
 }
 
 /**
- * Removes a channel from the whitelist.
- * If the list becomes empty the guild entry is deleted (= back to allow-all).
+ * Removes a channel from the allow-list.
+ * The guild STAYS in whitelistMode — an empty list = full silence.
  */
 export function disableChannel(guildId: string, channelId: string): void {
   const s = readStore();
-  const arr = (s[guildId] ?? []).filter((id) => id !== channelId);
-  if (arr.length === 0) {
-    delete s[guildId];
-  } else {
-    s[guildId] = arr;
-  }
+  s.channels[guildId] = (s.channels[guildId] ?? []).filter((id) => id !== channelId);
   writeStore();
 }

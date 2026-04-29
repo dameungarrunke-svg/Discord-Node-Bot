@@ -38,6 +38,7 @@ import { cmdPrestige } from "./prestige.js";
 import { cmdUpdateLogs } from "./updateLogs.js";
 import { setCensored, isCensored } from "./censor.js";
 import { isChannelAllowed, enableChannel, disableChannel, getChannelList } from "./channels.js";
+
 import { getUser } from "./storage.js";
 import { PermissionFlagsBits } from "discord.js";
 // ─── New v3 modules ──────────────────────────────────────────────────────────
@@ -101,10 +102,10 @@ async function cmdChannelDisable(message: Message, _args: string[]): Promise<voi
   }
   disableChannel(message.guildId, message.channelId);
   const remaining = getChannelList(message.guildId);
-  const note = remaining.length === 0
-    ? " No enabled channels remain — Lowo now responds everywhere on this server."
-    : ` ${remaining.length} channel(s) still enabled.`;
-  await message.reply(`🔇 Lowo disabled in this channel.${note}`);
+  const msg = remaining.length === 0
+    ? `🔇 All channels disabled. Lowo is now **SILENT** in this server. Use \`lowo enable all\` in a channel to reactivate.`
+    : `🔇 Lowo disabled in this channel. ${remaining.length} channel(s) still enabled.`;
+  await message.reply(msg);
 }
 
 async function cmdChannelList(message: Message, args: string[]): Promise<void> {
