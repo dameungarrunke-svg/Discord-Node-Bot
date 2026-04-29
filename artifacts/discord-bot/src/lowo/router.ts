@@ -28,7 +28,7 @@ import {
   cmdUnlockArea, cmdGivePickaxe, cmdGiveEnchant,
   cmdSetGamepass, cmdInspectUser, cmdListAdmins,
   cmdResetUser, cmdWipeInv, cmdAddMinerals,
-  cmdSetPity, cmdToggleBan, cmdAdminHelp,
+  cmdSetPity, cmdToggleBan, cmdAdminHelp, cmdCashAudit,
   cmdCheckMarket, cmdClearListings, cmdPublishUpdate,
 } from "./admin.js";
 // ─── VOID ASCENSION (v6) — new public modules ────────────────────────────────
@@ -229,6 +229,7 @@ const HANDLERS: Record<string, Handler> = {
   update: cmdPublishUpdate, publishupdate: cmdPublishUpdate, releaseupdate: cmdPublishUpdate,
   // help
   adminhelp: cmdAdminHelp, admincmds: cmdAdminHelp,
+  cashaudit: cmdCashAudit,
 };
 
 // ─── MASSIVE LOWO UPDATE — categorized help. `lowo help` shows category index;

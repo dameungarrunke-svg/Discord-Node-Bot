@@ -1052,7 +1052,7 @@ export const ESSENCE_ITEMS: EssenceItemDef[] = [
   { id: "ess_secret_chance",   name: "Secret Whisper Token",     emoji: "🤫✨", essenceCost: 3500,  description: "Triggers `Secret Whisper` event for 30 minutes (×100 secret-pet chance)." },
   { id: "ess_megaluck_2h",     name: "Mega Luck (2h)",           emoji: "🍀🍀", essenceCost: 1500,  description: "+25% luck for 2 full hours." },
   { id: "ess_battletokens",    name: "Battle Token Bundle",      emoji: "🪙⚔️", essenceCost: 1000,  description: "Convert essence → 500 Battle Tokens instantly." },
-  { id: "ess_lowocash",        name: "Lowo Cash Bundle",         emoji: "✨💎", essenceCost: 6000,  description: "Convert essence → 5 Lowo Cash." },
+  { id: "ess_luck_3h",         name: "Luck Crystal (3h)",        emoji: "🍀🔮", essenceCost: 6000,  description: "+10% hunt & fish luck for 3 full hours." },
   { id: "ess_pet_materials",   name: "Pet Materials Bundle",     emoji: "🧬",  essenceCost: 800,   description: "Convert essence → 200 Pet Materials (for fusion/recycle system)." },
   { id: "ess_random_fusion",   name: "Mystery Fusion Pet",       emoji: "🧬⭐", essenceCost: 12000, description: "Spawns a random epic-tier fusion pet directly into your zoo." },
   { id: "ess_skill_legend",    name: "Skill Tome (Legendary)",   emoji: "📜🌠", essenceCost: 9000,  description: "Learn a random legendary active skill." },
@@ -1104,8 +1104,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "event_secret",       name: "Secret Whisper Scroll",emoji: "🤫",  price: 400000, category: "events", description: "Triggers Secret Whisper server-wide for 15m (secret-pet chance ×100!)." },
   // gamepasses — NEW expensive permanent perks
   ...GAMEPASS_DEFS.map<ShopItem>((g) => ({
-    id: g.id, name: g.name, emoji: g.emoji, price: g.cowoncyPrice, lowoCashPrice: g.lowoCashPrice, category: "gamepasses",
-    description: `${g.description} *(or ${g.lowoCashPrice ?? "—"} Lowo Cash)*`,
+    id: g.id, name: g.name, emoji: g.emoji, price: 0, lowoCashPrice: g.lowoCashPrice, category: "gamepasses",
+    description: `${g.description} *(💎 ${g.lowoCashPrice ?? "—"} Cash only)*`,
   })),
   // essence shop — buy with essence
   ...ESSENCE_ITEMS.map<ShopItem>((e) => ({

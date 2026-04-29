@@ -100,6 +100,17 @@ export async function cmdBuy(message: Message, args: string[]): Promise<void> {
   const u = getUser(message.author.id);
   const cost = priceForUser(item);
 
+  // ── GAMEPASSES — Cash (💎) only. No cowoncy path. ────────────────────────
+  if (item.category === "gamepasses") {
+    const cashCost = item.lowoCashPrice ?? 0;
+    if (u.lowoCash < cashCost) {
+      await message.reply(`❌ You need **${cashCost}** 💎 Cash to purchase Gamepasses! *(you have ${u.lowoCash} — earn 1 every 50 hunts, or above-omni catches)*`);
+      return;
+    }
+    await applyPurchase(message, item, true, cost);
+    return;
+  }
+
   // Essence shop items (id starts with `ess_`) — pay with essence (✨)
   if (item.category === "essence") {
     if (u.essence < item.price) {
@@ -185,13 +196,11 @@ async function applyPurchase(message: Message, item: typeof SHOP_ITEMS[number], 
     const u = getUser(message.author.id);
     if (u.gamepasses[gp.id]) { await message.reply(`${emoji("ok")} You already own **${gp.name}**.`); return; }
     updateUser(message.author.id, (x) => {
-      if (premium) x.lowoCash -= gp.lowoCashPrice ?? 0;
-      else x.cowoncy -= cost;
+      x.lowoCash -= gp.lowoCashPrice ?? 0;
       x.gamepasses[gp.id] = true;
       x.ownedGamepassesPurchased += 1;
     });
-    const paid = premium ? `${gp.lowoCashPrice} ${emoji("lowoCash")} Lowo Cash` : `${cost.toLocaleString()} ${emoji("cowoncy")} cowoncy`;
-    await message.reply(`${gp.emoji} **GAMEPASS UNLOCKED — ${gp.name}!**\n${gp.description}\n*Paid ${paid}.*`);
+    await message.reply(`${gp.emoji} **GAMEPASS UNLOCKED — ${gp.name}!**\n${gp.description}\n*You spent 💎 **${gp.lowoCashPrice}** Cash.*`);
     return;
   }
   // ── ESSENCE ITEMS ── pay essence, apply OP perk
@@ -228,9 +237,9 @@ async function applyPurchase(message: Message, item: typeof SHOP_ITEMS[number], 
     } else if (item.id === "ess_battletokens") {
       updateUser(message.author.id, (x) => { x.battleTokens += 500; });
       resultMsg += `\n🪙 **+500 Battle Tokens** added.`;
-    } else if (item.id === "ess_lowocash") {
-      updateUser(message.author.id, (x) => { x.lowoCash += 5; });
-      resultMsg += `\n${emoji("lowoCash")} **+5 Lowo Cash** added.`;
+    } else if (item.id === "ess_luck_3h") {
+      updateUser(message.author.id, (x) => { x.luckUntil = Math.max(x.luckUntil, Date.now()) + 3 * 60 * 60 * 1000; });
+      resultMsg += `\n🍀🔮 **+10% hunt & fish luck** active for **3 hours**.`;
     } else if (item.id === "ess_pet_materials") {
       updateUser(message.author.id, (x) => { x.petMaterials += 200; });
       resultMsg += `\n🧬 **+200 Pet Materials** added (use \`lowo fuse\`).`;

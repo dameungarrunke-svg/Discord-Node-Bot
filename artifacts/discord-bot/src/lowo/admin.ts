@@ -556,6 +556,35 @@ export async function cmdPublishUpdate(message: Message, _args: string[]): Promi
 }
 
 // 22. alladmincmds — show the full admin command reference
+/**
+ * `lowo cashaudit [reset]`
+ * Lists every user with lowoCash > 10,000 (impossible without exploitation).
+ * Append `reset` to immediately clamp all flagged balances back to 10,000.
+ */
+export async function cmdCashAudit(message: Message, args: string[]): Promise<void> {
+  if (!isAdmin(message.author.id)) { await silentDeny(message, "cashaudit"); return; }
+  const CASH_HARD_CAP = 10_000;
+  const doReset = (args[0] ?? "").toLowerCase() === "reset";
+  const users = allUsers();
+  const flagged = Object.entries(users)
+    .filter(([, u]) => (u.lowoCash ?? 0) > CASH_HARD_CAP)
+    .sort((a, b) => (b[1].lowoCash ?? 0) - (a[1].lowoCash ?? 0));
+
+  if (flagged.length === 0) {
+    await message.reply(`✅ **Cash Audit clean** — no user exceeds ${CASH_HARD_CAP.toLocaleString()} 💎 Cash.`);
+    return;
+  }
+  const lines = [`⚠️ **Cash Audit — ${flagged.length} flagged user(s)${doReset ? " (RESETTING to cap)" : ""}:**`];
+  for (const [id, u] of flagged) {
+    if (doReset) {
+      updateUser(id, (x) => { x.lowoCash = CASH_HARD_CAP; });
+    }
+    lines.push(`<@${id}> — 💎 \`${(u.lowoCash ?? 0).toLocaleString()}\`${doReset ? ` → reset to \`${CASH_HARD_CAP.toLocaleString()}\`` : ""}`);
+  }
+  if (!doReset) lines.push(`\nRun \`lowo cashaudit reset\` to clamp all flagged balances to \`${CASH_HARD_CAP.toLocaleString()}\`.`);
+  await message.reply(lines.join("\n").slice(0, 1990));
+}
+
 export async function cmdAdminHelp(message: Message, _args: string[]): Promise<void> {
   if (!isAdmin(message.author.id)) { await silentDeny(message, "adminhelp"); return; }
   const lines = [
