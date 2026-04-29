@@ -502,8 +502,8 @@ const SPECIAL_ANIMALS: Animal[] = [
   { id: "internet",   name: "Internet",  emoji: "🌐⚡", rarity: "secret", hp: 1200, atk: 280, def: 280, mag: 280, sellPrice: 6700000, essence: 33000, area: "any", signatureSkill: "fire_breath" },
   // Dino Leo — THE NEW secret. Even rarer than Internet. Sells for 4,500,000 (per spec).
   { id: "dino_leo",   name: "Dino Leo",  emoji: "🦖🦁✨", rarity: "secret", hp: 2400, atk: 420, def: 360, mag: 380, sellPrice: 4_500_000, essence: 22_000, area: "any", signatureSkill: "fire_breath" },
-  // God Rithwik — divine secret pet. Manually huntable in ANY area. Highest sell price of all secrets.
-  { id: "god_rithwik", name: "God Rithwik", emoji: "👑✨🛐", rarity: "secret", hp: 5000, atk: 666, def: 666, mag: 999, sellPrice: 10_000_000, essence: 50_000, area: "any", signatureSkill: "blessed_aura" },
+  // God Rithwik — divine secret pet. Manually huntable in ANY area.
+  { id: "god_rithwik", name: "God Rithwik", emoji: "👑✨🛐", rarity: "secret", hp: 5000, atk: 666, def: 666, mag: 999, sellPrice: 4_000_000, essence: 50_000, area: "any", signatureSkill: "blessed_aura" },
 ];
 
 // ─── Aquatic (additional fish) — THE NEW ERA ─────────────────────────────────
