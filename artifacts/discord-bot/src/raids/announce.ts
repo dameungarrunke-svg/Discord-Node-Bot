@@ -9,7 +9,6 @@ import {
   GuildMember,
 } from "discord.js";
 
-const LS_ROLE_RE = /\bLS\b/i;
 const CLAN_LEAD_RE = /\bclan\s*lead\b/i;
 const URL_RE = /^https?:\/\/\S+$/i;
 
@@ -109,7 +108,7 @@ export async function executeRaidAnnounce(
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 
-  // ── Find every LS clan member in this guild ────────────────────────────────
+  // ── Fetch every member in this guild ───────────────────────────────────────
   let members;
   try {
     members = await guild.members.fetch();
@@ -121,21 +120,17 @@ export async function executeRaidAnnounce(
     return;
   }
 
-  const lsMembers = members.filter(
-    (m) => !m.user.bot && m.roles.cache.some((r) => LS_ROLE_RE.test(r.name))
-  );
+  const targets = members.filter((m) => !m.user.bot);
 
-  if (lsMembers.size === 0) {
-    await interaction.editReply({
-      content: "⚠️ No LS clan members found. Add an **LS** role to your members and try again.",
-    });
+  if (targets.size === 0) {
+    await interaction.editReply({ content: "⚠️ No members found to DM." });
     return;
   }
 
-  // ── DM each LS member ──────────────────────────────────────────────────────
+  // ── DM each member ─────────────────────────────────────────────────────────
   let sent = 0;
   let failed = 0;
-  for (const m of lsMembers.values()) {
+  for (const m of targets.values()) {
     try {
       await m.send({ embeds: [embed], components: [row] });
       sent++;
