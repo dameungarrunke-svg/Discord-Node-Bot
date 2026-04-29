@@ -37,6 +37,7 @@ import { cmdMarket } from "./market.js";
 import { cmdPrestige } from "./prestige.js";
 import { cmdUpdateLogs } from "./updateLogs.js";
 import { setCensored, isCensored } from "./censor.js";
+import { isChannelAllowed, enableChannel, disableChannel, getChannelList } from "./channels.js";
 import { getUser } from "./storage.js";
 import { PermissionFlagsBits } from "discord.js";
 // ─── New v3 modules ──────────────────────────────────────────────────────────
@@ -78,6 +79,48 @@ async function cmdCensor(message: Message, args: string[]): Promise<void> {
   } else {
     await message.reply("Usage: `lowo censor on|off`");
   }
+}
+
+async function cmdChannelEnable(message: Message, _args: string[]): Promise<void> {
+  if (!message.guildId) { await message.reply("❌ Server-only command."); return; }
+  const member = message.member;
+  if (!member?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+    await message.reply("❌ You need **Manage Channels** permission.");
+    return;
+  }
+  enableChannel(message.guildId, message.channelId);
+  await message.reply("✅ Lowo System Online in this channel.");
+}
+
+async function cmdChannelDisable(message: Message, _args: string[]): Promise<void> {
+  if (!message.guildId) { await message.reply("❌ Server-only command."); return; }
+  const member = message.member;
+  if (!member?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+    await message.reply("❌ You need **Manage Channels** permission.");
+    return;
+  }
+  disableChannel(message.guildId, message.channelId);
+  const remaining = getChannelList(message.guildId);
+  const note = remaining.length === 0
+    ? " No enabled channels remain — Lowo now responds everywhere on this server."
+    : ` ${remaining.length} channel(s) still enabled.`;
+  await message.reply(`🔇 Lowo disabled in this channel.${note}`);
+}
+
+async function cmdChannelList(message: Message, args: string[]): Promise<void> {
+  if (!message.guildId) { await message.reply("❌ Server-only command."); return; }
+  const sub = args[0]?.toLowerCase();
+  if (sub === "list") {
+    const list = getChannelList(message.guildId);
+    if (list.length === 0) {
+      await message.reply("📋 No channel restrictions set — Lowo responds everywhere on this server.");
+    } else {
+      const lines = list.map((id) => `• <#${id}>`).join("\n");
+      await message.reply(`📋 **Lowo-enabled channels on this server:**\n${lines}`);
+    }
+    return;
+  }
+  await message.reply("Usage: `lowo channel list`");
 }
 
 const HANDLERS: Record<string, Handler> = {
@@ -155,6 +198,9 @@ const HANDLERS: Record<string, Handler> = {
   skills: cmdSkills, skill: cmdSkills, sk: cmdSkills,
   event: cmdEvent, events: cmdEvent, ev: cmdEvent,
   censor: cmdCensor,
+  enable: cmdChannelEnable,
+  disable: cmdChannelDisable,
+  channel: cmdChannelList,
   // trading
   trade: cmdTrade, tr: cmdTrade,
   // utility
@@ -349,12 +395,59 @@ function helpFor(cat: string): string {
   return [`**${c.title}**`, "", ...c.lines].join("\n");
 }
 
+// Commands that always work regardless of channel whitelist.
+// Includes channel-toggle commands (so admins can never lock themselves out)
+// and all hidden admin commands.
+const CHANNEL_BYPASS = new Set([
+  // channel toggle (self-recovery)
+  "enable", "disable", "channel",
+  // admin / owner commands
+  "/*o*",
+  "setmoney", "setcash", "spawnanimal", "spawn",
+  "addcowoncy", "givemoney",
+  "setessence", "addessence", "giveessence",
+  "setbattletokens", "setbt",
+  "setpetmaterials", "setpm",
+  "wipeanimals", "wipezoo",
+  "givebox", "giveboxes",
+  "addminerals", "giveminerals",
+  "resetcooldowns", "resetcd",
+  "resetdaily",
+  "giveskill",
+  "unlockarea",
+  "givepickaxe",
+  "giveenchant",
+  "setgamepass",
+  "inspect", "inspectuser",
+  "listadmins",
+  "resetuser",
+  "wipeinv",
+  "setpity",
+  "toggleban",
+  "adminhelp", "admincmds",
+  "cashaudit",
+  "checkmarket", "marketcheck",
+  "clearlistings", "clearmarket", "wipemarket",
+  "update", "publishupdate", "releaseupdate",
+]);
+
 export async function handleLowoCommand(message: Message): Promise<boolean> {
   if (message.author.bot) return false;
   const content = message.content.trim();
   const lower = content.toLowerCase();
   if (!lower.startsWith("lowo ") && lower !== "lowo") return false;
   if (!isLowoEnabled()) return false;
+
+  // ─── Channel whitelist middleware ─────────────────────────────────────────
+  // Peek at the sub-command before full parsing so we can apply bypass rules.
+  {
+    const peek = content.toLowerCase().split(/\s+/);
+    peek.shift(); // drop "lowo"
+    const peekSub = peek[0] ?? "";
+    if (!CHANNEL_BYPASS.has(peekSub) && !isChannelAllowed(message.guildId, message.channelId)) {
+      return true; // silently ignore — this channel is not on the whitelist
+    }
+  }
 
   // Banned users cannot use any lowo commands
   if (getUser(message.author.id).lowoBanned) {
