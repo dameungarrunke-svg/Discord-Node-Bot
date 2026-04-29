@@ -502,6 +502,8 @@ const SPECIAL_ANIMALS: Animal[] = [
   { id: "internet",   name: "Internet",  emoji: "🌐⚡", rarity: "secret", hp: 1200, atk: 280, def: 280, mag: 280, sellPrice: 6700000, essence: 33000, area: "any", signatureSkill: "fire_breath" },
   // Dino Leo — THE NEW secret. Even rarer than Internet. Sells for 4,500,000 (per spec).
   { id: "dino_leo",   name: "Dino Leo",  emoji: "🦖🦁✨", rarity: "secret", hp: 2400, atk: 420, def: 360, mag: 380, sellPrice: 4_500_000, essence: 22_000, area: "any", signatureSkill: "fire_breath" },
+  // God Rithwik — divine secret pet. Manually huntable in ANY area. Highest sell price of all secrets.
+  { id: "god_rithwik", name: "God Rithwik", emoji: "👑✨🛐", rarity: "secret", hp: 5000, atk: 666, def: 666, mag: 999, sellPrice: 10_000_000, essence: 50_000, area: "any", signatureSkill: "blessed_aura" },
 ];
 
 // ─── Aquatic (additional fish) — THE NEW ERA ─────────────────────────────────
@@ -834,8 +836,15 @@ export const SECRET_PEPSODENT_CHANCE = 4.5e-7;
 export const SECRET_INTERNET_CHANCE = 1.0e-7;
 // 0.000003% per roll — Dino Leo, the rarest secret of all
 export const SECRET_DINO_LEO_CHANCE = 3.0e-8;
+// 0.000040% per roll — God Rithwik, divine secret (manual hunt friendly)
+export const SECRET_GOD_RITHWIK_CHANCE = 4.0e-7;
 
 export function rollAnimalInArea(area: HuntArea, luck = 1, manual = false): Animal {
+  // God Rithwik (divine secret) — any area, manual hunt friendly
+  if (Math.random() < SECRET_GOD_RITHWIK_CHANCE * luck) {
+    const g = ANIMAL_BY_ID["god_rithwik"];
+    if (g) return g;
+  }
   // Dino Leo (rarest secret) — any area
   if (Math.random() < SECRET_DINO_LEO_CHANCE * luck) {
     const d = ANIMAL_BY_ID["dino_leo"];
@@ -868,6 +877,10 @@ export function rollAnimal(luck = 1): Animal {
 
 export function rollFish(luck = 1): Animal {
   // Secret bypass works for fishing too — fairness across activities.
+  if (Math.random() < SECRET_GOD_RITHWIK_CHANCE * luck) {
+    const g = ANIMAL_BY_ID["god_rithwik"];
+    if (g) return g;
+  }
   if (Math.random() < SECRET_DINO_LEO_CHANCE * luck) {
     const d = ANIMAL_BY_ID["dino_leo"];
     if (d) return d;
