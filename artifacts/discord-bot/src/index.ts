@@ -56,6 +56,7 @@ import {
 } from "./killLeaderboard/commands.js";
 
 import { startRaidData, executeStartRaid, endRaidData, executeEndRaid } from "./raids/index.js";
+import { raidAnnounceData, executeRaidAnnounce } from "./raids/announce.js";
 import {
   rankData, executeRank,
   leaderboardLevelData, executeLeaderboard,
@@ -172,6 +173,7 @@ const commands = [
   moveKillPlayerData.toJSON(),
   startRaidData.toJSON(),
   endRaidData.toJSON(),
+  raidAnnounceData.toJSON(),
   startTrainingData.toJSON(),
   endTrainingData.toJSON(),
   announceData.toJSON(),
@@ -258,6 +260,7 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   movek: (i) => executeMoveKillPlayer(i, client),
   startraid: executeStartRaid,
   endraid: executeEndRaid,
+  raidannounce: executeRaidAnnounce,
   starttraining: executeStartTraining,
   endtraining: executeEndTraining,
   announce: executeAnnounce,
