@@ -262,9 +262,39 @@ export function getUser(id: string): UserData {
   return u;
 }
 
+// Drop any team members / equipped bindings whose underlying pet is no longer
+// in the user's zoo. Called automatically after every updateUser mutation so
+// trading, selling, sacrificing, recycling, fusing or auto-selling a pet
+// also removes it from the team and clears its weapon / armor / accessory
+// loadout. Idempotent and cheap (team is capped at 6).
+export function pruneTeamForRemovedPets(u: UserData): void {
+  if (!u || !u.zoo) return;
+  const owned = (id: string): boolean => (u.zoo[id] ?? 0) > 0;
+
+  if (Array.isArray(u.team) && u.team.length > 0) {
+    u.team = u.team.filter(owned);
+  }
+  if (u.equipped) {
+    for (const id of Object.keys(u.equipped)) {
+      if (!owned(id)) delete u.equipped[id];
+    }
+  }
+  if (u.equippedArmor) {
+    for (const id of Object.keys(u.equippedArmor)) {
+      if (!owned(id)) delete u.equippedArmor[id];
+    }
+  }
+  if (u.equippedAccessory) {
+    for (const id of Object.keys(u.equippedAccessory)) {
+      if (!owned(id)) delete u.equippedAccessory[id];
+    }
+  }
+}
+
 export function updateUser(id: string, fn: (u: UserData) => void): UserData {
   const u = getUser(id);
   fn(u);
+  pruneTeamForRemovedPets(u);
   save();
   return u;
 }
