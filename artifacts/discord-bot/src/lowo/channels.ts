@@ -82,10 +82,12 @@ export function enableChannel(guildId: string, channelId: string): void {
 
 /**
  * Removes a channel from the allow-list.
- * The guild STAYS in whitelistMode — an empty list = full silence.
+ * Also marks the guild as being in whitelistMode so that an empty list
+ * means full silence (not "unconfigured / allow everywhere").
  */
 export function disableChannel(guildId: string, channelId: string): void {
   const s = readStore();
+  if (!s.whitelistMode.includes(guildId)) s.whitelistMode.push(guildId);
   s.channels[guildId] = (s.channels[guildId] ?? []).filter((id) => id !== channelId);
   writeStore();
 }
