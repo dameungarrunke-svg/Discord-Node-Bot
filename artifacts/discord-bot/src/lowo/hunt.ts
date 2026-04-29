@@ -18,7 +18,7 @@ import { huntCooldownPenaltyMs, huntLuckMultiplier, sacrificeAreaMultiplier } fr
 import { onHuntForTeam } from "./sentientPets.js";
 import {
   baseEmbed, baseEmbedFor, replyEmbed, errorEmbed, warnEmbed, successEmbed, val,
-  COLOR, rarityColor, catchCardEmbed, pagerButtons, ZOO_BUTTON_PREFIX,
+  COLOR, rarityColor, pagerButtons, ZOO_BUTTON_PREFIX,
 } from "./embeds.js";
 import {
   EmbedBuilder, ActionRowBuilder, type ButtonBuilder, type User,
@@ -216,42 +216,35 @@ export async function cmdHunt(message: Message): Promise<void> {
   if (newlyUnlocked.length) notes.push(`${emoji("flag")} **AREA UNLOCKED:** ${newlyUnlocked.map((id) => `${AREA_BY_ID[id].emoji} **${AREA_BY_ID[id].name}**`).join(", ")}`);
   for (const f of finds) notes.push(`💖 ${f.petEmoji} **${f.petName}** found a hidden ${f.emoji} **${f.name}**!`);
 
-  // Single catch → "Catch Card" embed (the v6.1 hero layout).
+  // Single catch → compact text (anti-embed protocol v6.3).
   if (caught.length === 1) {
     const a = caught[0];
-    const mTag = caughtMutations[0]?.mutation ? mutationLabel(caughtMutations[0]!.mutation!) : null;
-    const e = catchCardEmbed(message, a, {
-      areaTag,
-      mutationLabel: mTag,
-      pity: pityTriggered,
-      autosold: autoSoldFlags[0],
-    });
-    if (notes.length) e.addFields({ name: "📜 Bonuses", value: notes.join("\n"), inline: false });
-    e.addFields({ name: "Next", value: "Type `lowo zoo` to view your collection!", inline: false });
-    await replyEmbed(message, e);
+    const mTag = caughtMutations[0]?.mutation ? ` ${mutationLabel(caughtMutations[0]!.mutation!)}` : "";
+    const flags: string[] = [];
+    if (pityTriggered)     flags.push("🎯 **PITY!**");
+    if (autoSoldFlags[0])  flags.push("💸 *auto-sold*");
+    const flagStr = flags.length ? `  ${flags.join("  ")}` : "";
+    const line1 = `🏹 ${areaTag} **${message.author.username}** caught **${a.emoji} ${a.name}** \`[ ${a.rarity.toUpperCase()} ]\`${mTag}${flagStr}`;
+    const line2 = `❤️ \`${a.hp}\` ⚔️ \`${a.atk}\` 🛡️ \`${a.def}\` 🔮 \`${a.mag}\` • 💰 \`${a.sellPrice.toLocaleString()}\` cwn • ✨ \`${a.essence}\` ess`;
+    const parts = [line1, line2];
+    if (notes.length) parts.push(notes.join("\n"));
+    parts.push("*→ \`lowo zoo\` to view your collection*");
+    await message.reply({ content: parts.join("\n"), allowedMentions: { repliedUser: false, parse: [] } });
     return;
   }
 
-  // Multi catch → grid embed (one field per catch).
-  const colorRarity = caught.reduce((best, c) => RARITY_ORDER.indexOf(c.rarity) < RARITY_ORDER.indexOf(best.rarity) ? c : best, caught[0]);
-  const e = baseEmbed(message, rarityColor(colorRarity.rarity))
-    .setAuthor({ name: `${message.author.username} hunted ×${caught.length}!`, iconURL: message.author.displayAvatarURL({ size: 64 }) })
-    .setTitle(`✨ MULTI CATCH ✨ ${areaTag}`)
-    .setThumbnail(message.author.displayAvatarURL({ size: 256 }));
+  // Multi catch → compact text list.
+  if (pityTriggered) notes.unshift(`${emoji("pity")} **PITY!** Guaranteed legendary!`);
+  const catchLines: string[] = [`✨ **MULTI CATCH ×${caught.length}** ${areaTag}`];
   for (let i = 0; i < caught.length; i++) {
     const a = caught[i];
     const m = caughtMutations[i]?.mutation;
     const mTag = m ? ` ${mutationLabel(m)}` : "";
     const sold = autoSoldFlags[i] ? " 💸" : "";
-    e.addFields({
-      name: `${a.emoji} ${a.name}${sold}`,
-      value: `\`[${a.rarity.toUpperCase()}]\`${mTag}\nHP \`${a.hp}\` • ATK \`${a.atk}\``,
-      inline: true,
-    });
+    catchLines.push(`**${i + 1}.** ${a.emoji} **${a.name}** \`[ ${a.rarity.toUpperCase()} ]\`${mTag}${sold} • ❤️ \`${a.hp}\` ⚔️ \`${a.atk}\` 🛡️ \`${a.def}\``);
   }
-  if (pityTriggered) notes.unshift(`${emoji("pity")} **PITY!** Guaranteed legendary!`);
-  if (notes.length) e.addFields({ name: "📜 Bonuses", value: notes.join("\n"), inline: false });
-  await replyEmbed(message, e);
+  if (notes.length) catchLines.push(notes.join("\n"));
+  await message.reply({ content: catchLines.join("\n"), allowedMentions: { repliedUser: false, parse: [] } });
 }
 
 // ─── ZOO — paginated to avoid the 6 000-char embed wall (v6.2) ─────────────

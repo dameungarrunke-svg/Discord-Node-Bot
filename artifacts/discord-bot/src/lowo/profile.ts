@@ -11,6 +11,12 @@ import {
   progressBar, progressBarBlocks,
 } from "./embeds.js";
 
+function fmtK(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+  return String(n);
+}
+
 // HOTFIX helper: pretty mm:ss / Hh Mm remaining for a future timestamp.
 function fmtRemaining(untilMs: number): string | null {
   const ms = untilMs - Date.now();
@@ -24,17 +30,15 @@ function fmtRemaining(untilMs: number): string | null {
 }
 
 /**
- * v6.2 — "Trainer ID" profile.
- * Generates the canvas Trainer Card and attaches it as the embed image,
- * then stacks logically-grouped stats (Economy / Progress / Combat) below
- * with a high-quality block-style Pity bar.
+ * v6.3 — "Trainer ID" profile (anti-embed compact layout).
+ * Sends the canvas Trainer Card as a file attachment alongside tight
+ * horizontal emoji-string stat lines. No embed — zero vertical bloat.
  */
 export async function cmdProfile(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
   const animals = Object.values(u.zoo).reduce((a, b) => a + b, 0);
   const married = u.marriedTo ? `<@${u.marriedTo}>` : "*single*";
-  const bg = BACKGROUND_BY_ID[u.background ?? "bg_dark"]?.name ?? "Midnight";
 
   // Active potion / buff timers
   const buffs: string[] = [];
@@ -53,7 +57,7 @@ export async function cmdProfile(message: Message): Promise<void> {
     animalXpSum;
   const level = Math.floor(Math.sqrt(xp / 100));
 
-  // Try to render the canvas Trainer Card; fall back to embed-only if it fails.
+  // Try to render the canvas Trainer Card.
   let cardFile: AttachmentBuilder | null = null;
   try {
     const buf = await generateProfileCard(target);
@@ -65,35 +69,19 @@ export async function cmdProfile(message: Message): Promise<void> {
   const pityNow = u.pity ?? 0;
   const pityBar = progressBarBlocks(pityNow, PITY_THRESHOLD);
 
-  const e = baseEmbed(message, COLOR.profile)
-    .setAuthor({ name: `${target.username}'s Trainer ID`, iconURL: target.displayAvatarURL({ size: 128 }) })
-    .setTitle(u.tag ? `🪪 *"${u.tag}"*` : "🪪 Trainer Profile")
-    .setDescription("─────────────────────")
-    .addFields(
-      // ── Economy row ─────────────────────────────────────────────────────
-      { name: "💰 Cowoncy",   value: val(u.cowoncy),  inline: true },
-      { name: "🪙 Cash",      value: val(u.lowoCash), inline: true },
-      { name: "✨ Essence",   value: val(u.essence),  inline: true },
-      // ── Progress row ────────────────────────────────────────────────────
-      { name: "📈 Level",        value: val(level),           inline: true },
-      { name: "🎯 Pity",         value: val(`${pityNow}/${PITY_THRESHOLD}`), inline: true },
-      { name: "🔥 Daily Streak", value: val(`${u.dailyStreak}d`), inline: true },
-      // Pity progress bar — full-width on its own line.
-      { name: "🎯 Pity Bar", value: pityBar, inline: false },
-      // ── Combat / collection row ────────────────────────────────────────
-      { name: "🐾 Animals", value: `${val(animals)} *(${u.dex.length} unique)*`, inline: true },
-      { name: "⚔️ Weapons", value: val(u.weapons.length), inline: true },
-      { name: "⭐ Rep",      value: val(u.rep),            inline: true },
-      // ── Misc row ────────────────────────────────────────────────────────
-      { name: "🎟️ Tickets",   value: val(u.lotteryTickets), inline: true },
-      { name: "💍 Married",   value: married,                inline: true },
-      { name: "🖼️ Background", value: bg,                    inline: true },
-    );
-  if (buffs.length) e.addFields({ name: "⚡ Active Buffs", value: buffs.join("  •  "), inline: false });
-  if (cardFile) e.setImage(`attachment://lowo-card-${target.id}.png`);
+  // ── Compact horizontal layout ──────────────────────────────────────────
+  const header = u.tag
+    ? `🪪 **${target.username}'s Trainer ID** — *"${u.tag}"*`
+    : `🪪 **${target.username}'s Trainer ID**`;
+  const econLine    = `💰 \`${fmtK(u.cowoncy)}\` | ✨ \`${fmtK(u.essence)}\` | 🪙 \`${u.lowoCash}\` | 📈 Lv.\`${level}\` | 🎯 \`${pityNow}/${PITY_THRESHOLD}\` | 🔥 \`${u.dailyStreak}d\``;
+  const combatLine  = `🐾 \`${fmtK(animals)}\` *(${u.dex.length} unique)* | ⚔️ \`${u.weapons.length} wpns\` | ⭐ \`${u.rep} rep\` | 🎟️ \`${u.lotteryTickets} tkts\` | 💍 ${married}`;
+  const pityLine    = `🎯 ${pityBar}`;
+
+  const parts = [header, econLine, combatLine, pityLine];
+  if (buffs.length) parts.push(`⚡ **Buffs:** ${buffs.join(" • ")}`);
 
   await message.reply({
-    embeds: [e],
+    content: parts.join("\n"),
     ...(cardFile ? { files: [cardFile] } : {}),
     allowedMentions: { repliedUser: false, parse: [] },
   });
