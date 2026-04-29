@@ -112,22 +112,30 @@ export function progressBarBlocks(value: number, max: number, length = 10): stri
 }
 
 // ─── Footer with the user's session stats ───────────────────────────────────
-export function sessionFooter(message: Message, user: User = message.author): { text: string; iconURL?: string } {
-  const u = getUser(user.id);
+/** User-only footer (no `Message` required — works in interaction handlers). */
+export function sessionFooterFor(viewer: User): { text: string; iconURL?: string } {
+  const u = getUser(viewer.id);
   const animals = Object.values(u.zoo).reduce((a: number, b: number) => a + b, 0);
   const text =
-    `${user.username}  •  Hunts: ${u.huntsTotal ?? 0}  •  ` +
+    `${viewer.username}  •  Hunts: ${u.huntsTotal ?? 0}  •  ` +
     `Cwn: ${u.cowoncy.toLocaleString()}  •  Ess: ${u.essence.toLocaleString()}  •  ` +
     `Cash: ${u.lowoCash}  •  Pets: ${animals}`;
-  return { text, iconURL: user.displayAvatarURL({ size: 64 }) };
+  return { text, iconURL: viewer.displayAvatarURL({ size: 64 }) };
+}
+export function sessionFooter(message: Message, user: User = message.author): { text: string; iconURL?: string } {
+  return sessionFooterFor(user);
 }
 
 // ─── Base embed factory — applies brand color + footer ──────────────────────
-export function baseEmbed(message: Message, color: ColorResolvable = COLOR.brand): EmbedBuilder {
+/** User-only embed factory (no `Message` required — works in button handlers). */
+export function baseEmbedFor(viewer: User, color: ColorResolvable = COLOR.brand): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(color)
-    .setFooter(sessionFooter(message))
+    .setFooter(sessionFooterFor(viewer))
     .setTimestamp(new Date());
+}
+export function baseEmbed(message: Message, color: ColorResolvable = COLOR.brand): EmbedBuilder {
+  return baseEmbedFor(message.author, color);
 }
 
 // ─── Quick-success / error / warn / info shortcuts ──────────────────────────

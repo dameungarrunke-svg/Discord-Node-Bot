@@ -672,17 +672,33 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
     // ── v6.2 — Lowo zoo pager buttons (`lowo:zoo:<page|close>:<targetId>:<invokerId>`)
     //         These update the SAME message in place, so they use deferUpdate.
+    //         ACK FIRST — anything before the ack risks the 3 s "interaction
+    //         failed" toast on Discord clients.
     if (btn.customId.startsWith(ZOO_BUTTON_PREFIX)) {
+      const rest = btn.customId.slice(ZOO_BUTTON_PREFIX.length);
+      const [pageRaw, targetId, invokerId] = rest.split(":");
+
+      // Wrong-user click — ephemeral reply IS the ack, so it doesn't fail.
+      if (invokerId && btn.user.id !== invokerId) {
+        await btn.reply({
+          content: "❌ These zoo buttons are for the user who opened it. Run `lowo zoo` to open your own.",
+          flags: MessageFlags.Ephemeral,
+        }).catch((e) => console.error(`[INTERACTION] zoo wrong-user reply failed`, e));
+        return;
+      }
+
+      // Ack the click immediately so the spinner clears and "Interaction failed"
+      // doesn't appear, even if subsequent work takes a moment (REST fetches, etc.).
       try {
-        const rest = btn.customId.slice(ZOO_BUTTON_PREFIX.length);
-        const [pageRaw, targetId, invokerId] = rest.split(":");
-        if (invokerId && btn.user.id !== invokerId) {
-          await btn.reply({ content: "❌ These zoo buttons are for the user who opened it.", flags: MessageFlags.Ephemeral }).catch(() => {});
-          return;
-        }
-        await btn.deferUpdate().catch(() => {});
+        await btn.deferUpdate();
+      } catch (err) {
+        console.error(`[INTERACTION] zoo deferUpdate failed`, err);
+        return;
+      }
+
+      try {
         if (pageRaw === "close") {
-          await btn.message.delete().catch(() => {});
+          await btn.message.delete().catch((e) => console.error(`[INTERACTION] zoo close delete failed`, e));
           return;
         }
         const page = parseInt(pageRaw, 10);
@@ -692,14 +708,11 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
           await btn.editReply({ content: "❌ Couldn't load that user.", embeds: [], components: [] }).catch(() => {});
           return;
         }
-        // Synthesize a "message-like" object so we can re-use buildZooPage(). Only
-        // the bits that buildZooPage actually reads are required.
-        const fakeMessage = btn.message as unknown as Parameters<typeof buildZooPage>[0];
-        Object.defineProperty(fakeMessage, "author", { configurable: true, get: () => btn.user });
-        const { embed, components } = buildZooPage(fakeMessage, targetUser, page);
-        await btn.editReply({ embeds: [embed], components }).catch(() => {});
+        const { embed, components } = buildZooPage(btn.user, targetUser, page);
+        await btn.editReply({ embeds: [embed], components });
       } catch (err) {
         console.error(`[ERROR] lowo:zoo button [${btn.customId}]:`, err);
+        try { await btn.editReply({ content: "❌ Couldn't update the zoo page." }); } catch { /* ignore */ }
       }
       return;
     }

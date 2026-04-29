@@ -17,7 +17,7 @@ import { emoji } from "./emojis.js";
 import { huntCooldownPenaltyMs, huntLuckMultiplier, sacrificeAreaMultiplier } from "./areaTraits.js";
 import { onHuntForTeam } from "./sentientPets.js";
 import {
-  baseEmbed, replyEmbed, errorEmbed, warnEmbed, successEmbed, val,
+  baseEmbed, baseEmbedFor, replyEmbed, errorEmbed, warnEmbed, successEmbed, val,
   COLOR, rarityColor, catchCardEmbed, pagerButtons, ZOO_BUTTON_PREFIX,
 } from "./embeds.js";
 import {
@@ -273,11 +273,14 @@ function buildZooEntries(targetId: string): ZooEntry[] {
 }
 
 /**
- * Build a single page of the Zoo — used both by `cmdZoo` and the
- * `lowo:zoo:` button handler in `src/index.ts`.
+ * Build a single page of the Zoo. Pure function — takes plain `User` objects
+ * so it can be safely called from both message commands and button handlers
+ * without needing a `Message` instance.
+ *
+ * Used by `cmdZoo` and by the `lowo:zoo:` button branch in `src/index.ts`.
  */
 export function buildZooPage(
-  message: Message,
+  viewer: User,
   target: User,
   page: number,
 ): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[]; totalPages: number } {
@@ -302,14 +305,14 @@ export function buildZooPage(
     lines.length ? lines.join("\n") : "*This page is empty.*",
   ].join("\n");
 
-  const embed = baseEmbed(message, rarityColor(bestRarity))
+  const embed = baseEmbedFor(viewer, rarityColor(bestRarity))
     .setAuthor({ name: `${target.username}'s Zoo`, iconURL: target.displayAvatarURL({ size: 128 }) })
     .setThumbnail(target.displayAvatarURL({ size: 256 }))
     .setTitle(`${emoji("zoo")} Zoo Collection`)
     .setDescription(desc);
 
   const components = entries.length > ZOO_PAGE_SIZE
-    ? [pagerButtons(ZOO_BUTTON_PREFIX, safePage, totalPages, target.id, message.author.id)]
+    ? [pagerButtons(ZOO_BUTTON_PREFIX, safePage, totalPages, target.id, viewer.id)]
     : [];
   return { embed, components, totalPages };
 }
@@ -322,7 +325,7 @@ export async function cmdZoo(message: Message): Promise<void> {
     await replyEmbed(message, warnEmbed(message, `${target.username}'s Zoo is empty`, "Try `lowo hunt`!"));
     return;
   }
-  const { embed, components } = buildZooPage(message, target, 0);
+  const { embed, components } = buildZooPage(message.author, target, 0);
   await replyEmbed(message, embed, components);
 }
 
