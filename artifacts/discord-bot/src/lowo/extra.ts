@@ -2,7 +2,7 @@ import type { Message } from "discord.js";
 import { getUser, updateUser } from "./storage.js";
 import { ANIMAL_BY_ID, rollWeapon, BOX_DEFS, rollWeaponFromBox, type BoxTier } from "./data.js";
 import {
-  baseEmbed, replyEmbed, sendLowoEmbed, COLOR, val,
+  sendLowoEmbed, val,
 } from "./embeds.js";
 import { emoji } from "./emojis.js";
 
@@ -90,57 +90,55 @@ export async function cmdBox(message: Message, args: string[]): Promise<void> {
 }
 
 /**
- * v6.2 — `lowo inv` now uses the same grid-style embed as `lowo hunt`.
- * Each row groups related items with high-quality fallback emojis when the
- * `data/lowo_emojis.json` map doesn't override them.
+ * v6.3 — `lowo inv` — hyper-compact plain-text layout (anti-embed protocol).
+ * Currencies on line 1, collection counts on line 2, gear/misc on line 3.
+ * Empty categories are hidden entirely.
  */
 export async function cmdInv(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
-  const animals     = Object.values(u.zoo).reduce((a, b) => a + b, 0);
-  const fishCount   = Object.values(u.aquarium ?? {}).reduce((a, b) => a + b, 0);
-  const mineralCnt  = Object.values(u.minerals ?? {}).reduce((a, b) => a + b, 0);
-  const accCount    = u.accessories?.length ?? 0;
-  const craftedCnt  = u.craftedWeapons?.length ?? 0;
-  const fmt = (n: number, label: string): string => `${val(n)} ${label}`;
+  const animals    = Object.values(u.zoo).reduce((a, b) => a + b, 0);
+  const fishCount  = Object.values(u.aquarium ?? {}).reduce((a, b) => a + b, 0);
+  const mineralCnt = Object.values(u.minerals ?? {}).reduce((a, b) => a + b, 0);
+  const accCount   = u.accessories?.length ?? 0;
+  const craftedCnt = u.craftedWeapons?.length ?? 0;
 
-  // Box / consumables — only show non-empty.
-  const boxLines = (Object.keys(BOX_DEFS) as BoxTier[])
-    .filter((t) => (u.boxes[t] ?? 0) > 0)
-    .map((t) => `${BOX_DEFS[t].emoji} **${BOX_DEFS[t].name}** ×${u.boxes[t]}`);
+  // ── Line 1 — Economy (always visible) ────────────────────────────────────
+  const econLine = `💰 ${val(u.cowoncy)} | 🪙 ${val(u.lowoCash)} | ✨ ${val(u.essence)}`;
+
+  // ── Line 2 — Collection (only non-zero entries) ───────────────────────────
+  const collection: string[] = [];
+  collection.push(`🦊 ${val(animals)} Pets *(${u.dex.length} unique)*`);
+  if (fishCount  > 0) collection.push(`🐟 ${val(fishCount)} Fish`);
+  if (mineralCnt > 0) collection.push(`⚒️ ${val(mineralCnt)} Ores`);
+
+  // ── Line 3 — Gear (only non-zero entries) ─────────────────────────────────
+  const gear: string[] = [];
+  if (u.weapons.length > 0) {
+    const craftStr = craftedCnt > 0 ? ` *(${craftedCnt} crafted)*` : "";
+    gear.push(`⚔️ ${val(u.weapons.length)} Weapons${craftStr}`);
+  }
+  if (u.armor.length > 0) gear.push(`🛡️ ${val(u.armor.length)} Armor`);
+  if (accCount        > 0) gear.push(`🧿 ${val(accCount)} Accs`);
+  if (u.lotteryTickets > 0) gear.push(`🎟️ ${val(u.lotteryTickets)} Tkts`);
+  if (u.hasPickaxe)         gear.push(`⛏️ Tier \`${u.pickaxeTier}\` Pickaxe`);
+  if (u.pet.streak   > 0)  gear.push(`🐕 \`${u.pet.streak}\` Pet Streak`);
+
+  // ── Line 4 — Consumables & crates (only non-zero) ─────────────────────────
   const consum: string[] = [];
-  if (u.rings   > 0) consum.push(`💍 Rings ×${u.rings}`);
-  if (u.carrots > 0) consum.push(`🥕 Carrots ×${u.carrots}`);
-  if (u.petfood > 0) consum.push(`🍖 Pet food ×${u.petfood}`);
+  if (u.rings   > 0) consum.push(`💍 ${val(u.rings)} Rings`);
+  if (u.carrots > 0) consum.push(`🥕 ${val(u.carrots)} Carrots`);
+  if (u.petfood > 0) consum.push(`🍖 ${val(u.petfood)} Food`);
+  for (const t of Object.keys(BOX_DEFS) as BoxTier[]) {
+    if ((u.boxes[t] ?? 0) > 0) consum.push(`${BOX_DEFS[t].emoji} ${val(u.boxes[t])} ${BOX_DEFS[t].name}`);
+  }
 
-  const e = baseEmbed(message, COLOR.profile)
-    .setAuthor({ name: `${target.username}'s Inventory`, iconURL: target.displayAvatarURL({ size: 128 }) })
-    .setThumbnail(target.displayAvatarURL({ size: 256 }))
-    .setTitle("🎒 Inventory")
-    .setDescription("─────────────────────")
-    .addFields(
-      // Economy row
-      { name: "💰 Cowoncy",  value: val(u.cowoncy),  inline: true },
-      { name: "🪙 Cash",     value: val(u.lowoCash), inline: true },
-      { name: "✨ Essence",  value: val(u.essence),  inline: true },
-      // Collection row
-      { name: `${emoji("zoo")} Animals`, value: `${fmt(animals, "*total*")}\n*${u.dex.length} unique* — \`lowo zoo\``, inline: true },
-      { name: "🐟 Aquarium",  value: fishCount > 0 ? `${val(fishCount)} fish\n\`lowo aq\``    : "*empty*", inline: true },
-      { name: "⛏️ Minerals",  value: mineralCnt > 0 ? `${val(mineralCnt)} ores\n\`lowo ore\`` : "*none*",  inline: true },
-      // Combat / gear row
-      { name: "⚔️ Weapons",   value: `${val(u.weapons.length)} *(crafted: ${craftedCnt})*\n\`lowo w\``, inline: true },
-      { name: "🛡️ Armor",     value: u.armor.length > 0 ? `${val(u.armor.length)} pieces` : "*none*",   inline: true },
-      { name: "🧿 Accessories", value: accCount > 0 ? val(accCount) : "*none*", inline: true },
-      // Tickets / pickaxe row
-      { name: "🎟️ Tickets",  value: val(u.lotteryTickets), inline: true },
-      { name: "⛏️ Pickaxe",  value: u.hasPickaxe ? `Tier ${val(u.pickaxeTier)}` : "*none*", inline: true },
-      { name: "🐕 Pet Streak", value: val(u.pet.streak), inline: true },
-    );
+  const lines: string[] = [`🎒 **${target.username}'s Inventory**`, econLine];
+  if (collection.length) lines.push(collection.join(" | "));
+  if (gear.length)       lines.push(gear.join(" | "));
+  if (consum.length)     lines.push(consum.join(" | "));
 
-  if (boxLines.length) e.addFields({ name: "📦 Crates", value: boxLines.join("  •  "), inline: false });
-  if (consum.length)   e.addFields({ name: "🎁 Consumables", value: consum.join("  •  "), inline: false });
-
-  await replyEmbed(message, e);
+  await message.reply({ content: lines.join("\n"), allowedMentions: { repliedUser: false, parse: [] } });
 }
 // Unused-but-exported type-suppression: sendLowoEmbed is exported for callers.
 void sendLowoEmbed;
