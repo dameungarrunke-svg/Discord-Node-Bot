@@ -91,7 +91,8 @@ import { handlePurgeCommand, purgeConfigData, executePurgeConfig } from "./moder
 import { handleLowoCommand } from "./lowo/router.js";
 import { formatShopCategory } from "./lowo/shop.js";
 import { SHOP_CATEGORIES, type ShopCategory } from "./lowo/data.js";
-import { SHOP_BUTTON_PREFIX } from "./lowo/embeds.js";
+import { SHOP_BUTTON_PREFIX, ZOO_BUTTON_PREFIX } from "./lowo/embeds.js";
+import { buildZooPage } from "./lowo/hunt.js";
 import {
   lowoEnableData, lowoDisableData, executeLowoEnable, executeLowoDisable,
   lowoDynamicEnableData, lowoDynamicDisableData, executeLowoDynamicEnable, executeLowoDynamicDisable,
@@ -668,6 +669,40 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     const btn = interaction as ButtonInteraction;
     const t0 = Date.now();
     console.log(`[INTERACTION] button:${btn.customId} received`);
+
+    // ── v6.2 — Lowo zoo pager buttons (`lowo:zoo:<page|close>:<targetId>:<invokerId>`)
+    //         These update the SAME message in place, so they use deferUpdate.
+    if (btn.customId.startsWith(ZOO_BUTTON_PREFIX)) {
+      try {
+        const rest = btn.customId.slice(ZOO_BUTTON_PREFIX.length);
+        const [pageRaw, targetId, invokerId] = rest.split(":");
+        if (invokerId && btn.user.id !== invokerId) {
+          await btn.reply({ content: "❌ These zoo buttons are for the user who opened it.", flags: MessageFlags.Ephemeral }).catch(() => {});
+          return;
+        }
+        await btn.deferUpdate().catch(() => {});
+        if (pageRaw === "close") {
+          await btn.message.delete().catch(() => {});
+          return;
+        }
+        const page = parseInt(pageRaw, 10);
+        if (!targetId || !Number.isFinite(page)) return;
+        const targetUser = await btn.client.users.fetch(targetId).catch(() => null);
+        if (!targetUser) {
+          await btn.editReply({ content: "❌ Couldn't load that user.", embeds: [], components: [] }).catch(() => {});
+          return;
+        }
+        // Synthesize a "message-like" object so we can re-use buildZooPage(). Only
+        // the bits that buildZooPage actually reads are required.
+        const fakeMessage = btn.message as unknown as Parameters<typeof buildZooPage>[0];
+        Object.defineProperty(fakeMessage, "author", { configurable: true, get: () => btn.user });
+        const { embed, components } = buildZooPage(fakeMessage, targetUser, page);
+        await btn.editReply({ embeds: [embed], components }).catch(() => {});
+      } catch (err) {
+        console.error(`[ERROR] lowo:zoo button [${btn.customId}]:`, err);
+      }
+      return;
+    }
 
     // ── Dashboard buttons use deferUpdate (update the panel in-place) ─────────
     if (btn.customId.startsWith("dash_")) {

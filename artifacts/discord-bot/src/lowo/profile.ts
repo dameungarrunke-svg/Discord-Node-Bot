@@ -7,7 +7,8 @@ import { isCensored } from "./censor.js";
 import { PermissionFlagsBits } from "discord.js";
 import { emoji, allEmojiKeys, isOverridden, saveOverrides, catalogKeys, mergeOverrides } from "./emojis.js";
 import {
-  baseEmbed, replyEmbed, successEmbed, errorEmbed, warnEmbed, val, COLOR, progressBar,
+  baseEmbed, replyEmbed, successEmbed, errorEmbed, warnEmbed, val, COLOR,
+  progressBar, progressBarBlocks,
 } from "./embeds.js";
 
 // HOTFIX helper: pretty mm:ss / Hh Mm remaining for a future timestamp.
@@ -22,43 +23,80 @@ function fmtRemaining(untilMs: number): string | null {
   return `${h}h ${m}m`;
 }
 
+/**
+ * v6.2 — "Trainer ID" profile.
+ * Generates the canvas Trainer Card and attaches it as the embed image,
+ * then stacks logically-grouped stats (Economy / Progress / Combat) below
+ * with a high-quality block-style Pity bar.
+ */
 export async function cmdProfile(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
   const animals = Object.values(u.zoo).reduce((a, b) => a + b, 0);
-  const married = u.marriedTo ? `<@${u.marriedTo}>` : "single";
+  const married = u.marriedTo ? `<@${u.marriedTo}>` : "*single*";
   const bg = BACKGROUND_BY_ID[u.background ?? "bg_dark"]?.name ?? "Midnight";
 
   // Active potion / buff timers
   const buffs: string[] = [];
-  const luckLeft       = fmtRemaining(u.luckUntil ?? 0);       if (luckLeft)       buffs.push(`🍀 Luck \`${luckLeft}\``);
-  const megaLuckLeft   = fmtRemaining(u.megaLuckUntil ?? 0);   if (megaLuckLeft)   buffs.push(`🌟 MegaLuck \`${megaLuckLeft}\``);
-  const hasteLeft      = fmtRemaining(u.hasteUntil ?? 0);      if (hasteLeft)      buffs.push(`💨 Haste \`${hasteLeft}\``);
-  const shieldLeft     = fmtRemaining(u.shieldUntil ?? 0);     if (shieldLeft)     buffs.push(`🛡️ Shield \`${shieldLeft}\``);
-  const dinoLeft       = fmtRemaining(u.dinoSummonUntil ?? 0); if (dinoLeft)       buffs.push(`🦖 Dino \`${dinoLeft}\``);
+  const luckLeft     = fmtRemaining(u.luckUntil ?? 0);       if (luckLeft)     buffs.push(`🍀 Luck \`${luckLeft}\``);
+  const megaLuckLeft = fmtRemaining(u.megaLuckUntil ?? 0);   if (megaLuckLeft) buffs.push(`🌟 MegaLuck \`${megaLuckLeft}\``);
+  const hasteLeft    = fmtRemaining(u.hasteUntil ?? 0);      if (hasteLeft)    buffs.push(`💨 Haste \`${hasteLeft}\``);
+  const shieldLeft   = fmtRemaining(u.shieldUntil ?? 0);     if (shieldLeft)   buffs.push(`🛡️ Shield \`${shieldLeft}\``);
+  const dinoLeft     = fmtRemaining(u.dinoSummonUntil ?? 0); if (dinoLeft)     buffs.push(`🦖 Dino \`${dinoLeft}\``);
+
+  // Compute level the same way `lowo level` does so the two views agree.
+  const animalXpSum = Object.values(u.animalXp ?? {}).reduce((a, b) => a + b, 0);
+  const xp =
+    (u.huntsTotal ?? 0) * 10 +
+    (u.bossKills  ?? 0) * 100 +
+    (u.dex.length      ) * 50 +
+    animalXpSum;
+  const level = Math.floor(Math.sqrt(xp / 100));
+
+  // Try to render the canvas Trainer Card; fall back to embed-only if it fails.
+  let cardFile: AttachmentBuilder | null = null;
+  try {
+    const buf = await generateProfileCard(target);
+    cardFile = new AttachmentBuilder(buf, { name: `lowo-card-${target.id}.png` });
+  } catch (err) {
+    console.error("[LOWO PROFILE] card render failed", err);
+  }
+
+  const pityNow = u.pity ?? 0;
+  const pityBar = progressBarBlocks(pityNow, PITY_THRESHOLD);
 
   const e = baseEmbed(message, COLOR.profile)
-    .setAuthor({ name: `${target.username}'s Lowo Profile`, iconURL: target.displayAvatarURL({ size: 128 }) })
-    .setThumbnail(target.displayAvatarURL({ size: 256 }))
-    .setTitle(u.tag ? `🏷️ *"${u.tag}"*` : "🪪 Trainer Profile")
+    .setAuthor({ name: `${target.username}'s Trainer ID`, iconURL: target.displayAvatarURL({ size: 128 }) })
+    .setTitle(u.tag ? `🪪 *"${u.tag}"*` : "🪪 Trainer Profile")
+    .setDescription("─────────────────────")
     .addFields(
-      { name: "🪙 Cowoncy",     value: val(u.cowoncy),  inline: true },
-      { name: "✨ Essence",     value: val(u.essence),  inline: true },
-      { name: "💎 Lowo Cash",   value: val(u.lowoCash), inline: true },
-      { name: "🐾 Animals",     value: `${val(animals)} *(${u.dex.length} unique)*`, inline: true },
-      { name: "⚔️ Weapons",     value: val(u.weapons.length), inline: true },
-      { name: "🎟️ Tickets",     value: val(u.lotteryTickets), inline: true },
-      { name: "🔥 Daily Streak", value: val(u.dailyStreak),    inline: true },
-      { name: "⭐ Rep",          value: val(u.rep),            inline: true },
-      { name: "💍 Married To",   value: married,               inline: true },
-      { name: `🎯 Pity Bar (${u.pity}/${PITY_THRESHOLD})`, value: progressBar(u.pity ?? 0, PITY_THRESHOLD), inline: false },
-      { name: "🖼️ Background",   value: bg, inline: true },
-      { name: "🌱 Garden",       value: val(u.piku.harvested), inline: true },
-      { name: "🐕 Pet Streak",   value: val(u.pet.streak),     inline: true },
+      // ── Economy row ─────────────────────────────────────────────────────
+      { name: "💰 Cowoncy",   value: val(u.cowoncy),  inline: true },
+      { name: "🪙 Cash",      value: val(u.lowoCash), inline: true },
+      { name: "✨ Essence",   value: val(u.essence),  inline: true },
+      // ── Progress row ────────────────────────────────────────────────────
+      { name: "📈 Level",        value: val(level),           inline: true },
+      { name: "🎯 Pity",         value: val(`${pityNow}/${PITY_THRESHOLD}`), inline: true },
+      { name: "🔥 Daily Streak", value: val(`${u.dailyStreak}d`), inline: true },
+      // Pity progress bar — full-width on its own line.
+      { name: "🎯 Pity Bar", value: pityBar, inline: false },
+      // ── Combat / collection row ────────────────────────────────────────
+      { name: "🐾 Animals", value: `${val(animals)} *(${u.dex.length} unique)*`, inline: true },
+      { name: "⚔️ Weapons", value: val(u.weapons.length), inline: true },
+      { name: "⭐ Rep",      value: val(u.rep),            inline: true },
+      // ── Misc row ────────────────────────────────────────────────────────
+      { name: "🎟️ Tickets",   value: val(u.lotteryTickets), inline: true },
+      { name: "💍 Married",   value: married,                inline: true },
+      { name: "🖼️ Background", value: bg,                    inline: true },
     );
   if (buffs.length) e.addFields({ name: "⚡ Active Buffs", value: buffs.join("  •  "), inline: false });
-  e.setDescription(`*Try \`lowo card\` for the visual version.*`);
-  await replyEmbed(message, e);
+  if (cardFile) e.setImage(`attachment://lowo-card-${target.id}.png`);
+
+  await message.reply({
+    embeds: [e],
+    ...(cardFile ? { files: [cardFile] } : {}),
+    allowedMentions: { repliedUser: false, parse: [] },
+  });
 }
 
 export async function cmdCard(message: Message): Promise<void> {

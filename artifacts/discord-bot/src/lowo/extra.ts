@@ -1,6 +1,10 @@
 import type { Message } from "discord.js";
 import { getUser, updateUser } from "./storage.js";
 import { ANIMAL_BY_ID, rollWeapon, BOX_DEFS, rollWeaponFromBox, type BoxTier } from "./data.js";
+import {
+  baseEmbed, replyEmbed, sendLowoEmbed, COLOR, val,
+} from "./embeds.js";
+import { emoji } from "./emojis.js";
 
 // Auto-hunt nerf: defaults to 2 minutes per tick. Owners of the
 // `gp_autohunt_2` gamepass run on the upgraded 1-minute schedule.
@@ -85,33 +89,61 @@ export async function cmdBox(message: Message, args: string[]): Promise<void> {
   await message.reply(lines.join("\n"));
 }
 
+/**
+ * v6.2 — `lowo inv` now uses the same grid-style embed as `lowo hunt`.
+ * Each row groups related items with high-quality fallback emojis when the
+ * `data/lowo_emojis.json` map doesn't override them.
+ */
 export async function cmdInv(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
-  const animals = Object.values(u.zoo).reduce((a, b) => a + b, 0);
+  const animals     = Object.values(u.zoo).reduce((a, b) => a + b, 0);
+  const fishCount   = Object.values(u.aquarium ?? {}).reduce((a, b) => a + b, 0);
+  const mineralCnt  = Object.values(u.minerals ?? {}).reduce((a, b) => a + b, 0);
+  const accCount    = u.accessories?.length ?? 0;
+  const craftedCnt  = u.craftedWeapons?.length ?? 0;
+  const fmt = (n: number, label: string): string => `${val(n)} ${label}`;
+
+  // Box / consumables — only show non-empty.
   const boxLines = (Object.keys(BOX_DEFS) as BoxTier[])
     .filter((t) => (u.boxes[t] ?? 0) > 0)
-    .map((t) => `${BOX_DEFS[t].emoji} ${BOX_DEFS[t].name}: ${u.boxes[t]}`);
-  const consum = [
-    u.rings    > 0 ? `💍 Rings: ${u.rings}`     : null,
-    u.carrots  > 0 ? `🥕 Carrots: ${u.carrots}` : null,
-    u.petfood  > 0 ? `🍖 Pet food: ${u.petfood}`: null,
-  ].filter(Boolean);
-  const mineralCount = Object.values(u.minerals ?? {}).reduce((a, b) => a + b, 0);
-  const fishCount = Object.values(u.aquarium ?? {}).reduce((a, b) => a + b, 0);
-  await message.reply([
-    `🎒 **${target.username}'s Inventory**`,
-    `💰 ${u.cowoncy.toLocaleString()} cowoncy • ✨ ${u.essence.toLocaleString()} essence • 💎 ${u.lowoCash} Lowo Cash`,
-    `🐾 ${animals} animals (${u.dex.length} unique) — see \`lowo zoo\``,
-    `🐟 ${fishCount} fish in aquarium — see \`lowo aquarium\``,
-    `🗡️ ${u.weapons.length} weapons (${u.craftedWeapons?.length ?? 0} crafted) — see \`lowo weapon\``,
-    `⛏️ ${mineralCount} minerals${u.hasPickaxe ? ` (pickaxe tier ${u.pickaxeTier})` : ""} — see \`lowo minerals\``,
-    `🧿 ${u.accessories?.length ?? 0} accessories • 🛡️ ${u.armor.length} armor`,
-    `🎟️ ${u.lotteryTickets} lottery tickets`,
-    boxLines.length ? `📦 ${boxLines.join(" • ")}` : null,
-    consum.length ? consum.join(" • ") : null,
-  ].filter(Boolean).join("\n"));
+    .map((t) => `${BOX_DEFS[t].emoji} **${BOX_DEFS[t].name}** ×${u.boxes[t]}`);
+  const consum: string[] = [];
+  if (u.rings   > 0) consum.push(`💍 Rings ×${u.rings}`);
+  if (u.carrots > 0) consum.push(`🥕 Carrots ×${u.carrots}`);
+  if (u.petfood > 0) consum.push(`🍖 Pet food ×${u.petfood}`);
+
+  const e = baseEmbed(message, COLOR.profile)
+    .setAuthor({ name: `${target.username}'s Inventory`, iconURL: target.displayAvatarURL({ size: 128 }) })
+    .setThumbnail(target.displayAvatarURL({ size: 256 }))
+    .setTitle("🎒 Inventory")
+    .setDescription("─────────────────────")
+    .addFields(
+      // Economy row
+      { name: "💰 Cowoncy",  value: val(u.cowoncy),  inline: true },
+      { name: "🪙 Cash",     value: val(u.lowoCash), inline: true },
+      { name: "✨ Essence",  value: val(u.essence),  inline: true },
+      // Collection row
+      { name: `${emoji("zoo")} Animals`, value: `${fmt(animals, "*total*")}\n*${u.dex.length} unique* — \`lowo zoo\``, inline: true },
+      { name: "🐟 Aquarium",  value: fishCount > 0 ? `${val(fishCount)} fish\n\`lowo aq\``    : "*empty*", inline: true },
+      { name: "⛏️ Minerals",  value: mineralCnt > 0 ? `${val(mineralCnt)} ores\n\`lowo ore\`` : "*none*",  inline: true },
+      // Combat / gear row
+      { name: "⚔️ Weapons",   value: `${val(u.weapons.length)} *(crafted: ${craftedCnt})*\n\`lowo w\``, inline: true },
+      { name: "🛡️ Armor",     value: u.armor.length > 0 ? `${val(u.armor.length)} pieces` : "*none*",   inline: true },
+      { name: "🧿 Accessories", value: accCount > 0 ? val(accCount) : "*none*", inline: true },
+      // Tickets / pickaxe row
+      { name: "🎟️ Tickets",  value: val(u.lotteryTickets), inline: true },
+      { name: "⛏️ Pickaxe",  value: u.hasPickaxe ? `Tier ${val(u.pickaxeTier)}` : "*none*", inline: true },
+      { name: "🐕 Pet Streak", value: val(u.pet.streak), inline: true },
+    );
+
+  if (boxLines.length) e.addFields({ name: "📦 Crates", value: boxLines.join("  •  "), inline: false });
+  if (consum.length)   e.addFields({ name: "🎁 Consumables", value: consum.join("  •  "), inline: false });
+
+  await replyEmbed(message, e);
 }
+// Unused-but-exported type-suppression: sendLowoEmbed is exported for callers.
+void sendLowoEmbed;
 
 export async function cmdRename(message: Message, args: string[]): Promise<void> {
   const idx = parseInt(args[0] ?? "", 10);

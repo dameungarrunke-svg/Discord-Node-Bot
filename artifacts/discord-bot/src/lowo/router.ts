@@ -383,18 +383,18 @@ export async function handleLowoCommand(message: Message): Promise<boolean> {
   }
   const handler = HANDLERS[sub];
   if (!handler) {
-    // Suggest the closest known command on misspellings.
+    // v6.2 — clean & compact "did-you-mean" line that auto-deletes.
     const known = Object.keys(HANDLERS);
     const matches = suggestClosest(sub, known, 3);
-    const dyn = isDynamic(message.guildId);
-    const dynTag = dyn ? "\n*(dynamic mode is on — extra suggestions enabled)*" : "";
-    const suggestText = matches.length
-      ? `\n💡 Did you mean: ${matches.map((m) => `\`lowo ${m}\``).join(", ")}?`
-      : "";
-    const reply = await message.reply(
-      `❓ Unknown lowo command \`${sub}\`. Try \`lowo help\`.${suggestText}${dynTag}\n*(this message will self-delete)*`,
-    ).catch(() => null);
-    if (reply) setTimeout(() => { reply.delete().catch(() => {}); }, 8000);
+    const tail = matches.length
+      ? ` — did you mean ${matches.map((m) => `\`lowo ${m}\``).join(" / ")}?`
+      : ` — try \`lowo help\`.`;
+    const dynTag = isDynamic(message.guildId) ? "  *(dynamic on)*" : "";
+    const reply = await message.reply({
+      content: `❓ Unknown command \`${sub}\`${tail}${dynTag}`,
+      allowedMentions: { repliedUser: false, parse: [] },
+    }).catch(() => null);
+    if (reply) setTimeout(() => { reply.delete().catch(() => {}); }, 6000);
     return true;
   }
   try {

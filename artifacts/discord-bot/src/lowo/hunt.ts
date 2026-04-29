@@ -18,8 +18,11 @@ import { huntCooldownPenaltyMs, huntLuckMultiplier, sacrificeAreaMultiplier } fr
 import { onHuntForTeam } from "./sentientPets.js";
 import {
   baseEmbed, replyEmbed, errorEmbed, warnEmbed, successEmbed, val,
-  COLOR, rarityColor, catchCardEmbed,
+  COLOR, rarityColor, catchCardEmbed, pagerButtons, ZOO_BUTTON_PREFIX,
 } from "./embeds.js";
+import {
+  EmbedBuilder, ActionRowBuilder, type ButtonBuilder, type User,
+} from "discord.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NO_DAILY_STEAL_CHANCE = 0.01;
@@ -251,39 +254,76 @@ export async function cmdHunt(message: Message): Promise<void> {
   await replyEmbed(message, e);
 }
 
+// ─── ZOO — paginated to avoid the 6 000-char embed wall (v6.2) ─────────────
+const ZOO_PAGE_SIZE = 10;
+
+interface ZooEntry { animal: Animal; count: number }
+function buildZooEntries(targetId: string): ZooEntry[] {
+  const u = getUser(targetId);
+  return Object.entries(u.zoo)
+    .filter(([, c]) => c > 0)
+    .map(([id, count]) => ({ animal: ANIMAL_BY_ID[id], count }))
+    .filter((x) => x.animal)
+    .sort((a, b) => {
+      const ra = RARITY_ORDER.indexOf(a.animal.rarity);
+      const rb = RARITY_ORDER.indexOf(b.animal.rarity);
+      if (ra !== rb) return ra - rb; // rarest first
+      return a.animal.name.localeCompare(b.animal.name);
+    });
+}
+
+/**
+ * Build a single page of the Zoo — used both by `cmdZoo` and the
+ * `lowo:zoo:` button handler in `src/index.ts`.
+ */
+export function buildZooPage(
+  message: Message,
+  target: User,
+  page: number,
+): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[]; totalPages: number } {
+  const entries = buildZooEntries(target.id);
+  const totalPages = Math.max(1, Math.ceil(entries.length / ZOO_PAGE_SIZE));
+  const safePage = Math.max(0, Math.min(totalPages - 1, page));
+  const start = safePage * ZOO_PAGE_SIZE;
+  const slice = entries.slice(start, start + ZOO_PAGE_SIZE);
+
+  const totalAnimals = entries.reduce((a, e) => a + e.count, 0);
+  const bestRarity: Rarity = entries.length ? entries[0].animal.rarity : "common";
+
+  const lines = slice.map((e, i) => {
+    const a = e.animal;
+    const idx = start + i + 1;
+    return `**${idx}.** ${RARITY_COLOR[a.rarity]} ${a.emoji} **${a.name}** ×${e.count.toLocaleString()}  \`[ ${a.rarity.toUpperCase()} ]\``;
+  });
+
+  const desc = [
+    `🐾 **${val(totalAnimals)}** total animals • **${val(entries.length)}** unique species`,
+    "─────────────────────",
+    lines.length ? lines.join("\n") : "*This page is empty.*",
+  ].join("\n");
+
+  const embed = baseEmbed(message, rarityColor(bestRarity))
+    .setAuthor({ name: `${target.username}'s Zoo`, iconURL: target.displayAvatarURL({ size: 128 }) })
+    .setThumbnail(target.displayAvatarURL({ size: 256 }))
+    .setTitle(`${emoji("zoo")} Zoo Collection`)
+    .setDescription(desc);
+
+  const components = entries.length > ZOO_PAGE_SIZE
+    ? [pagerButtons(ZOO_BUTTON_PREFIX, safePage, totalPages, target.id, message.author.id)]
+    : [];
+  return { embed, components, totalPages };
+}
+
 export async function cmdZoo(message: Message): Promise<void> {
   const target = message.mentions.users.first() ?? message.author;
   const u = getUser(target.id);
-  const entries = Object.entries(u.zoo).filter(([, c]) => c > 0);
-  if (entries.length === 0) {
+  const hasAny = Object.values(u.zoo).some((c) => c > 0);
+  if (!hasAny) {
     await replyEmbed(message, warnEmbed(message, `${target.username}'s Zoo is empty`, "Try `lowo hunt`!"));
     return;
   }
-
-  const grouped: Partial<Record<Rarity, string[]>> = {};
-  let totalAnimals = 0;
-  let bestRarity: Rarity = "common";
-  for (const [id, count] of entries) {
-    const a = ANIMAL_BY_ID[id]; if (!a) continue;
-    (grouped[a.rarity] ??= []).push(`${a.emoji} ${a.name} ×${count}`);
-    totalAnimals += count;
-    if (RARITY_ORDER.indexOf(a.rarity) < RARITY_ORDER.indexOf(bestRarity)) bestRarity = a.rarity;
-  }
-  const e = baseEmbed(message, rarityColor(bestRarity))
-    .setAuthor({ name: `${target.username}'s Zoo`, iconURL: target.displayAvatarURL({ size: 128 }) })
-    .setThumbnail(target.displayAvatarURL({ size: 256 }))
-    .setTitle(`${emoji("zoo")} ${val(totalAnimals)} animals • ${val(entries.length)} unique`);
-  for (const r of RARITY_ORDER) {
-    const arr = grouped[r];
-    if (!arr || !arr.length) continue;
-    const text = arr.join(", ");
-    e.addFields({
-      name: `${RARITY_COLOR[r]} ${r.toUpperCase()} *(${arr.length})*`,
-      value: text.length > 1020 ? `${text.slice(0, 1015)}…` : text,
-      inline: false,
-    });
-  }
-  await replyEmbed(message, e);
+  const { embed, components } = buildZooPage(message, target, 0);
+  await replyEmbed(message, embed, components);
 }
 
 export async function cmdSell(message: Message, args: string[]): Promise<void> {

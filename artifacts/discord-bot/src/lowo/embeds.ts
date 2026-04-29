@@ -1,45 +1,50 @@
 /**
- * Shared UI helpers for the v6.1 "UI/UX Overhaul" — every public Lowo command
- * should funnel its replies through these to keep the look & feel consistent.
+ * Shared UI helpers for the v6.1 / v6.2 "Elite Edition" UI overhaul.
+ * Every public Lowo command should funnel its replies through these so the
+ * look & feel stays consistent.
  *
- *   • Fixed rarity hex colors (`RARITY_HEX`)
- *   • Text-based progress bars (`progressBar`)
- *   • Code-block value formatter (`val`)
- *   • Reply helpers (`replyEmbed`, `successEmbed`, `errorEmbed`, `warnEmbed`,
- *     `infoEmbed`, `catchCardEmbed`)
- *   • Consistent session footer (`sessionFooter`)
- *   • Shop button row (`shopButtonsRow` — used for the main menu)
- *   • Auto-self-destruct utility error reply (`replySelfDestruct`)
+ *   • Fixed rarity hex colors  (`RARITY_HEX`)
+ *   • Per-rarity flavor text   (`RARITY_FLAVOR`)
+ *   • Code-block value         (`val`)
+ *   • Two progress-bar styles  (`progressBar` ▰▱ • `progressBarBlocks` ▓░)
+ *   • Reply helpers            (`sendLowoEmbed`, `replyEmbed`, `successEmbed`,
+ *                               `errorEmbed`, `warnEmbed`, `infoEmbed`,
+ *                               `catchCardEmbed`)
+ *   • Consistent footer        (`sessionFooter`)
+ *   • Shop button row          (`shopButtonsRows`)
+ *   • Zoo pager buttons        (`pagerButtons`, `ZOO_BUTTON_PREFIX`)
+ *   • Self-destruct util reply (`replySelfDestruct`)
  */
 import {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   type Message, type APIEmbedField, type ColorResolvable, type User,
+  type AttachmentBuilder,
 } from "discord.js";
 import type { Animal, Rarity } from "./data.js";
 import { getUser } from "./storage.js";
 
-// ─── Rarity → fixed accent hex (the "Accents" rule) ─────────────────────────
+// ─── Rarity → fixed accent hex (per the "Elite Edition" spec) ──────────────
 export const RARITY_HEX: Record<Rarity, number> = {
-  common:       0x9aa0a6,
+  common:       0xB9BBBE,  // Discord gray
   uncommon:     0x4ade80,
   rare:         0x3b82f6,
   epic:         0xa855f7,
-  mythic:       0xeab308,
+  mythic:       0xFF00FF,  // neon pink
   legendary:    0xf97316,
   ethereal:     0x67e8f9,
   divine:       0xfde047,
-  omni:         0xfacc15,
+  omni:         0x00FFFF,  // cyan
   glitched:     0xef4444,
   inferno:      0xff5722,
   cosmic:       0x7c3aed,
-  void:         0x000000,
-  secret:       0xff00ff,
+  void:         0x1A1A1A,  // deep black
+  secret:       0xff77ff,
   supreme:      0xffb84a,
   transcendent: 0x90e0ff,
 };
 
 export const COLOR = {
-  brand:    0xff7a3c,  // signature lowo orange
+  brand:    0xff7a3c,
   success:  0x22c55e,
   error:    0xef4444,
   warn:     0xfacc15,
@@ -61,6 +66,26 @@ export function rarityColor(r?: Rarity | null): number {
   return RARITY_HEX[r] ?? COLOR.brand;
 }
 
+// ─── Per-rarity flavor text (used by Catch Cards) ──────────────────────────
+export const RARITY_FLAVOR: Record<Rarity, string> = {
+  common:       "A common find — but every legend starts somewhere.",
+  uncommon:     "A spark of something more glimmers in the brush.",
+  rare:         "A glimmer in the wild — fortune favors the bold.",
+  epic:         "Epic energy crackles through the air.",
+  mythic:       "Mythic forces stir as it steps into view…",
+  legendary:    "A legendary presence shakes the ground beneath your feet.",
+  ethereal:     "The veil between worlds thins and parts before you.",
+  divine:       "Divine light pierces through the canopy.",
+  omni:         "All things bend toward this being.",
+  glitched:     "Reality stutters — what *is* this?!",
+  inferno:      "Hellfire roars in its wake.",
+  cosmic:       "The stars realign for a single, perfect moment.",
+  void:         "Silence. The void answers your call.",
+  secret:       "A secret meant for no one — yours alone.",
+  supreme:      "Supreme. Untouchable. Yours.",
+  transcendent: "Beyond mortal comprehension — you have transcended.",
+};
+
 // ─── Number / value styling ─────────────────────────────────────────────────
 /** Wrap a number/string in single backticks and locale-format numbers. */
 export function val(n: number | string): string {
@@ -68,12 +93,21 @@ export function val(n: number | string): string {
   return `\`${n}\``;
 }
 
-// ─── Text progress bar — `[▰▰▰▱▱▱▱▱▱▱] 30%` style ───────────────────────────
+// ─── Progress bars ──────────────────────────────────────────────────────────
+/** Triangle bar: `[▰▰▰▱▱▱▱▱▱▱] 30%` */
 export function progressBar(value: number, max: number, length = 10): string {
   if (max <= 0) return `[${"▱".repeat(length)}] 0%`;
   const pct = Math.max(0, Math.min(1, value / max));
   const filled = Math.round(pct * length);
   const bar = "▰".repeat(filled) + "▱".repeat(Math.max(0, length - filled));
+  return `[${bar}] ${Math.round(pct * 100)}%`;
+}
+/** Hi-fi block bar: `[▓▓▓▓▓▓▓░░░] 70%` (used for the v6.2 Pity bar). */
+export function progressBarBlocks(value: number, max: number, length = 10): string {
+  if (max <= 0) return `[${"░".repeat(length)}] 0%`;
+  const pct = Math.max(0, Math.min(1, value / max));
+  const filled = Math.round(pct * length);
+  const bar = "▓".repeat(filled) + "░".repeat(Math.max(0, length - filled));
   return `[${bar}] ${Math.round(pct * 100)}%`;
 }
 
@@ -146,6 +180,43 @@ export async function replyEmbeds(
   });
 }
 
+/**
+ * v6.2 — One-stop builder/sender. Pass color + title + fields and we'll handle
+ * the EmbedBuilder + footer + reply for you.  All `fields` default to inline
+ * unless you explicitly set `inline: false`.
+ */
+export interface SendLowoEmbedOpts {
+  color?: ColorResolvable;
+  title?: string;
+  description?: string;
+  author?: { name: string; iconURL?: string };
+  thumbnail?: string;
+  image?: string;
+  fields?: APIEmbedField[];
+  files?: AttachmentBuilder[];
+  components?: ActionRowBuilder<ButtonBuilder>[];
+  /** For the pity / xp bar style descriptions. */
+  inlineDefault?: boolean;
+}
+export async function sendLowoEmbed(message: Message, opts: SendLowoEmbedOpts): Promise<void> {
+  const e = baseEmbed(message, opts.color ?? COLOR.brand);
+  if (opts.title)       e.setTitle(opts.title);
+  if (opts.description) e.setDescription(opts.description);
+  if (opts.author)      e.setAuthor(opts.author);
+  if (opts.thumbnail)   e.setThumbnail(opts.thumbnail);
+  if (opts.image)       e.setImage(opts.image);
+  if (opts.fields?.length) {
+    const dflt = opts.inlineDefault ?? true;
+    e.addFields(opts.fields.map((f) => ({ ...f, inline: f.inline ?? dflt })));
+  }
+  await message.reply({
+    embeds: [e],
+    ...(opts.files     ? { files: opts.files }           : {}),
+    ...(opts.components ? { components: opts.components } : {}),
+    allowedMentions: { repliedUser: false, parse: [] },
+  });
+}
+
 /** For utility-style errors (e.g. "unknown command") — auto-deletes after N ms. */
 export async function replySelfDestruct(message: Message, embed: EmbedBuilder, ms = 8000): Promise<void> {
   const reply = await message.reply({
@@ -155,33 +226,47 @@ export async function replySelfDestruct(message: Message, embed: EmbedBuilder, m
   if (reply) setTimeout(() => { reply.delete().catch(() => {}); }, ms);
 }
 
-// ─── "Catch Card" — used by `lowo hunt` for caught animals ──────────────────
+// ─── "Catch Card" — used by `lowo hunt` for caught animals (v6.2 hero) ─────
 export function catchCardEmbed(
   message: Message,
   animal: Animal,
   opts: { areaTag?: string; mutationLabel?: string | null; pity?: boolean; autosold?: boolean } = {},
 ): EmbedBuilder {
-  const fields: APIEmbedField[] = [
-    { name: "Rarity",  value: `\`[ ${animal.rarity.toUpperCase()} ]\``, inline: true },
-    { name: "HP",      value: val(animal.hp),  inline: true },
-    { name: "ATK",     value: val(animal.atk), inline: true },
-    { name: "DEF",     value: val(animal.def), inline: true },
-    { name: "MAG",     value: val(animal.mag), inline: true },
-    { name: "Sells",   value: `${val(animal.sellPrice)} 🪙`, inline: true },
-  ];
-  const flags: string[] = [];
-  if (opts.pity)         flags.push("🎯 **PITY!**");
-  if (opts.autosold)     flags.push("💸 *auto-sold*");
-  if (opts.mutationLabel) flags.push(opts.mutationLabel);
+  const flavor = RARITY_FLAVOR[animal.rarity] ?? "";
+  const flagsLine: string[] = [];
+  if (opts.pity)          flagsLine.push("🎯 **PITY!**");
+  if (opts.autosold)      flagsLine.push("💸 *auto-sold*");
+  if (opts.mutationLabel) flagsLine.push(opts.mutationLabel);
+
+  // Hero-style description: name, area tag, divider, flavor text, flags.
   const desc = [
     `### ${animal.emoji} ${animal.name}`,
     opts.areaTag ? `*${opts.areaTag}*` : null,
-    flags.length ? flags.join("  •  ") : null,
+    "─────────────────────",
+    flavor ? `*${flavor}*` : null,
+    flagsLine.length ? flagsLine.join("  •  ") : null,
   ].filter(Boolean).join("\n");
 
+  // 2 × 2 stat grid + rarity + sell-price (all inline, code-block values).
+  const fields: APIEmbedField[] = [
+    { name: "Rarity",  value: `\`[ ${animal.rarity.toUpperCase()} ]\``, inline: true },
+    { name: "💰 Sells", value: `${val(animal.sellPrice)} cwn`,           inline: true },
+    { name: "✨ Essence", value: val(animal.essence),                    inline: true },
+    { name: "❤️ HP",   value: val(animal.hp),  inline: true },
+    { name: "⚔️ ATK",  value: val(animal.atk), inline: true },
+    { name: "\u200b",   value: "\u200b",        inline: true }, // spacer → forces 2×2 below
+    { name: "🛡️ DEF",  value: val(animal.def), inline: true },
+    { name: "🔮 MAG",  value: val(animal.mag), inline: true },
+    { name: "\u200b",   value: "\u200b",        inline: true },
+  ];
+
   return baseEmbed(message, rarityColor(animal.rarity))
-    .setAuthor({ name: `✨ ${message.author.username} caught a new ${animal.rarity}!`, iconURL: message.author.displayAvatarURL({ size: 64 }) })
-    .setTitle(`✨ NEW CATCH ✨`)
+    .setAuthor({
+      name: `✨ ${message.author.username} caught a new ${animal.rarity}!`,
+      iconURL: message.author.displayAvatarURL({ size: 64 }),
+    })
+    .setTitle("✨ CATCH ✨")
+    .setThumbnail(message.author.displayAvatarURL({ size: 256 }))
     .setDescription(desc)
     .addFields(fields);
 }
@@ -221,6 +306,41 @@ function buildRow(invokerId: string, defs: typeof PRIMARY_SHOP_BUTTONS): ActionR
 /** Two action rows of shop category buttons, scoped to the invoking user. */
 export function shopButtonsRows(invokerId: string): ActionRowBuilder<ButtonBuilder>[] {
   return [buildRow(invokerId, PRIMARY_SHOP_BUTTONS), buildRow(invokerId, SECONDARY_SHOP_BUTTONS)];
+}
+
+// ─── Generic pager (used by `lowo zoo`) ────────────────────────────────────
+export const ZOO_BUTTON_PREFIX = "lowo:zoo:";
+/**
+ * Build a Prev / Page-info / Next / Close action row.
+ *   customId format: `<prefix><page>:<targetId>:<invokerId>`
+ *   prefix MUST end in ":" (e.g. "lowo:zoo:").
+ */
+export function pagerButtons(
+  prefix: string,
+  page: number,
+  totalPages: number,
+  targetId: string,
+  invokerId: string,
+): ActionRowBuilder<ButtonBuilder> {
+  const row = new ActionRowBuilder<ButtonBuilder>();
+  row.addComponents(
+    new ButtonBuilder()
+      .setCustomId(`${prefix}${Math.max(0, page - 1)}:${targetId}:${invokerId}`)
+      .setEmoji("◀️").setLabel("Prev").setStyle(ButtonStyle.Secondary)
+      .setDisabled(page <= 0),
+    new ButtonBuilder()
+      .setCustomId(`${prefix}page:${targetId}:${invokerId}`)
+      .setLabel(`${page + 1} / ${totalPages}`).setStyle(ButtonStyle.Primary)
+      .setDisabled(true),
+    new ButtonBuilder()
+      .setCustomId(`${prefix}${Math.min(totalPages - 1, page + 1)}:${targetId}:${invokerId}`)
+      .setEmoji("▶️").setLabel("Next").setStyle(ButtonStyle.Secondary)
+      .setDisabled(page >= totalPages - 1),
+    new ButtonBuilder()
+      .setCustomId(`${prefix}close:${targetId}:${invokerId}`)
+      .setEmoji("✖️").setStyle(ButtonStyle.Danger),
+  );
+  return row;
 }
 
 // ─── Inline-field grid helper ───────────────────────────────────────────────
