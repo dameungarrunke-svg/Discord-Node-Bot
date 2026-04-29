@@ -76,10 +76,17 @@ function poolForArea(area: HuntArea): Animal[] {
   return HUNT_POOL;
 }
 
-function rollWithRareRush(area: HuntArea, luck: number): Animal {
+// Rarities that trigger the ULTRA RARE CATCH banner on manual hunts.
+const ULTRA_RARE_RARITIES = new Set<Rarity>([
+  "ethereal", "divine", "omni", "glitched",
+  "inferno", "cosmic", "void", "secret",
+  "supreme", "transcendent",
+]);
+
+function rollWithRareRush(area: HuntArea, luck: number, manual: boolean): Animal {
   const boost = eventBonus("rare");
-  if (boost <= 1) return rollAnimalInArea(area, luck);
-  const rolls: Animal[] = Array.from({ length: boost }, () => rollAnimalInArea(area, luck));
+  if (boost <= 1) return rollAnimalInArea(area, luck, manual);
+  const rolls: Animal[] = Array.from({ length: boost }, () => rollAnimalInArea(area, luck, manual));
   rolls.sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity));
   return rolls[0];
 }
@@ -122,6 +129,7 @@ export async function cmdHunt(message: Message): Promise<void> {
   // Triple Drop gamepass: 25% chance per hunt to roll one bonus animal.
   if (u.gamepasses["gp_triple_drop"] && Math.random() < 0.25) drops += 1;
   const autohuntOn = isAutohuntActive(message.author.id);
+  const isManual = !autohuntOn; // manual hunters get buffed rarity weights + 2× pity
   let luck = luckMultiplier(u.arcuesUnlocked, u.luckUntil, u.megaLuckUntil, autohuntOn);
   const lucky = eventBonus("luck"); if (lucky > 1) luck *= lucky;
   // Pet-attribute team luck (above-ethereal pets) + enchantment team luck.
@@ -136,7 +144,7 @@ export async function cmdHunt(message: Message): Promise<void> {
   let pityTriggered = false;
 
   for (let i = 0; i < drops; i++) {
-    let a = rollWithRareRush(area, luck);
+    let a = rollWithRareRush(area, luck, isManual);
     const currentPity = (u.pity ?? 0) + caught.filter((c) => c.rarity !== "legendary").length;
     // Pity Pro gamepass halves the pity threshold (from 200 → 100).
     const pityCap = u.gamepasses["gp_pity_pro"] ? Math.floor(PITY_THRESHOLD / 2) : PITY_THRESHOLD;
@@ -179,7 +187,7 @@ export async function cmdHunt(message: Message): Promise<void> {
         x.zoo[a.id] = (x.zoo[a.id] ?? 0) + 1;
       }
       if (a.rarity === "legendary") x.pity = 0;
-      else x.pity = (x.pity ?? 0) + 1;
+      else x.pity = (x.pity ?? 0) + (isManual ? 2 : 1);
       if (a.id === "arcues" && !x.arcuesUnlocked) { x.arcuesUnlocked = true; arcuesJustUnlocked = true; }
       // Persist mutation if one rolled this hunt (only if kept in zoo)
       const mid = caughtMutations[idx]?.mutation;
@@ -224,7 +232,9 @@ export async function cmdHunt(message: Message): Promise<void> {
     if (pityTriggered)     flags.push("🎯 **PITY!**");
     if (autoSoldFlags[0])  flags.push("💸 *auto-sold*");
     const flagStr = flags.length ? `  ${flags.join("  ")}` : "";
-    const line1 = `🏹 ${areaTag} **${message.author.username}** caught **${a.emoji} ${a.name}** \`[ ${a.rarity.toUpperCase()} ]\`${mTag}${flagStr}`;
+    const ultraBanner = (isManual && ULTRA_RARE_RARITIES.has(a.rarity))
+      ? "🌌 **[ULTRA RARE CATCH]** 🌌\n" : "";
+    const line1 = `${ultraBanner}🏹 ${areaTag} **${message.author.username}** caught **${a.emoji} ${a.name}** \`[ ${a.rarity.toUpperCase()} ]\`${mTag}${flagStr}`;
     const line2 = `❤️ \`${a.hp}\` ⚔️ \`${a.atk}\` 🛡️ \`${a.def}\` 🔮 \`${a.mag}\` • 💰 \`${a.sellPrice.toLocaleString()}\` cwn • ✨ \`${a.essence}\` ess`;
     const parts = [line1, line2];
     if (notes.length) parts.push(notes.join("\n"));
@@ -235,7 +245,11 @@ export async function cmdHunt(message: Message): Promise<void> {
 
   // Multi catch → compact text list.
   if (pityTriggered) notes.unshift(`${emoji("pity")} **PITY!** Guaranteed legendary!`);
-  const catchLines: string[] = [`✨ **MULTI CATCH ×${caught.length}** ${areaTag}`];
+  const hasUltraInMulti = isManual && caught.some((a) => ULTRA_RARE_RARITIES.has(a.rarity));
+  const multiHeader = hasUltraInMulti
+    ? `🌌 **[ULTRA RARE CATCH]** 🌌\n✨ **MULTI CATCH ×${caught.length}** ${areaTag}`
+    : `✨ **MULTI CATCH ×${caught.length}** ${areaTag}`;
+  const catchLines: string[] = [multiHeader];
   for (let i = 0; i < caught.length; i++) {
     const a = caught[i];
     const m = caughtMutations[i]?.mutation;

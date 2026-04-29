@@ -25,12 +25,23 @@ export interface Animal {
   signatureSkill?: string;  // skill id from SIGNATURE_SKILLS
 }
 
-// Hunt rarity weights. New top tiers are intentionally vanishingly rare.
+// Hunt rarity weights — used by autohunt and as the baseline roll table.
 export const RARITY_WEIGHTS: Record<Rarity, number> = {
   common: 55, uncommon: 25, rare: 12, epic: 5, mythic: 2.5, legendary: 0.5,
   ethereal: 0.05, divine: 0.01, omni: 0.005, glitched: 0,
   inferno: 0.008, cosmic: 0.006, void: 0.002, secret: 0,
   supreme: 0, transcendent: 0.0008,
+};
+
+// Manual-hunt weights — roughly 2× luckier overall.
+// Rates for each tier that is "above mythic":
+//   ethereal/inferno ≈ 1%  |  cosmic/void ≈ 0.5%/0.2%  |  transcendent/supreme ≈ 0.05%
+// Common/uncommon are squeezed to make room.  Autohunt always uses RARITY_WEIGHTS.
+export const MANUAL_RARITY_WEIGHTS: Record<Rarity, number> = {
+  common: 45, uncommon: 21, rare: 12, epic: 5, mythic: 5.0, legendary: 0.5,
+  ethereal: 1.0, divine: 0.2, omni: 0.05, glitched: 0,
+  inferno: 1.0, cosmic: 0.5, void: 0.2, secret: 0,
+  supreme: 0.05, transcendent: 0.05,
 };
 
 export const RARITY_ORDER: Rarity[] = [
@@ -595,6 +606,121 @@ function buildFusionPets(): Animal[] {
 }
 export const FUSION_PETS: Animal[] = buildFusionPets();
 
+// ─── God-Tier Spawn Injection — 5 new huntable high-rarity pets per area ──────
+// Manual hunters use MANUAL_RARITY_WEIGHTS which give non-zero rates for
+// transcendent (≈0.05%) and supreme (≈0.05%) rarities.
+const HIGH_RARITY_INJECTIONS: Animal[] = [
+  // ── Default / Forest (3 Transcendent + 2 Supreme) ──────────────────────────
+  { id: "forest_seraph_guardian", name: "Forest Seraph Guardian", emoji: "🌿👼",
+    rarity: "transcendent", area: "default",
+    hp: 1200, atk: 180, def: 135, mag: 200, sellPrice: 1_600_000, essence: 8000,
+    signatureSkill: "blessed_aura" },
+  { id: "ancient_world_spirit",   name: "Ancient World Spirit",   emoji: "🌲✨",
+    rarity: "transcendent", area: "default",
+    hp: 1150, atk: 172, def: 130, mag: 190, sellPrice: 1_500_000, essence: 7500,
+    signatureSkill: "petrify" },
+  { id: "eden_phoenix",           name: "Eden Phoenix",           emoji: "🌿🔥🦅",
+    rarity: "transcendent", area: "default",
+    hp: 1300, atk: 185, def: 140, mag: 195, sellPrice: 1_700_000, essence: 8500,
+    signatureSkill: "fire_breath" },
+  { id: "world_tree_colossus",    name: "World Tree Colossus",    emoji: "🌳👑",
+    rarity: "supreme", area: "default",
+    hp: 1800, atk: 250, def: 180, mag: 210, sellPrice: 1_100_000, essence: 5200,
+    signatureSkill: "iron_wall" },
+  { id: "primordial_titan",       name: "Primordial Titan",       emoji: "🐾🌌",
+    rarity: "supreme", area: "default",
+    hp: 1900, atk: 260, def: 190, mag: 200, sellPrice: 1_200_000, essence: 5600,
+    signatureSkill: "vampiric_bite" },
+
+  // ── Volcanic (1 Inferno + 1 Cosmic + 2 Transcendent + 1 Supreme) ───────────
+  { id: "inferno_drake",          name: "Inferno Drake",          emoji: "🔥🐉",
+    rarity: "inferno", area: "volcanic",
+    hp: 980, atk: 155, def: 95, mag: 160, sellPrice: 400_000, essence: 2200,
+    signatureSkill: "fire_breath" },
+  { id: "magma_core_golem",       name: "Magma Core Golem",       emoji: "🌋🗿",
+    rarity: "cosmic", area: "volcanic",
+    hp: 1200, atk: 175, def: 125, mag: 170, sellPrice: 750_000, essence: 3800,
+    signatureSkill: "iron_wall" },
+  { id: "pyrogenesis_eternal",    name: "Pyrogenesis Eternal",    emoji: "🔥✨",
+    rarity: "transcendent", area: "volcanic",
+    hp: 1250, atk: 182, def: 138, mag: 192, sellPrice: 1_750_000, essence: 8800,
+    signatureSkill: "fire_breath" },
+  { id: "inferno_transcendent",   name: "Inferno Transcendent",   emoji: "🌋🪽",
+    rarity: "transcendent", area: "volcanic",
+    hp: 1180, atk: 178, def: 132, mag: 185, sellPrice: 1_650_000, essence: 8200,
+    signatureSkill: "petrify" },
+  { id: "magma_sovereign",        name: "Magma Sovereign",        emoji: "🔥👑",
+    rarity: "supreme", area: "volcanic",
+    hp: 1850, atk: 255, def: 185, mag: 205, sellPrice: 1_150_000, essence: 5400,
+    signatureSkill: "fire_breath" },
+
+  // ── Space (1 Cosmic + 1 Void + 2 Transcendent + 1 Supreme) ─────────────────
+  { id: "star_eater_ray",         name: "Star-Eater Ray",         emoji: "⭐🌌",
+    rarity: "cosmic", area: "space",
+    hp: 1180, atk: 175, def: 118, mag: 172, sellPrice: 750_000, essence: 3700,
+    signatureSkill: "piercing_strike" },
+  { id: "nebula_hydra",           name: "Nebula Hydra",           emoji: "🌀🐍",
+    rarity: "void", area: "space",
+    hp: 1550, atk: 228, def: 158, mag: 228, sellPrice: 2_600_000, essence: 12500,
+    signatureSkill: "flurry" },
+  { id: "galactic_transcendent",  name: "Galactic Transcendent",  emoji: "🌌✨",
+    rarity: "transcendent", area: "space",
+    hp: 1220, atk: 183, def: 135, mag: 200, sellPrice: 1_800_000, essence: 9000,
+    signatureSkill: "blessed_aura" },
+  { id: "stellar_ascendant",      name: "Stellar Ascendant",      emoji: "⭐🪽",
+    rarity: "transcendent", area: "space",
+    hp: 1190, atk: 177, def: 130, mag: 193, sellPrice: 1_700_000, essence: 8500,
+    signatureSkill: "petrify" },
+  { id: "universal_sovereign",    name: "Universal Sovereign",    emoji: "🌌👑",
+    rarity: "supreme", area: "space",
+    hp: 1900, atk: 260, def: 190, mag: 220, sellPrice: 1_250_000, essence: 5800,
+    signatureSkill: "piercing_strike" },
+
+  // ── Heaven (2 Transcendent + 3 Supreme) ─────────────────────────────────────
+  { id: "seraphim_falcon",        name: "Seraphim Falcon",        emoji: "🦅🪽",
+    rarity: "transcendent", area: "heaven",
+    hp: 1250, atk: 185, def: 138, mag: 205, sellPrice: 1_850_000, essence: 9200,
+    signatureSkill: "blessed_aura" },
+  { id: "heavens_absolute",       name: "Heaven's Absolute",      emoji: "🌅✨",
+    rarity: "transcendent", area: "heaven",
+    hp: 1200, atk: 180, def: 135, mag: 200, sellPrice: 1_800_000, essence: 9000,
+    signatureSkill: "petrify" },
+  { id: "eternal_justiciar",      name: "Eternal Justiciar",      emoji: "⚖️👑",
+    rarity: "supreme", area: "heaven",
+    hp: 1920, atk: 265, def: 195, mag: 215, sellPrice: 1_300_000, essence: 6000,
+    signatureSkill: "iron_wall" },
+  { id: "celestial_absolute",     name: "Celestial Absolute",     emoji: "🌟👑",
+    rarity: "supreme", area: "heaven",
+    hp: 1950, atk: 270, def: 200, mag: 220, sellPrice: 1_350_000, essence: 6200,
+    signatureSkill: "blessed_aura" },
+  { id: "apex_angel",             name: "Apex Angel",             emoji: "🪽👑",
+    rarity: "supreme", area: "heaven",
+    hp: 2000, atk: 275, def: 205, mag: 225, sellPrice: 1_400_000, essence: 6500,
+    signatureSkill: "fire_breath" },
+
+  // ── Unknown Void (2 Transcendent + 1 Void + 2 Supreme) ─────────────────────
+  { id: "null_transcendent",      name: "Null Transcendent",      emoji: "🕳️✨",
+    rarity: "transcendent", area: "void_unknown",
+    hp: 1300, atk: 190, def: 145, mag: 210, sellPrice: 2_000_000, essence: 10000,
+    signatureSkill: "petrify" },
+  { id: "oblivion_avatar",        name: "Oblivion Avatar",        emoji: "◾🪽",
+    rarity: "transcendent", area: "void_unknown",
+    hp: 1250, atk: 185, def: 140, mag: 205, sellPrice: 1_950_000, essence: 9500,
+    signatureSkill: "vampiric_bite" },
+  { id: "reality_glitch",         name: "Reality Glitch",         emoji: "🌀👁️",
+    rarity: "void", area: "void_unknown",
+    hp: 1600, atk: 235, def: 160, mag: 240, sellPrice: 2_800_000, essence: 13500,
+    signatureSkill: "flurry" },
+  { id: "void_singularity",       name: "Void Singularity",       emoji: "🕳️🌀",
+    rarity: "supreme", area: "void_unknown",
+    hp: 2100, atk: 280, def: 200, mag: 250, sellPrice: 1_600_000, essence: 7500,
+    signatureSkill: "petrify" },
+  { id: "eternal_nothingness",    name: "Eternal Nothingness",    emoji: "🌑👑",
+    rarity: "supreme", area: "void_unknown",
+    hp: 2050, atk: 278, def: 202, mag: 245, sellPrice: 1_700_000, essence: 8000,
+    signatureSkill: "vampiric_bite" },
+];
+
 export const ANIMALS: Animal[] = [
   ...tagArea(DEFAULT_ANIMALS, "default"),
   ...tagArea(VOLCANIC_ANIMALS, "volcanic"),
@@ -606,6 +732,7 @@ export const ANIMALS: Animal[] = [
   ...SPECIAL_ANIMALS,
   ...BOSS_PETS,
   ...FUSION_PETS,
+  ...HIGH_RARITY_INJECTIONS,
 ];
 
 export const ANIMAL_BY_ID: Record<string, Animal> = Object.fromEntries(ANIMALS.map((a) => [a.id, a]));
@@ -680,15 +807,19 @@ export const AREA_DEX_TOTALS: AreaDexCount = {
 };
 
 // ─── Roll helpers ─────────────────────────────────────────────────────────────
-function pickRarityFromPool(pool: Animal[], luck: number): Rarity {
+function pickRarityFromPool(
+  pool: Animal[],
+  luck: number,
+  table: Record<Rarity, number> = RARITY_WEIGHTS,
+): Rarity {
   const present = new Set<Rarity>(pool.map((a) => a.rarity));
   // Apply luck multiplier to all rarities above "rare"
   const rareTiers = new Set<Rarity>(["rare", "epic", "mythic", "legendary", "ethereal", "divine", "omni", "inferno", "cosmic", "void", "supreme", "transcendent"]);
   const weights: Array<[Rarity, number]> = [];
-  for (const r of Object.keys(RARITY_WEIGHTS) as Rarity[]) {
+  for (const r of Object.keys(table) as Rarity[]) {
     if (!present.has(r)) continue;
-    if (RARITY_WEIGHTS[r] === 0) continue;
-    const w = rareTiers.has(r) ? RARITY_WEIGHTS[r] * luck : RARITY_WEIGHTS[r];
+    if (table[r] === 0) continue;
+    const w = rareTiers.has(r) ? table[r] * luck : table[r];
     weights.push([r, w]);
   }
   const total = weights.reduce((s, [, w]) => s + w, 0);
@@ -704,7 +835,7 @@ export const SECRET_INTERNET_CHANCE = 1.0e-7;
 // 0.000003% per roll — Dino Leo, the rarest secret of all
 export const SECRET_DINO_LEO_CHANCE = 3.0e-8;
 
-export function rollAnimalInArea(area: HuntArea, luck = 1): Animal {
+export function rollAnimalInArea(area: HuntArea, luck = 1, manual = false): Animal {
   // Dino Leo (rarest secret) — any area
   if (Math.random() < SECRET_DINO_LEO_CHANCE * luck) {
     const d = ANIMAL_BY_ID["dino_leo"];
@@ -721,8 +852,9 @@ export function rollAnimalInArea(area: HuntArea, luck = 1): Animal {
     if (peps) return peps;
   }
   const pool = poolForArea(area);
+  const table = manual ? MANUAL_RARITY_WEIGHTS : RARITY_WEIGHTS;
   for (let attempt = 0; attempt < 8; attempt++) {
-    const r = pickRarityFromPool(pool, luck);
+    const r = pickRarityFromPool(pool, luck, table);
     const sub = pool.filter((a) => a.rarity === r);
     if (sub.length) return sub[Math.floor(Math.random() * sub.length)];
   }
