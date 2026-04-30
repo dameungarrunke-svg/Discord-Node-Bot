@@ -3,11 +3,11 @@
 // Stats are roughly 2× of Area-5 equivalents; HP scales from 2,000 (epic) up
 // to ~15,000 (secret) so wild encounters here read as "boss-class" fights.
 //
-// Rarity spread (totals to 100):
+// Rarity spread (totals to 101):
 //   Epic:        25      Legendary:   15
 //   Mythic:      30      Ethereal:    10
 //   Inferno:     10      Cosmic:       4
-//   Void:         4      Secret:       2  (Void Sovereign, The Architect's Mistake)
+//   Void:         4      Secret:       3  (Void Sovereign, The Architect's Mistake, Divine Dihraga)
 
 import type { Animal, Rarity } from "./data.js";
 
@@ -139,14 +139,15 @@ export const INFINITE_VOID_NATIVE_PETS: Animal[] = [
   p("iv_eldritch_overgod",   "Eldritch Overgod",      "🜏",   "void",    12000, 820, 680, 730, 2100000, 9200, "vampiric_bite"),
   p("iv_abyssal_genesis",    "Abyssal Genesis",       "⚫",   "void",    13000, 790, 720, 700, 2200000, 9500, "iron_wall"),
 
-  // ──────────────── SECRET (2) — HP 14,000–15,000 / ATK 1,000–1,200 ──────────
+  // ──────────────── SECRET (3) — HP 13,800–15,000 / ATK 1,000–1,200 ──────────
+  p("iv_divine_dihraga",     "Divine Dihraga",        "🪬",   "secret",  13800, 1050,  880, 920, 4400000, 18000, "blessed_aura"),
   p("iv_void_sovereign",     "Void Sovereign",        "🜏",   "secret",  14500, 1100,  900, 950, 6000000, 21000, "fire_breath"),
   p("iv_architects_mistake", "The Architect's Mistake","🌀",  "secret",  15000, 1200,  950, 980, 8000000, 25000, "vampiric_bite"),
 ];
 
 // Sanity check at module load — fail fast if a future edit breaks the count.
-if (INFINITE_VOID_NATIVE_PETS.length !== 100) {
+if (INFINITE_VOID_NATIVE_PETS.length !== 101) {
   throw new Error(
-    `INFINITE_VOID_NATIVE_PETS must contain exactly 100 pets (got ${INFINITE_VOID_NATIVE_PETS.length}).`
+    `INFINITE_VOID_NATIVE_PETS must contain exactly 101 pets (got ${INFINITE_VOID_NATIVE_PETS.length}).`
   );
 }
