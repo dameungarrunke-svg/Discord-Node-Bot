@@ -18,6 +18,7 @@ import { emoji } from "./emojis.js";
 import { huntCooldownPenaltyMs, huntLuckMultiplier, sacrificeAreaMultiplier } from "./areaTraits.js";
 import { onHuntForTeam } from "./sentientPets.js";
 import { hasRelic } from "./forge.js";
+import { consumeVoidLureIfPresent } from "./voidshop.js";
 import { teamHasCorruptedPet, corruptedTag } from "./corrupt.js";
 import {
   baseEmbed, baseEmbedFor, replyEmbed, errorEmbed, warnEmbed, successEmbed, val,
@@ -148,6 +149,10 @@ export async function cmdHunt(message: Message): Promise<void> {
   if (u.gamepasses["gp_triple_drop"] && Math.random() < 0.25) drops += 1;
   // VOID CORRUPTIONS — Chaos Shard relic: +10% chance to drop a bonus animal.
   if (hasRelic(message.author.id, "chaos_shard") && Math.random() < 0.10) drops += 1;
+  // VOID SHOP — Void Lure: consumed on the next Infinite-Void hunt for +2 drops.
+  if (area === "infinite_void" && consumeVoidLureIfPresent(message.author.id)) {
+    drops += 2;
+  }
   const autohuntOn = isAutohuntActive(message.author.id);
   const isManual = !autohuntOn; // manual hunters get buffed rarity weights + 2× pity
   let luck = luckMultiplier(u.arcuesUnlocked, u.luckUntil, u.megaLuckUntil, autohuntOn);
@@ -213,6 +218,7 @@ export async function cmdHunt(message: Message): Promise<void> {
       if (area === "space"        && !x.spaceDex.includes(a.id))       x.spaceDex.push(a.id);
       if (area === "heaven"       && !x.heavenDex.includes(a.id))      x.heavenDex.push(a.id);
       if (area === "void_unknown" && !x.voidUnknownDex.includes(a.id)) x.voidUnknownDex.push(a.id);
+      if (area === "infinite_void" && !x.infiniteVoidDex.includes(a.id)) x.infiniteVoidDex.push(a.id);
       // Auto-sell skips zoo storage entirely.
       if (!autoSoldFlags[idx]) {
         x.zoo[a.id] = (x.zoo[a.id] ?? 0) + 1;

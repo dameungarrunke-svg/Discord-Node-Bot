@@ -66,6 +66,8 @@ export interface UserData {
   spaceDex: string[];
   heavenDex: string[];
   voidUnknownDex: string[];
+  // VOID CORRUPTIONS (v6.2) — Area 6 native dex.
+  infiniteVoidDex: string[];
   fishDex: string[];
   // Mining + crafting
   hasPickaxe: boolean;
@@ -131,6 +133,8 @@ export interface UserData {
     isSingularity?: boolean;
     corruptedAt: number;
   }>;
+  // VOID SHOP (v6.2) — one-shot consumables. Key is VoidShopItemId in voidshop.ts.
+  voidShopItems: Record<string, number>;
 }
 
 export interface MarketListingRecord {
@@ -174,6 +178,7 @@ function defaultUser(): UserData {
     spaceDex: [],
     heavenDex: [],
     voidUnknownDex: [],
+    infiniteVoidDex: [],
     fishDex: [],
     hasPickaxe: false,
     pickaxeTier: 0,
@@ -218,6 +223,7 @@ function defaultUser(): UserData {
     relics: {},
     equippedRelic: null,
     corrupted: {},
+    voidShopItems: {},
   };
 }
 

@@ -1,3 +1,7 @@
+// NOTE: voidPets.ts imports types from this file (type-only — erased at
+// runtime), so this value-level import does not introduce a runtime cycle.
+import { INFINITE_VOID_NATIVE_PETS } from "./voidPets.js";
+
 export type Rarity =
   | "common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary"
   | "ethereal" | "divine" | "omni" | "glitched"
@@ -735,6 +739,8 @@ export const ANIMALS: Animal[] = [
   ...BOSS_PETS,
   ...FUSION_PETS,
   ...HIGH_RARITY_INJECTIONS,
+  // ─── VOID CORRUPTIONS (v6.2) — 100 native Infinite-Void pets ───────────────
+  ...INFINITE_VOID_NATIVE_PETS,
 ];
 
 export const ANIMAL_BY_ID: Record<string, Animal> = Object.fromEntries(ANIMALS.map((a) => [a.id, a]));
@@ -748,17 +754,10 @@ export const VOID_UNKNOWN_HUNT_POOL = ANIMALS.filter((a) => a.huntable !== false
 export const FISH_POOL = ANIMALS.filter((a) => a.aquatic === true);
 
 // ─── VOID CORRUPTIONS — Infinite Void (Area 6) ───────────────────────────────
-// No new animals; the void echoes existing pets back at you. Only EPIC-or-
-// higher rarities spawn here. Built from every prior area's huntable pool.
-const INFINITE_VOID_RARITY_FLOOR: Set<Rarity> = new Set<Rarity>([
-  "epic", "mythic", "legendary", "ethereal", "divine", "omni",
-  "glitched", "inferno", "cosmic", "void", "supreme", "transcendent", "secret",
-]);
+// 100 native EPIC-or-higher pets. The hunt pool is the natives ONLY — echoes
+// from prior areas don't drop here (kept the dex count clean and verifiable).
 export const INFINITE_VOID_HUNT_POOL = ANIMALS.filter((a) =>
-  a.huntable !== false && !a.aquatic && !a.eventOnly &&
-  (a.area === "default" || a.area === "volcanic" || a.area === "space" ||
-   a.area === "heaven"  || a.area === "void_unknown") &&
-  INFINITE_VOID_RARITY_FLOOR.has(a.rarity)
+  a.huntable !== false && !a.aquatic && !a.eventOnly && a.area === "infinite_void"
 );
 
 export function poolForArea(area: HuntArea): Animal[] {
@@ -832,8 +831,8 @@ export const AREA_DEX_TOTALS: AreaDexCount = {
   space:         SPACE_HUNT_POOL.length,
   heaven:        HEAVEN_HUNT_POOL.length,
   void_unknown:  VOID_UNKNOWN_HUNT_POOL.length,
-  // Infinite Void shares creatures with prior areas — no separate dex pool.
-  infinite_void: 0,
+  // Infinite Void has its own dex of 100 native EPIC+ pets.
+  infinite_void: INFINITE_VOID_HUNT_POOL.length,
 };
 
 // ─── Roll helpers ─────────────────────────────────────────────────────────────

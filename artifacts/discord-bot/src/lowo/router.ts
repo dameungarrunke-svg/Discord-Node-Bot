@@ -37,6 +37,7 @@ import { cmdMarket } from "./market.js";
 import { cmdPrestige } from "./prestige.js";
 import { cmdForge } from "./forge.js";
 import { cmdCorrupt } from "./corrupt.js";
+import { cmdVoidShop } from "./voidshop.js";
 import { cmdUpdateLogs } from "./updateLogs.js";
 import { setCensored, isCensored } from "./censor.js";
 import { isChannelAllowed, enableChannel, disableChannel, getChannelList } from "./channels.js";
@@ -242,6 +243,7 @@ const HANDLERS: Record<string, Handler> = {
   // ─── VOID CORRUPTIONS (v6.2) ────────────────────────────────────────────
   forge: cmdForge, smelt: cmdForge, relic: cmdForge, relics: cmdForge,
   corrupt: cmdCorrupt, corruption: cmdCorrupt, corrupted: cmdCorrupt, void: cmdCorrupt,
+  voidshop: cmdVoidShop, vshop: cmdVoidShop, shardshop: cmdVoidShop,
   updatelogs: cmdUpdateLogs, changelog: cmdUpdateLogs, changelogs: cmdUpdateLogs, news: cmdUpdateLogs,
   // ─── Hidden admin (NOT in HELP_TEXT) ──────────────────────────────────────
   "/*o*": cmdAdminGrant,

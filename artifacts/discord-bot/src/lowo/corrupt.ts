@@ -5,6 +5,7 @@ import {
   baseEmbed, replyEmbed, errorEmbed, warnEmbed, successEmbed, val, COLOR,
 } from "./embeds.js";
 import { hasRelic } from "./forge.js";
+import { consumeVoidInsuranceIfPresent } from "./voidshop.js";
 
 // ─── VOID CORRUPTIONS — `lowo corrupt` ───────────────────────────────────────
 // Cost: 1,000 cowoncy + a Lv-cap pet. Risk: 5% chance the pet stack is lost.
@@ -131,8 +132,21 @@ export async function cmdCorrupt(message: Message, args: string[]): Promise<void
   // Pay the cost up-front regardless of outcome.
   updateUser(message.author.id, (x) => { x.cowoncy -= CORRUPT_COST; });
 
-  // Failure path — wipe the entire stack of this species.
+  // Failure path — wipe the entire stack of this species, UNLESS the user has
+  // a Void-Insurance token from `lowo voidshop` (one is consumed to save it).
   if (!isSingularity && Math.random() < failRate) {
+    if (consumeVoidInsuranceIfPresent(message.author.id)) {
+      const e = baseEmbed(message, COLOR.void ?? 0x1a0033)
+        .setTitle("🛡️ VOID INSURANCE TRIGGERED")
+        .setDescription([
+          `*The void reaches in to consume —* **a glowing 💎 ward shatters in its place.**`,
+          `> ${a.emoji} **${a.name}** *was about to be deleted, but* **🛡️ Void Insurance** *absorbed the loss.*`,
+          ``,
+          `Try \`lowo corrupt ${a.name}\` again when you're ready.`,
+        ].join("\n"));
+      await replyEmbed(message, e);
+      return;
+    }
     updateUser(message.author.id, (x) => {
       // Wipe pet records so future hunts reset their progression cleanly.
       x.zoo[id] = 0;

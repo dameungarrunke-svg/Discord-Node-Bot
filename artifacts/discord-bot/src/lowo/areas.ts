@@ -3,6 +3,7 @@ import { getUser, updateUser, type UserData } from "./storage.js";
 import {
   AREA_DEFS, AREA_BY_ID, AREA_DEX_TOTALS,
   HUNT_POOL, VOLCANIC_HUNT_POOL, SPACE_HUNT_POOL, HEAVEN_HUNT_POOL, VOID_UNKNOWN_HUNT_POOL,
+  INFINITE_VOID_HUNT_POOL,
   type HuntArea, type AreaDexCount,
 } from "./data.js";
 import { emoji, progressBar } from "./emojis.js";
@@ -14,20 +15,23 @@ function dexCounts(u: UserData): AreaDexCount {
   const spaceIds   = new Set(SPACE_HUNT_POOL.map((a) => a.id));
   const heavenIds  = new Set(HEAVEN_HUNT_POOL.map((a) => a.id));
   const voidIds    = new Set(VOID_UNKNOWN_HUNT_POOL.map((a) => a.id));
-  let d = 0, v = 0, s = 0, h = 0, vu = 0;
+  const ivIds      = new Set(INFINITE_VOID_HUNT_POOL.map((a) => a.id));
+  let d = 0, v = 0, s = 0, h = 0, vu = 0, iv = 0;
   for (const id of u.dex) {
     if (defaultIds.has(id)) d++;
     if (volcIds.has(id))    v++;
     if (spaceIds.has(id))   s++;
     if (heavenIds.has(id))  h++;
     if (voidIds.has(id))    vu++;
+    if (ivIds.has(id))      iv++;
   }
-  for (const id of u.volcanicDex)    if (volcIds.has(id)   && !u.dex.includes(id)) v++;
-  for (const id of u.spaceDex)       if (spaceIds.has(id)  && !u.dex.includes(id)) s++;
-  for (const id of u.heavenDex)      if (heavenIds.has(id) && !u.dex.includes(id)) h++;
-  for (const id of u.voidUnknownDex) if (voidIds.has(id)   && !u.dex.includes(id)) vu++;
-  // Infinite Void shares creatures with the prior areas; no own dex.
-  return { default: d, volcanic: v, space: s, heaven: h, void_unknown: vu, infinite_void: 0 };
+  for (const id of u.volcanicDex)        if (volcIds.has(id)   && !u.dex.includes(id)) v++;
+  for (const id of u.spaceDex)           if (spaceIds.has(id)  && !u.dex.includes(id)) s++;
+  for (const id of u.heavenDex)          if (heavenIds.has(id) && !u.dex.includes(id)) h++;
+  for (const id of u.voidUnknownDex)     if (voidIds.has(id)   && !u.dex.includes(id)) vu++;
+  for (const id of (u.infiniteVoidDex ?? []))
+    if (ivIds.has(id) && !u.dex.includes(id)) iv++;
+  return { default: d, volcanic: v, space: s, heaven: h, void_unknown: vu, infinite_void: iv };
 }
 
 /** Returns true if `area` is now unlocked. Mutates `unlockedAreas` if needed. */
@@ -70,7 +74,11 @@ export async function cmdArea(message: Message, args: string[]): Promise<void> {
       const cur = counts[def.id];
       const bar = progressBar(cur, total, 12);
       const lock = unlocked ? "✅" : "🔒";
-      lines.push(`${lock} ${def.emoji} **${def.name}** — \`${bar}\` ${cur}/${total} dex`);
+      // VOID CORRUPTIONS (v6.2) — Area 6 shows its total population explicitly.
+      const populationSuffix = def.id === "infinite_void"
+        ? ` *(${total} Pets Discovered)*`
+        : "";
+      lines.push(`${lock} ${def.emoji} **${def.name}**${populationSuffix} — \`${bar}\` ${cur}/${total} dex`);
       lines.push(`  *${def.description}*`);
       const traits = AREA_TRAITS[def.id];
       if (traits && traits.length) for (const t of traits) lines.push(`  ${t}`);
