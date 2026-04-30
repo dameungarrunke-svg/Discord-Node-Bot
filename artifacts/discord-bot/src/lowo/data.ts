@@ -78,6 +78,7 @@ export const SIGNATURE_SKILLS: Record<string, SignatureSkill> = {
   cinder_burn:    { id: "cinder_burn",    name: "Cinder Burn",    emoji: "🌶️", description: "Adds 5% of victim's max HP as bonus damage.",  type: "burn",      power: 0.05 },
   blessed_aura:   { id: "blessed_aura",   name: "Blessed Aura",   emoji: "✨", description: "Heals the lowest-HP teammate for 15% max HP.", type: "heal",      power: 0.15 },
   petrify:        { id: "petrify",        name: "Petrify",        emoji: "🪨", description: "Defender skips its next attack.",              type: "stun",      power: 1.00 },
+  dih_crusher:    { id: "dih_crusher",    name: "Dih Crusher",    emoji: "🪬", description: "Divine Dihraga's exclusive: damage ×3 this hit.", type: "burst",     power: 3.00 },
 };
 
 // ─── Animals ──────────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ import type { Animal, Rarity } from "./data.js";
 
 type Sig =
   | "vampiric_bite" | "iron_wall" | "fire_breath" | "piercing_strike"
-  | "flurry" | "cinder_burn" | "blessed_aura" | "petrify";
+  | "flurry" | "cinder_burn" | "blessed_aura" | "petrify" | "dih_crusher";
 
 function p(
   id: string, name: string, emoji: string, rarity: Rarity,
@@ -140,7 +140,7 @@ export const INFINITE_VOID_NATIVE_PETS: Animal[] = [
   p("iv_abyssal_genesis",    "Abyssal Genesis",       "⚫",   "void",    13000, 790, 720, 700, 2200000, 9500, "iron_wall"),
 
   // ──────────────── SECRET (3) — HP 13,800–15,000 / ATK 1,000–1,200 ──────────
-  p("iv_divine_dihraga",     "Divine Dihraga",        "🪬",   "secret",  13800, 1050,  880, 920, 4400000, 18000, "blessed_aura"),
+  p("iv_divine_dihraga",     "Divine Dihraga",        "🪬",   "secret",  13800, 1050,  880, 920, 4400000, 18000, "dih_crusher"),
   p("iv_void_sovereign",     "Void Sovereign",        "🜏",   "secret",  14500, 1100,  900, 950, 6000000, 21000, "fire_breath"),
   p("iv_architects_mistake", "The Architect's Mistake","🌀",  "secret",  15000, 1200,  950, 980, 8000000, 25000, "vampiric_bite"),
 ];
