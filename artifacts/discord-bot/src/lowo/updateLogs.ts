@@ -14,10 +14,46 @@ export interface UpdateEntry {
 
 // The newest version we ship in code that is still "pending" until an admin
 // types `lowo update`. Updated whenever we cut a new release.
-export const LATEST_PENDING_VERSION = "v6.1";
+export const LATEST_PENDING_VERSION = "v6.2";
 
 // Newest first.
 export const UPDATE_LOGS: UpdateEntry[] = [
+  {
+    version: "v6.2",
+    date: "2026-04-30",
+    title: "👾 LOWO: VOID CORRUPTIONS",
+    pending: true,
+    highlights: [
+      "**🜏 THE VOID FORGE** — turn unwanted pets into raw 💎 **Void Shards**, then spend Shards + ✨ essence on equippable **Relics** that bend the world to your will.",
+      "  • `lowo forge` — open the forge menu *(aliases `relic`, `relics`)*.",
+      "  • `lowo forge smelt <pet> [count|all]` — burn pets into 💎 Shards. Rarer pets = more shards (Common 1 → Transcendent 520 → Secret 999).",
+      "  • `lowo forge list` — full relic catalog & costs. `lowo forge owned` — your collection.",
+      "  • `lowo forge craft <relic id>` — pay 💎 + ✨ to forge a relic.",
+      "  • `lowo forge equip <relic id>` / `lowo forge unequip` — only **ONE** relic active at a time.",
+      "**📜 RELICS** — pick your global buff:",
+      "  • 🧭 **The Cursed Compass** — adds a hidden **+0.05% chance per hunt** to find a 🤫 SECRET pet.",
+      "  • 👁️ **The Void Eye** — permanent **+10% Luck** on every hunt (stacks with potions / Arcues).",
+      "  • 🌑 **Null Charm** — all pet sales return **+15% cowoncy**.",
+      "  • 🪙 **Glitch Token** — sacrifices yield **+25% essence**.",
+      "  • 💠 **Chaos Shard** — every hunt has a **+10% chance** to drop one bonus animal.",
+      "  • ⚫ **Singularity Core** — lowers the corruption deletion risk from **5% → 2%**.",
+      "  • ⚓ **Void Anchor** — catches in **The Infinite Void** grant **+25% bonus essence**.",
+      "**👾 PET CORRUPTION** — drag a max-level pet into the void.",
+      "  • `lowo corrupt <pet name>` — costs 💰 **1,000 cowoncy**. Each stat (HP/ATK/DEF/MAG) is rerolled to **1.0× — 3.0× of base**.",
+      "  • **Risk:** **5% chance** the pet stack is permanently lost. Equipping the **Singularity Core** drops that to **2%**.",
+      "  • Corrupted pets are tagged 👾 in `lowo zoo` and `lowo profile`.",
+      "  • `lowo corrupt` (no args) lists every pet you've corrupted.",
+      "  • 👑 **THE SINGULARITY** — corrupting **God Rithwik** creates *The Singularity*: **locked 3× on every stat**, no risk, ever.",
+      "**🌑 NEW AREA — THE INFINITE VOID** *(Stage 6)*",
+      "  • Unlock by completing **100% of every prior area's dex** *(Forest → Unknown Void)*.",
+      "  • Every catch is **EPIC rarity or higher** — no commons, ever.",
+      "  • You can only hunt here with **at least one 👾 corrupted pet on your team** — standard pets are too weak to enter.",
+      "  • Pair with the **Void Anchor** relic for **+25% essence** on every catch.",
+      "**🛒 PROFILE & ZOO**",
+      "  • Corrupted pets show **👾** (or **⚫** for The Singularity) next to their name in `lowo zoo`.",
+      "  • Pet stacks vanishing after a corruption fail also clean themselves out of your team automatically.",
+    ],
+  },
   {
     version: "v6.1",
     date: "2026-04-28",

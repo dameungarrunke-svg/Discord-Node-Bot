@@ -26,7 +26,8 @@ function dexCounts(u: UserData): AreaDexCount {
   for (const id of u.spaceDex)       if (spaceIds.has(id)  && !u.dex.includes(id)) s++;
   for (const id of u.heavenDex)      if (heavenIds.has(id) && !u.dex.includes(id)) h++;
   for (const id of u.voidUnknownDex) if (voidIds.has(id)   && !u.dex.includes(id)) vu++;
-  return { default: d, volcanic: v, space: s, heaven: h, void_unknown: vu };
+  // Infinite Void shares creatures with the prior areas; no own dex.
+  return { default: d, volcanic: v, space: s, heaven: h, void_unknown: vu, infinite_void: 0 };
 }
 
 /** Returns true if `area` is now unlocked. Mutates `unlockedAreas` if needed. */
@@ -88,9 +89,12 @@ export async function cmdArea(message: Message, args: string[]): Promise<void> {
     space: "space", cosmic: "space", galaxy: "space",
     heaven: "heaven", sky: "heaven", angel: "heaven", angels: "heaven",
     void: "void_unknown", void_unknown: "void_unknown", unknown: "void_unknown", uv: "void_unknown",
+    // VOID CORRUPTIONS — Area 6
+    infinite: "infinite_void", infinite_void: "infinite_void", infinitevoid: "infinite_void",
+    iv: "infinite_void", "6": "infinite_void", corruption: "infinite_void", corrupted: "infinite_void",
   };
   const target = aliasMap[sub];
-  if (!target) { await message.reply("Usage: `lowo area <forest|volcanic|space|heaven|void>`"); return; }
+  if (!target) { await message.reply("Usage: `lowo area <forest|volcanic|space|heaven|void|infinitevoid>`"); return; }
   if (!u.unlockedAreas.includes(target)) {
     const def = AREA_BY_ID[target];
     await message.reply(`🔒 **${def.name}** is locked.\n*${def.unlockHint}*`);

@@ -3,6 +3,7 @@ import { getUser, updateUser } from "./storage.js";
 import {
   ANIMALS, ANIMAL_BY_ID, RARITY_COLOR, RARITY_ORDER,
   HUNT_POOL, VOLCANIC_HUNT_POOL, SPACE_HUNT_POOL, HEAVEN_HUNT_POOL, VOID_UNKNOWN_HUNT_POOL,
+  INFINITE_VOID_HUNT_POOL,
   rollAnimalInArea, luckMultiplier, essenceArcuesMultiplier, PITY_THRESHOLD,
   AREA_BY_ID, teamAttributeLuck, type Animal, type Rarity, type HuntArea,
 } from "./data.js";
@@ -16,6 +17,8 @@ import { autoSellOne, getAutoSellRarities, resolveAreaArg } from "./autoSell.js"
 import { emoji } from "./emojis.js";
 import { huntCooldownPenaltyMs, huntLuckMultiplier, sacrificeAreaMultiplier } from "./areaTraits.js";
 import { onHuntForTeam } from "./sentientPets.js";
+import { hasRelic } from "./forge.js";
+import { teamHasCorruptedPet, corruptedTag } from "./corrupt.js";
 import {
   baseEmbed, baseEmbedFor, replyEmbed, errorEmbed, warnEmbed, successEmbed, val,
   COLOR, rarityColor, pagerButtons, ZOO_BUTTON_PREFIX,
@@ -23,6 +26,10 @@ import {
 import {
   EmbedBuilder, ActionRowBuilder, type ButtonBuilder, type User,
 } from "discord.js";
+
+// VOID CORRUPTIONS — Cursed Compass post-roll secret chance (+0.05% per hunt).
+const CURSED_COMPASS_SECRET_CHANCE = 0.0005;
+const SECRET_PET_IDS = ["pepsodent", "internet", "dino_leo", "god_rithwik"] as const;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NO_DAILY_STEAL_CHANCE = 0.01;
@@ -69,10 +76,11 @@ function parseAnimalAndCount(args: string[], owned: number | null): { id: string
 }
 
 function poolForArea(area: HuntArea): Animal[] {
-  if (area === "volcanic")     return VOLCANIC_HUNT_POOL;
-  if (area === "space")        return SPACE_HUNT_POOL;
-  if (area === "heaven")       return HEAVEN_HUNT_POOL;
-  if (area === "void_unknown") return VOID_UNKNOWN_HUNT_POOL;
+  if (area === "volcanic")      return VOLCANIC_HUNT_POOL;
+  if (area === "space")         return SPACE_HUNT_POOL;
+  if (area === "heaven")        return HEAVEN_HUNT_POOL;
+  if (area === "void_unknown")  return VOID_UNKNOWN_HUNT_POOL;
+  if (area === "infinite_void") return INFINITE_VOID_HUNT_POOL;
   return HUNT_POOL;
 }
 
@@ -125,9 +133,21 @@ export async function cmdHunt(message: Message): Promise<void> {
     area = "default";
     updateUser(message.author.id, (x) => { x.huntArea = "default"; });
   }
+  // VOID CORRUPTIONS (v6.2) — Infinite Void requires a corrupted pet on the team.
+  if (area === "infinite_void" && !teamHasCorruptedPet(u)) {
+    await replyEmbed(message, warnEmbed(message, "👾 The Void Rejects You",
+      [
+        "*The Infinite Void recoils — none of your pets are corrupted enough to enter.*",
+        "",
+        "Add at least one **👾 corrupted pet** to your team *(`lowo team add <pet>`)*, or run `lowo corrupt <pet>` first.",
+      ].join("\n")));
+    return;
+  }
   let drops = eventBonus("hunt") > 1 ? Math.round(eventBonus("hunt")) : 1;
   // Triple Drop gamepass: 25% chance per hunt to roll one bonus animal.
   if (u.gamepasses["gp_triple_drop"] && Math.random() < 0.25) drops += 1;
+  // VOID CORRUPTIONS — Chaos Shard relic: +10% chance to drop a bonus animal.
+  if (hasRelic(message.author.id, "chaos_shard") && Math.random() < 0.10) drops += 1;
   const autohuntOn = isAutohuntActive(message.author.id);
   const isManual = !autohuntOn; // manual hunters get buffed rarity weights + 2× pity
   let luck = luckMultiplier(u.arcuesUnlocked, u.luckUntil, u.megaLuckUntil, autohuntOn);
@@ -137,6 +157,8 @@ export async function cmdHunt(message: Message): Promise<void> {
   luck *= teamEnchantLuck(message.author.id);
   // VOID ASCENSION (v6) — area trait: heaven grants +10% luck.
   luck *= huntLuckMultiplier(area);
+  // VOID CORRUPTIONS — Void Eye relic: +10% global luck.
+  if (hasRelic(message.author.id, "void_eye")) luck *= 1.10;
   // OP Dino Summon Stone temporarily boosts Dino Leo chance via overall luck.
   if (Date.now() < u.dinoSummonUntil) luck *= 5;
   const caught: Animal[] = [];
@@ -152,6 +174,15 @@ export async function cmdHunt(message: Message): Promise<void> {
       const pool = poolForArea(area);
       const legendaries = pool.filter((x) => x.rarity === "legendary");
       if (legendaries.length) { a = legendaries[Math.floor(Math.random() * legendaries.length)]; pityTriggered = true; }
+    }
+    // VOID CORRUPTIONS — Cursed Compass relic: +0.05% chance per hunt to flip
+    // a non-secret catch into a random SECRET pet. Skipped in Infinite Void
+    // (its pool excludes secrets by design).
+    if (area !== "infinite_void" && a.rarity !== "secret" &&
+        hasRelic(message.author.id, "cursed_compass") &&
+        Math.random() < CURSED_COMPASS_SECRET_CHANCE) {
+      const candidates = SECRET_PET_IDS.map((sid) => ANIMAL_BY_ID[sid]).filter(Boolean) as Animal[];
+      if (candidates.length) a = candidates[Math.floor(Math.random() * candidates.length)];
     }
     caught.push(a);
     // Mutation roll — only when one of the 10 mutation events is active.
@@ -300,10 +331,12 @@ export function buildZooPage(
   const totalAnimals = entries.reduce((a, e) => a + e.count, 0);
   const bestRarity: Rarity = entries.length ? entries[0].animal.rarity : "common";
 
+  const targetUser = getUser(target.id);
   const lines = slice.map((e, i) => {
     const a = e.animal;
     const idx = start + i + 1;
-    return `**${idx}.** ${RARITY_COLOR[a.rarity]} ${a.emoji} **${a.name}** ×${e.count.toLocaleString()}  \`[ ${a.rarity.toUpperCase()} ]\``;
+    const cTag = corruptedTag(targetUser, a.id); // 👾 / ⚫ / ""
+    return `**${idx}.** ${RARITY_COLOR[a.rarity]} ${a.emoji} **${a.name}**${cTag} ×${e.count.toLocaleString()}  \`[ ${a.rarity.toUpperCase()} ]\``;
   });
 
   const desc = [
@@ -350,11 +383,14 @@ export async function cmdSell(message: Message, args: string[]): Promise<void> {
   const count = Math.max(1, Math.min(owned, rawCount));
   const sellMult = sellMultiplier(message.author.id, a.id);
   const cowoncyMult = eventBonus("cowoncy");
-  const total = Math.floor(count * a.sellPrice * sellMult * cowoncyMult);
+  // VOID CORRUPTIONS — Null Charm relic: +15% sell price.
+  const relicMult = hasRelic(message.author.id, "null_charm") ? 1.15 : 1;
+  const total = Math.floor(count * a.sellPrice * sellMult * cowoncyMult * relicMult);
   updateUser(message.author.id, (x) => { x.zoo[a.id] -= count; x.cowoncy += total; });
   const tags: string[] = [];
   if (sellMult > 1)     tags.push("Lv 3 perk +25%");
   if (cowoncyMult > 1)  tags.push(`${emoji("cowoncy")} Cowoncy Event ×2`);
+  if (relicMult > 1)    tags.push("🌑 Null Charm +15%");
   const e = successEmbed(message, "Sold!", `Sold ${count}× ${a.emoji} **${a.name}**`)
     .setColor(rarityColor(a.rarity))
     .addFields(
@@ -381,13 +417,16 @@ export async function cmdSacrifice(message: Message, args: string[]): Promise<vo
   const perkMult = essenceMultiplier(message.author.id, a.id);
   const arcuesMult = essenceArcuesMultiplier(u.arcuesUnlocked);
   const areaMult = sacrificeAreaMultiplier(u.huntArea);
-  const total = Math.floor(count * a.essence * evMult * perkMult * arcuesMult * areaMult);
+  // VOID CORRUPTIONS — Glitch Token relic: +25% sacrifice essence.
+  const relicMult = hasRelic(message.author.id, "glitch_token") ? 1.25 : 1;
+  const total = Math.floor(count * a.essence * evMult * perkMult * arcuesMult * areaMult * relicMult);
   updateUser(message.author.id, (x) => { x.zoo[a.id] -= count; x.essence += total; });
   const tags: string[] = [];
   if (evMult > 1)      tags.push(`${emoji("essence")} Essence Storm ×2`);
   if (perkMult > 1)    tags.push("Lv 10 perk ×2");
   if (arcuesMult > 1)  tags.push(`${emoji("rocket")} Arcues +10%`);
   if (areaMult < 1)    tags.push("☁️ Heaven −20% *(holy place)*");
+  if (relicMult > 1)   tags.push("🪙 Glitch Token +25%");
   const e = successEmbed(message, "Sacrificed!", `${count}× ${a.emoji} **${a.name}** → essence`)
     .setColor(rarityColor(a.rarity))
     .addFields(

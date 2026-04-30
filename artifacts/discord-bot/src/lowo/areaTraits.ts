@@ -77,4 +77,9 @@ export const AREA_TRAITS: Record<HuntArea, string[]> = {
   void_unknown: [
     `🕳️ All battle stats are **hidden** while your last-hunt area is the Void — feel the fight.`,
   ],
+  infinite_void: [
+    `👾 **Corrupted-only** — at least one corrupted pet must be on your team to hunt here.`,
+    `💀 **No commons.** Every catch is **EPIC** rarity or higher.`,
+    `🜏 The **Void Anchor** relic grants **+25% essence** on every catch in this area.`,
+  ],
 };

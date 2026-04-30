@@ -60,7 +60,7 @@ export interface UserData {
   arcuesUnlocked: boolean;
   // ── MEGA EXPANSION ──
   // Areas
-  huntArea: "default" | "volcanic" | "space" | "heaven" | "void_unknown";
+  huntArea: "default" | "volcanic" | "space" | "heaven" | "void_unknown" | "infinite_void";
   unlockedAreas: string[];
   volcanicDex: string[];
   spaceDex: string[];
@@ -91,7 +91,7 @@ export interface UserData {
   hasteUntil: number;
   shieldUntil: number;
   // Tracks last hunt area to render area-aware messages
-  lastHuntArea: "default" | "volcanic" | "space" | "heaven" | "void_unknown";
+  lastHuntArea: "default" | "volcanic" | "space" | "heaven" | "void_unknown" | "infinite_void";
   // Pet active rate (cooldowns per skill across battles — kept simple per skill battle)
   // The sbActive.cooldowns is per-active-session; not persisted long-term.
   // Lifetime stats
@@ -122,6 +122,15 @@ export interface UserData {
   petLoyalty: Record<string, number>;     // animalId -> 0..1000
   lastInteract: Record<string, number>;   // animalId -> ts of last lowo interact
   prestige: Record<string, { count: number; statBuff: "hp" | "atk" | "def" | "mag"; perm_mutation: boolean }>;
+  // ── VOID CORRUPTIONS (v6.2) ──
+  voidShards: number;                                // 💎 forge currency
+  relics: Record<string, number>;                    // relicId -> count owned
+  equippedRelic: string | null;                      // currently active relic id
+  corrupted: Record<string, {                        // animalId -> corrupted stat block
+    hp: number; atk: number; def: number; mag: number;
+    isSingularity?: boolean;
+    corruptedAt: number;
+  }>;
 }
 
 export interface MarketListingRecord {
@@ -204,6 +213,11 @@ function defaultUser(): UserData {
     petLoyalty: {},
     lastInteract: {},
     prestige: {},
+    // VOID CORRUPTIONS (v6.2)
+    voidShards: 0,
+    relics: {},
+    equippedRelic: null,
+    corrupted: {},
   };
 }
 

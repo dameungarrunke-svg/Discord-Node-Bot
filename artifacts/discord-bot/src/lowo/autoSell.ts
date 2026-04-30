@@ -3,6 +3,7 @@ import { getUser, updateUser } from "./storage.js";
 import {
   ANIMALS, ANIMAL_BY_ID, RARITY_ORDER, RARITY_COLOR,
   HUNT_POOL, VOLCANIC_HUNT_POOL, SPACE_HUNT_POOL, HEAVEN_HUNT_POOL, VOID_UNKNOWN_HUNT_POOL,
+  INFINITE_VOID_HUNT_POOL,
   SIGNATURE_SKILLS, type Rarity, type Animal,
 } from "./data.js";
 import { sellMultiplier } from "./skills.js";
@@ -171,7 +172,7 @@ export async function cmdAnimalStat(message: Message, args: string[]): Promise<v
 }
 
 // Resolve an `area name | stage number 1-5` to one of the area pool ids.
-type AreaKey = "default" | "volcanic" | "space" | "heaven" | "void_unknown";
+type AreaKey = "default" | "volcanic" | "space" | "heaven" | "void_unknown" | "infinite_void";
 const AREA_NAME_MAP: Record<string, AreaKey> = {
   "1": "default", "default": "default", "forest": "default", "land": "default",
   "2": "volcanic", "volcanic": "volcanic", "volcano": "volcanic", "fire": "volcanic", "lava": "volcanic",
@@ -179,6 +180,8 @@ const AREA_NAME_MAP: Record<string, AreaKey> = {
   "4": "heaven", "heaven": "heaven", "sky": "heaven", "divine": "heaven", "cloud": "heaven",
   "5": "void_unknown", "void": "void_unknown", "void_unknown": "void_unknown",
   "unknown": "void_unknown", "abyss": "void_unknown",
+  "6": "infinite_void", "infinite": "infinite_void", "infinite_void": "infinite_void",
+  "infinitevoid": "infinite_void", "iv": "infinite_void", "corrupted": "infinite_void",
 };
 const AREA_LABEL: Record<AreaKey, string> = {
   default: "🌳 Forest (Stage 1)",
@@ -186,6 +189,7 @@ const AREA_LABEL: Record<AreaKey, string> = {
   space: "🌌 Space (Stage 3)",
   heaven: "☁️ Heaven (Stage 4)",
   void_unknown: "🕳️ Unknown Void (Stage 5)",
+  infinite_void: "👾 Infinite Void (Stage 6)",
 };
 
 export function resolveAreaArg(input: string | undefined): { key: AreaKey; label: string; pool: Animal[] } | null {
@@ -193,10 +197,11 @@ export function resolveAreaArg(input: string | undefined): { key: AreaKey; label
   const k = AREA_NAME_MAP[input.toLowerCase().trim()];
   if (!k) return null;
   const pool =
-    k === "default"      ? HUNT_POOL :
-    k === "volcanic"     ? VOLCANIC_HUNT_POOL :
-    k === "space"        ? SPACE_HUNT_POOL :
-    k === "heaven"       ? HEAVEN_HUNT_POOL :
-                           VOID_UNKNOWN_HUNT_POOL;
+    k === "default"       ? HUNT_POOL :
+    k === "volcanic"      ? VOLCANIC_HUNT_POOL :
+    k === "space"         ? SPACE_HUNT_POOL :
+    k === "heaven"        ? HEAVEN_HUNT_POOL :
+    k === "infinite_void" ? INFINITE_VOID_HUNT_POOL :
+                            VOID_UNKNOWN_HUNT_POOL;
   return { key: k, label: AREA_LABEL[k], pool };
 }

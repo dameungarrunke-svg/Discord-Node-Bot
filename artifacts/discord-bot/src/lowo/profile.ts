@@ -77,7 +77,17 @@ export async function cmdProfile(message: Message): Promise<void> {
   const combatLine  = `🐾 \`${fmtK(animals)}\` *(${u.dex.length} unique)* | ⚔️ \`${u.weapons.length} wpns\` | ⭐ \`${u.rep} rep\` | 🎟️ \`${u.lotteryTickets} tkts\` | 💍 ${married}`;
   const pityLine    = `🎯 ${pityBar}`;
 
-  const parts = [header, econLine, combatLine, pityLine];
+  // VOID CORRUPTIONS (v6.2) — surface forge / corruption state when present.
+  const corruptedCount = Object.keys(u.corrupted ?? {}).length;
+  const voidShards = u.voidShards ?? 0;
+  const equippedRelic = u.equippedRelic ?? null;
+  const voidParts: string[] = [];
+  if (voidShards     > 0)  voidParts.push(`💎 \`${fmtK(voidShards)}\``);
+  if (corruptedCount > 0)  voidParts.push(`👾 \`${corruptedCount} corrupted\``);
+  if (equippedRelic)       voidParts.push(`🜏 \`${equippedRelic}\``);
+  const voidLine = voidParts.length ? voidParts.join(" | ") : null;
+
+  const parts = [header, econLine, combatLine, pityLine, voidLine].filter(Boolean) as string[];
   if (buffs.length) parts.push(`⚡ **Buffs:** ${buffs.join(" • ")}`);
 
   await message.reply({

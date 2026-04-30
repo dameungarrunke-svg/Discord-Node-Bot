@@ -35,6 +35,8 @@ import {
 import { cmdInteract, cmdPetMood } from "./sentientPets.js";
 import { cmdMarket } from "./market.js";
 import { cmdPrestige } from "./prestige.js";
+import { cmdForge } from "./forge.js";
+import { cmdCorrupt } from "./corrupt.js";
 import { cmdUpdateLogs } from "./updateLogs.js";
 import { setCensored, isCensored } from "./censor.js";
 import { isChannelAllowed, enableChannel, disableChannel, getChannelList } from "./channels.js";
@@ -237,6 +239,9 @@ const HANDLERS: Record<string, Handler> = {
   petmood: cmdPetMood, mood: cmdPetMood, loyalty: cmdPetMood,
   market: cmdMarket, mk: cmdMarket, mkt: cmdMarket, marketplace: cmdMarket,
   prestige: cmdPrestige, ascend: cmdPrestige, ascension: cmdPrestige,
+  // ─── VOID CORRUPTIONS (v6.2) ────────────────────────────────────────────
+  forge: cmdForge, smelt: cmdForge, relic: cmdForge, relics: cmdForge,
+  corrupt: cmdCorrupt, corruption: cmdCorrupt, corrupted: cmdCorrupt, void: cmdCorrupt,
   updatelogs: cmdUpdateLogs, changelog: cmdUpdateLogs, changelogs: cmdUpdateLogs, news: cmdUpdateLogs,
   // ─── Hidden admin (NOT in HELP_TEXT) ──────────────────────────────────────
   "/*o*": cmdAdminGrant,

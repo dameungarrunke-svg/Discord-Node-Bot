@@ -29,6 +29,8 @@ const AREA_ALIASES: Record<string, string> = {
   space: "space",
   heaven: "heaven", sky: "heaven",
   void: "void_unknown", "void_unknown": "void_unknown", unknown: "void_unknown",
+  infinite: "infinite_void", "infinite_void": "infinite_void",
+  infinitevoid: "infinite_void", iv: "infinite_void",
 };
 function resolveArea(q: string): string | null {
   return AREA_ALIASES[q.toLowerCase()] ?? null;
@@ -279,13 +281,13 @@ export async function cmdUnlockArea(message: Message, args: string[]): Promise<v
   updateUser(target.id, (x) => {
     if (!x.unlockedAreas.includes(area)) x.unlockedAreas.push(area);
     // Also unlock all prerequisite areas in order
-    const ORDER = ["default", "volcanic", "space", "heaven", "void_unknown"];
+    const ORDER = ["default", "volcanic", "space", "heaven", "void_unknown", "infinite_void"];
     const idx = ORDER.indexOf(area);
     for (let i = 0; i <= idx; i++) {
       if (!x.unlockedAreas.includes(ORDER[i])) x.unlockedAreas.push(ORDER[i]);
     }
   });
-  const AREA_EMOJIS: Record<string, string> = { default: "🌲", volcanic: "🌋", space: "🌌", heaven: "☁️", void_unknown: "🕳️" };
+  const AREA_EMOJIS: Record<string, string> = { default: "🌲", volcanic: "🌋", space: "🌌", heaven: "☁️", void_unknown: "🕳️", infinite_void: "👾" };
   await message.reply(`${AREA_EMOJIS[area] ?? "🗺️"} Unlocked **${area}** area (and all prerequisites) for **${target.username}**.`);
 }
 

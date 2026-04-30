@@ -4,7 +4,7 @@ export type Rarity =
   | "inferno" | "cosmic" | "void" | "secret"
   | "supreme" | "transcendent";
 
-export type HuntArea = "default" | "volcanic" | "space" | "heaven" | "void_unknown";
+export type HuntArea = "default" | "volcanic" | "space" | "heaven" | "void_unknown" | "infinite_void";
 
 export interface Animal {
   id: string;
@@ -747,11 +747,26 @@ export const HEAVEN_HUNT_POOL = ANIMALS.filter((a) => a.huntable !== false && !a
 export const VOID_UNKNOWN_HUNT_POOL = ANIMALS.filter((a) => a.huntable !== false && !a.aquatic && !a.eventOnly && a.area === "void_unknown");
 export const FISH_POOL = ANIMALS.filter((a) => a.aquatic === true);
 
+// ─── VOID CORRUPTIONS — Infinite Void (Area 6) ───────────────────────────────
+// No new animals; the void echoes existing pets back at you. Only EPIC-or-
+// higher rarities spawn here. Built from every prior area's huntable pool.
+const INFINITE_VOID_RARITY_FLOOR: Set<Rarity> = new Set<Rarity>([
+  "epic", "mythic", "legendary", "ethereal", "divine", "omni",
+  "glitched", "inferno", "cosmic", "void", "supreme", "transcendent", "secret",
+]);
+export const INFINITE_VOID_HUNT_POOL = ANIMALS.filter((a) =>
+  a.huntable !== false && !a.aquatic && !a.eventOnly &&
+  (a.area === "default" || a.area === "volcanic" || a.area === "space" ||
+   a.area === "heaven"  || a.area === "void_unknown") &&
+  INFINITE_VOID_RARITY_FLOOR.has(a.rarity)
+);
+
 export function poolForArea(area: HuntArea): Animal[] {
-  if (area === "volcanic")     return VOLCANIC_HUNT_POOL;
-  if (area === "space")        return SPACE_HUNT_POOL;
-  if (area === "heaven")       return HEAVEN_HUNT_POOL;
-  if (area === "void_unknown") return VOID_UNKNOWN_HUNT_POOL;
+  if (area === "volcanic")      return VOLCANIC_HUNT_POOL;
+  if (area === "space")         return SPACE_HUNT_POOL;
+  if (area === "heaven")        return HEAVEN_HUNT_POOL;
+  if (area === "void_unknown")  return VOID_UNKNOWN_HUNT_POOL;
+  if (area === "infinite_void") return INFINITE_VOID_HUNT_POOL;
   return HUNT_POOL;
 }
 
@@ -796,16 +811,29 @@ export const AREA_DEFS: AreaDef[] = [
     unlock: (d, t) => d.heaven >= t.heaven,
     unlockHint: "Complete 100% of the heaven-area dex.",
   },
+  {
+    id: "infinite_void", name: "The Infinite Void", emoji: "👾",
+    description: "The sixth realm — endless. Only EPIC-or-higher echoes spawn here. Standard pets are too weak to enter — only 👾 corrupted pets can hunt this place.",
+    unlock: (d, t) =>
+      d.default      >= t.default      &&
+      d.volcanic     >= t.volcanic     &&
+      d.space        >= t.space        &&
+      d.heaven       >= t.heaven       &&
+      d.void_unknown >= t.void_unknown,
+    unlockHint: "Complete 100% of every prior area's dex (Forest → Unknown Void).",
+  },
 ];
 export const AREA_BY_ID: Record<HuntArea, AreaDef> = Object.fromEntries(AREA_DEFS.map((a) => [a.id, a])) as Record<HuntArea, AreaDef>;
 
 // Per-area dex totals (used for unlock checks)
 export const AREA_DEX_TOTALS: AreaDexCount = {
-  default:      HUNT_POOL.length,
-  volcanic:     VOLCANIC_HUNT_POOL.length,
-  space:        SPACE_HUNT_POOL.length,
-  heaven:       HEAVEN_HUNT_POOL.length,
-  void_unknown: VOID_UNKNOWN_HUNT_POOL.length,
+  default:       HUNT_POOL.length,
+  volcanic:      VOLCANIC_HUNT_POOL.length,
+  space:         SPACE_HUNT_POOL.length,
+  heaven:        HEAVEN_HUNT_POOL.length,
+  void_unknown:  VOID_UNKNOWN_HUNT_POOL.length,
+  // Infinite Void shares creatures with prior areas — no separate dex pool.
+  infinite_void: 0,
 };
 
 // ─── Roll helpers ─────────────────────────────────────────────────────────────
@@ -840,6 +868,18 @@ export const SECRET_DINO_LEO_CHANCE = 3.0e-8;
 export const SECRET_GOD_RITHWIK_CHANCE = 4.0e-7;
 
 export function rollAnimalInArea(area: HuntArea, luck = 1, manual = false): Animal {
+  // VOID CORRUPTIONS — Infinite Void: secrets cannot drop here, the pool is
+  // already pure EPIC+. Skip secret bypass rolls so the area stays predictable.
+  if (area === "infinite_void") {
+    const pool = INFINITE_VOID_HUNT_POOL;
+    const table = manual ? MANUAL_RARITY_WEIGHTS : RARITY_WEIGHTS;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const r = pickRarityFromPool(pool, luck, table);
+      const sub = pool.filter((a) => a.rarity === r);
+      if (sub.length) return sub[Math.floor(Math.random() * sub.length)];
+    }
+    return pool[0] ?? HUNT_POOL[0];
+  }
   // God Rithwik (divine secret) — any area, manual hunt friendly
   if (Math.random() < SECRET_GOD_RITHWIK_CHANCE * luck) {
     const g = ANIMAL_BY_ID["god_rithwik"];
