@@ -14,9 +14,7 @@ import { baseEmbed, replyEmbed, errorEmbed, warnEmbed, COLOR } from "./embeds.js
 
 export type VoidShopItemId =
   | "lure"        // next Infinite-Void hunt drops 2 extra animals
-  | "insurance"   // saves the next failed corruption from deletion
-  | "essence"     // instant convert: 40 💎 → 1,000 ✨
-  | "cowoncy";    // instant convert: 25 💎 → 5,000 💰
+  | "insurance";  // saves the next failed corruption from deletion
 
 interface VoidShopItem {
   id: VoidShopItemId;
@@ -40,20 +38,6 @@ export const VOID_SHOP_ITEMS: VoidShopItem[] = [
     id: "insurance", name: "Void Insurance", emoji: "🛡️",
     cost: 200,
     desc: "If your next `lowo corrupt` rolls a deletion failure, this token is consumed instead and the pet stack is saved. Stacks freely — only one is consumed per save.",
-  },
-  {
-    id: "essence", name: "Essence Crystal", emoji: "✨",
-    cost: 40,
-    desc: "Instantly converts **40 💎 → 1,000 ✨ essence**. Buy `n` to multiply.",
-    instant: true,
-    reward: { essence: 1000 },
-  },
-  {
-    id: "cowoncy", name: "Cowoncy Coin", emoji: "💰",
-    cost: 25,
-    desc: "Instantly converts **25 💎 → 5,000 💰 cowoncy**. Buy `n` to multiply.",
-    instant: true,
-    reward: { cowoncy: 5000 },
   },
 ];
 export const VOID_SHOP_BY_ID: Record<string, VoidShopItem> =

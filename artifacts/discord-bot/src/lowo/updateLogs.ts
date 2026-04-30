@@ -54,8 +54,6 @@ export const UPDATE_LOGS: UpdateEntry[] = [
       "**🜏 NEW: THE VOID SHOP** *(`lowo voidshop`)* — spend 💎 Shards on one-shot consumables:",
       "  • 🎣 **Void Lure** — `80 💎` — your next Infinite-Void hunt drops **+2 extra animals**.",
       "  • 🛡️ **Void Insurance** — `200 💎` — automatically saves the next failed corruption from deletion.",
-      "  • ✨ **Essence Crystal** — `40 💎 → 1,000 ✨ essence` *(instant)*.",
-      "  • 💰 **Cowoncy Coin** — `25 💎 → 5,000 💰 cowoncy` *(instant)*.",
       "  • Buy with `lowo voidshop buy <id> [qty]`.",
       "**🛒 PROFILE & ZOO**",
       "  • Corrupted pets show **👾** (or **⚫** for The Singularity) next to their name in `lowo zoo`.",
