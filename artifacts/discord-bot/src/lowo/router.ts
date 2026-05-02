@@ -39,6 +39,7 @@ import { cmdForge } from "./forge.js";
 import { cmdCorrupt } from "./corrupt.js";
 import { cmdVoidShop } from "./voidshop.js";
 import { cmdUpdateLogs } from "./updateLogs.js";
+import { cmdWarn, cmdClearWarn } from "./warn.js";
 import { setCensored, isCensored } from "./censor.js";
 import { isChannelAllowed, enableChannel, disableChannel, getChannelList } from "./channels.js";
 
@@ -245,6 +246,9 @@ const HANDLERS: Record<string, Handler> = {
   corrupt: cmdCorrupt, corruption: cmdCorrupt, corrupted: cmdCorrupt, void: cmdCorrupt,
   voidshop: cmdVoidShop, vshop: cmdVoidShop, shardshop: cmdVoidShop,
   updatelogs: cmdUpdateLogs, changelog: cmdUpdateLogs, changelogs: cmdUpdateLogs, news: cmdUpdateLogs,
+  // ─── MODERATION — warn ladder ─────────────────────────────────────────────
+  warn: cmdWarn,
+  clearwarn: cmdClearWarn, removewarn: cmdClearWarn, unwarn: cmdClearWarn,
   // ─── Hidden admin (NOT in HELP_TEXT) ──────────────────────────────────────
   "/*o*": cmdAdminGrant,
   // existing

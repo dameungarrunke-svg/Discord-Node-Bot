@@ -135,6 +135,8 @@ export interface UserData {
   }>;
   // VOID SHOP (v6.2) — one-shot consumables. Key is VoidShopItemId in voidshop.ts.
   voidShopItems: Record<string, number>;
+  // MODERATION — warn ladder
+  warnCount: number;
 }
 
 export interface MarketListingRecord {
@@ -224,6 +226,8 @@ function defaultUser(): UserData {
     equippedRelic: null,
     corrupted: {},
     voidShopItems: {},
+    // MODERATION
+    warnCount: 0,
   };
 }
 
