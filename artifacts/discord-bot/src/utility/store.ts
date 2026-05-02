@@ -105,3 +105,17 @@ export function addMvp(entry: MvpEntry): void {
   data.mvps.push(entry);
   save(data);
 }
+
+export function removeWarns(userId: string, guildId: string, amount: number): number {
+  const data = load();
+  const before = data.warns.filter((w) => w.userId === userId && w.guildId === guildId).length;
+  let removed = 0;
+  for (let i = data.warns.length - 1; i >= 0 && removed < amount; i--) {
+    if (data.warns[i].userId === userId && data.warns[i].guildId === guildId) {
+      data.warns.splice(i, 1);
+      removed++;
+    }
+  }
+  save(data);
+  return before - Math.max(0, before - removed);
+}

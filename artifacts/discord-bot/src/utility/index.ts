@@ -3,17 +3,33 @@ import {
   PermissionFlagsBits,
   ChatInputCommandInteraction,
   EmbedBuilder,
-  MessageFlags,
   TextChannel,
   Message,
+  GuildMember,
 } from "discord.js";
-import { addWarn, getWarns, addPromotion, addAttendance, addMvp } from "./store.js";
+import { addWarn, getWarns, removeWarns, addPromotion, addAttendance, addMvp } from "./store.js";
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
 const MOD   = PermissionFlagsBits.ModerateMembers;
 
 const HR  = "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯";
 const DOT = " · · · · · · · · · · · · · · · ";
+
+const HOUR = 60 * 60 * 1000;
+
+function timeoutDuration(count: number): number | null {
+  if (count === 3) return 1 * HOUR;
+  if (count === 4) return 12 * HOUR;
+  if (count >= 5)  return 24 * HOUR;
+  return null;
+}
+
+function timeoutLabel(count: number): string | null {
+  if (count === 3) return "1 Hour Timeout";
+  if (count === 4) return "12 Hour Timeout";
+  if (count >= 5)  return "24 Hour Timeout";
+  return null;
+}
 
 function findChannel(interaction: ChatInputCommandInteraction, ...keywords: string[]): TextChannel | null {
   const guild = interaction.guild;
@@ -91,6 +107,15 @@ export async function executeWarn(interaction: ChatInputCommandInteraction): Pro
   const target = interaction.options.getUser("user", true);
   const reason = interaction.options.getString("reason", true);
 
+  if (target.id === interaction.user.id) {
+    await interaction.editReply({ content: "❌ You cannot warn yourself." });
+    return;
+  }
+  if (target.bot) {
+    await interaction.editReply({ content: "❌ You cannot warn bots." });
+    return;
+  }
+
   addWarn({
     id: `${Date.now()}`,
     userId: target.id,
@@ -103,22 +128,70 @@ export async function executeWarn(interaction: ChatInputCommandInteraction): Pro
   });
 
   const history = getWarns(target.id, interaction.guildId ?? "");
+  const warnCount = history.length;
+
+  // Fetch member for timeout + DM
+  let member: GuildMember | null = null;
+  try {
+    member = await interaction.guild?.members.fetch(target.id) ?? null;
+  } catch { /* not in server */ }
+
+  // Auto-timeout ladder
+  const duration = timeoutDuration(warnCount);
+  const label    = timeoutLabel(warnCount);
+  let timedOut   = false;
+  if (duration !== null && member) {
+    try {
+      await member.timeout(duration, `Warn #${warnCount} — ${reason}`);
+      timedOut = true;
+    } catch { /* missing perms or above hierarchy */ }
+  }
+
+  // DM the target
+  if (member) {
+    const dmEmbed = new EmbedBuilder()
+      .setColor(0xE74C3C)
+      .setTitle("❗ Punishment Issued")
+      .setDescription(
+        "You received a punishment from staff for breaking server rules. " +
+        "Please review the rules and check the details below."
+      )
+      .addFields(
+        { name: "• Punishment", value: label ?? "Warning", inline: false },
+        { name: "• Moderator", value: `<@${interaction.user.id}>`, inline: false },
+        { name: "• Reason", value: reason, inline: false },
+        { name: "• Total Warns", value: `${warnCount}`, inline: false },
+        { name: "• Schedule", value: "3 warns → **1 Hour** · 4 warns → **12 Hour** · 5+ warns → **24 Hour**", inline: false },
+      )
+      .setFooter({ text: `${interaction.guild?.name ?? "Server"} Moderation Team` })
+      .setTimestamp();
+    try { await target.send({ embeds: [dmEmbed] }); } catch { /* DMs disabled */ }
+  }
+
+  const actionValue = label
+    ? (timedOut
+        ? `⏱️ **${label}** applied.`
+        : `⏱️ **${label}** — could not apply *(check bot role/permissions)*.`)
+    : "DM notification sent.";
 
   const embed = new EmbedBuilder()
-    .setColor(0xca8a04)
+    .setColor(warnCount >= 5 ? 0xE74C3C : warnCount >= 3 ? 0xE67E22 : 0xF1C40F)
     .setAuthor({
       name: "LAST STAND  ·  MODERATION LOG",
       iconURL: interaction.guild?.iconURL() ?? undefined,
     })
-    .setTitle("⚠  FORMAL WARNING ISSUED")
+    .setTitle("⚠️  FORMAL WARNING ISSUED")
     .setDescription(
       `${HR}\n` +
       `▸  **MEMBER** ${DOT} <@${target.id}>\n` +
       `▸  **ISSUED BY** ${DOT} <@${interaction.user.id}>\n` +
-      `▸  **TOTAL WARNINGS** ${DOT} \`${history.length}\`\n` +
+      `▸  **TOTAL WARNINGS** ${DOT} \`${warnCount}\`\n` +
       `${HR}\n` +
-      `**REASON**\n` +
-      `> ${reason}`
+      `**REASON**\n> ${reason}`
+    )
+    .addFields(
+      { name: "• Action", value: actionValue, inline: true },
+      { name: "• Schedule", value: "3 = 1hr · 4 = 12hr · 5+ = 24hr", inline: true },
     )
     .setThumbnail(target.displayAvatarURL())
     .setFooter({ text: `Last Stand (LS)  ·  Moderation System` })
@@ -126,7 +199,63 @@ export async function executeWarn(interaction: ChatInputCommandInteraction): Pro
 
   const channel = interaction.channel as TextChannel | null;
   if (channel) await channel.send({ embeds: [embed] });
-  await interaction.editReply({ content: `✅ Warning issued to **${target.tag}**. (${history.length} total)` });
+  await interaction.editReply({ content: `✅ Warning issued to **${target.tag}**. (${warnCount} total)` });
+}
+
+export const clearwarnsData = new SlashCommandBuilder()
+  .setName("clearwarns")
+  .setDescription("Remove warnings from a server member.")
+  .setDefaultMemberPermissions(MOD)
+  .addUserOption((o) =>
+    o.setName("user").setDescription("Member to clear warns for").setRequired(true)
+  )
+  .addIntegerOption((o) =>
+    o.setName("amount").setDescription("Number of warns to remove (default: all)").setRequired(false).setMinValue(1)
+  );
+
+export async function executeClearWarns(interaction: ChatInputCommandInteraction): Promise<void> {
+  const target  = interaction.options.getUser("user", true);
+  const current = getWarns(target.id, interaction.guildId ?? "");
+
+  if (current.length === 0) {
+    await interaction.editReply({ content: `ℹ️ **${target.tag}** has no warnings on record.` });
+    return;
+  }
+
+  const amount   = interaction.options.getInteger("amount") ?? current.length;
+  const removed  = removeWarns(target.id, interaction.guildId ?? "", amount);
+  const newTotal = Math.max(0, current.length - removed);
+
+  const nextThreshold =
+    newTotal === 0 ? "No warnings — clean record"
+    : newTotal < 3 ? `${3 - newTotal} more warn(s) until 1-hour timeout`
+    : newTotal < 4 ? "1 more warn until 12-hour timeout"
+    : newTotal < 5 ? "1 more warn until 24-hour timeout"
+    : "At/above 5 — next warn = 24-hour timeout";
+
+  const embed = new EmbedBuilder()
+    .setColor(0x2ECC71)
+    .setAuthor({
+      name: "LAST STAND  ·  MODERATION LOG",
+      iconURL: interaction.guild?.iconURL() ?? undefined,
+    })
+    .setTitle("✅  WARNINGS CLEARED")
+    .setDescription(
+      `${HR}\n` +
+      `▸  **MEMBER** ${DOT} <@${target.id}>\n` +
+      `▸  **ACTIONED BY** ${DOT} <@${interaction.user.id}>\n` +
+      `${HR}`
+    )
+    .addFields(
+      { name: "• Removed", value: `${removed}`, inline: true },
+      { name: "• New Total", value: `${newTotal}`, inline: true },
+      { name: "• Next Threshold", value: nextThreshold, inline: false },
+    )
+    .setThumbnail(target.displayAvatarURL())
+    .setFooter({ text: `Last Stand (LS)  ·  Moderation System` })
+    .setTimestamp();
+
+  await interaction.editReply({ embeds: [embed] });
 }
 
 export const promoteData = new SlashCommandBuilder()

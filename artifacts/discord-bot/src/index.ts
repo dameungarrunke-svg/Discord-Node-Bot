@@ -106,6 +106,7 @@ import { startTrainingData, executeStartTraining, endTrainingData, executeEndTra
 import {
   announceData, executeAnnounce,
   warnData, executeWarn,
+  clearwarnsData, executeClearWarns,
   promoteData, executePromote,
   demoteData, executeDemote,
   attendanceData, executeAttendance,
@@ -178,6 +179,7 @@ const commands = [
   endTrainingData.toJSON(),
   announceData.toJSON(),
   warnData.toJSON(),
+  clearwarnsData.toJSON(),
   promoteData.toJSON(),
   demoteData.toJSON(),
   attendanceData.toJSON(),
@@ -265,6 +267,7 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   endtraining: executeEndTraining,
   announce: executeAnnounce,
   warn: executeWarn,
+  clearwarns: executeClearWarns,
   promote: executePromote,
   demote: executeDemote,
   attendance: executeAttendance,
