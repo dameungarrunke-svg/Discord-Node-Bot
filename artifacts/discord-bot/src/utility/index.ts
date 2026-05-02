@@ -107,10 +107,6 @@ export async function executeWarn(interaction: ChatInputCommandInteraction): Pro
   const target = interaction.options.getUser("user", true);
   const reason = interaction.options.getString("reason", true);
 
-  if (target.id === interaction.user.id) {
-    await interaction.editReply({ content: "❌ You cannot warn yourself." });
-    return;
-  }
   if (target.bot) {
     await interaction.editReply({ content: "❌ You cannot warn bots." });
     return;
