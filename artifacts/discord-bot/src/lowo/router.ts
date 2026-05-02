@@ -441,6 +441,8 @@ const CHANNEL_BYPASS = new Set([
   "checkmarket", "marketcheck",
   "clearlistings", "clearmarket", "wipemarket",
   "update", "publishupdate", "releaseupdate",
+  // moderation (must work in any channel)
+  "warn", "clearwarn", "removewarn", "unwarn",
 ]);
 
 export async function handleLowoCommand(message: Message): Promise<boolean> {
