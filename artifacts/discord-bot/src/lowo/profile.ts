@@ -284,16 +284,22 @@ export async function cmdEmojiSync(message: Message): Promise<void> {
     return;
   }
 
-  const cat = new Set(catalogKeys());
+  // Build a lowercase → exact catalog key lookup for case-insensitive matching
+  // (Developer Portal often capitalises names, e.g. "Cowoncy" vs catalog "cowoncy")
+  const catalogList = catalogKeys();
+  const catLower = new Map<string, string>(); // lowercase → catalog key
+  for (const k of catalogList) catLower.set(k.toLowerCase(), k);
+
   const map: Record<string, string> = {};
   const matched: string[] = [];
   const skipped: string[] = [];
 
   for (const e of appEmojis.values()) {
     if (!e.name) continue;
-    if (!cat.has(e.name)) { skipped.push(e.name); continue; }
-    map[e.name] = `<${e.animated ? "a" : ""}:${e.name}:${e.id}>`;
-    matched.push(e.name);
+    const catalogKey = catLower.get(e.name.toLowerCase());
+    if (!catalogKey) { skipped.push(e.name); continue; }
+    map[catalogKey] = `<${e.animated ? "a" : ""}:${e.name}:${e.id}>`;
+    matched.push(catalogKey);
   }
 
   if (matched.length === 0) {
