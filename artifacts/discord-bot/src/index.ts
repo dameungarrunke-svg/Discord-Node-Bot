@@ -114,6 +114,7 @@ import {
   mvpData, executeMvp,
   suggestionData, executeSuggestion,
 } from "./utility/index.js";
+import { backupDbData, executeBackupDb } from "./utility/backup.js";
 import { setupRulesData, executeSetupRules } from "./rules/index.js";
 import {
   dashboardData,
@@ -199,6 +200,7 @@ const commands = [
   setXpData.toJSON(),
   resetXpData.toJSON(),
   exportDataData.toJSON(),
+  backupDbData.toJSON(),
   setLevelRoleData.toJSON(),
   removeLevelRoleData.toJSON(),
   setXpCooldownData.toJSON(),
@@ -287,6 +289,7 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   setxp: executeSetXp,
   resetxp: executeResetXp,
   exportdata: executeExportData,
+  backupdb: executeBackupDb,
   setlevelrole: executeSetLevelRole,
   removelevelrole: executeRemoveLevelRole,
   setxpcooldown: executeSetXpCooldown,
