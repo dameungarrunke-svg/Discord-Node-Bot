@@ -10,15 +10,15 @@ import {
 } from "discord.js";
 
 const CLAN_LEAD_RE = /\bclan\s*lead\b/i;
-const URL_RE = /^https?:\/\/\S+$/i;
+const URL_RE       = /^https?:\/\/\S+$/i;
 
-const DIFFICULTY_META: Record<
-  string,
-  { label: string; color: number; tier: string }
-> = {
-  low:  { label: "LOW",  color: 0x5a0000, tier: "THREAT LEVEL » LOW"  },
-  mid:  { label: "MID",  color: 0x8B0000, tier: "THREAT LEVEL » MID"  },
-  high: { label: "HIGH", color: 0x0a0a0a, tier: "THREAT LEVEL » HIGH" },
+const HR  = "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯";
+const DOT = " · · · · · · · · · · · · · · · ";
+
+const DIFFICULTY_META: Record<string, { label: string; color: number }> = {
+  low:  { label: "LOW",  color: 0x1a1a1a },
+  mid:  { label: "MID",  color: 0x1a1a1a },
+  high: { label: "HIGH", color: 0x1a1a1a },
 };
 
 export const raidAnnounceData = new SlashCommandBuilder()
@@ -26,16 +26,10 @@ export const raidAnnounceData = new SlashCommandBuilder()
   .setDescription("DM every LS clan member with a raid alert.")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   .addStringOption((o) =>
-    o
-      .setName("message")
-      .setDescription("Custom raid message (e.g. 'Join up and wipe the targets!')")
-      .setRequired(true)
+    o.setName("message").setDescription("Custom raid message").setRequired(true)
   )
   .addStringOption((o) =>
-    o
-      .setName("difficulty")
-      .setDescription("Raid difficulty")
-      .setRequired(true)
+    o.setName("difficulty").setDescription("Raid difficulty").setRequired(true)
       .addChoices(
         { name: "Low",  value: "low"  },
         { name: "Mid",  value: "mid"  },
@@ -43,16 +37,10 @@ export const raidAnnounceData = new SlashCommandBuilder()
       )
   )
   .addStringOption((o) =>
-    o
-      .setName("target")
-      .setDescription("Target clan name")
-      .setRequired(true)
+    o.setName("target").setDescription("Target clan name").setRequired(true)
   )
   .addStringOption((o) =>
-    o
-      .setName("game_link")
-      .setDescription("Roblox game link (must start with https://)")
-      .setRequired(true)
+    o.setName("game_link").setDescription("Roblox game link (must start with https://)").setRequired(true)
   );
 
 export async function executeRaidAnnounce(
@@ -60,16 +48,16 @@ export async function executeRaidAnnounce(
 ): Promise<void> {
   const guild = interaction.guild;
   if (!guild) {
-    await interaction.editReply({ content: "❌ This command can only be used in a server." });
+    await interaction.editReply({ content: "This command can only be used in a server." });
     return;
   }
 
   const member = interaction.member as GuildMember | null;
   const hasManageGuild = member?.permissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
-  const hasClanLead = !!member?.roles?.cache?.some((r) => CLAN_LEAD_RE.test(r.name));
+  const hasClanLead    = !!member?.roles?.cache?.some((r) => CLAN_LEAD_RE.test(r.name));
   if (!hasManageGuild && !hasClanLead) {
     await interaction.editReply({
-      content: "❌ Only the owner / admins or a **Clan Lead** can deploy raid alerts.",
+      content: "Only the owner / admins or a Clan Lead can deploy raid alerts.",
     });
     return;
   }
@@ -81,61 +69,38 @@ export async function executeRaidAnnounce(
 
   if (!URL_RE.test(gameLink)) {
     await interaction.editReply({
-      content: "❌ `game_link` must be a valid URL starting with `https://`.",
+      content: "`game_link` must be a valid URL starting with `https://`.",
     });
     return;
   }
 
   const meta = DIFFICULTY_META[difficulty] ?? DIFFICULTY_META.mid;
 
-  const divider = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
-
   const embed = new EmbedBuilder()
     .setColor(meta.color)
-    .setAuthor({ name: "// LAST STAND MILITARY COMMAND  »  RAID DISPATCH" })
-    .setTitle("[ LAST STAND: COMBAT ALERT ]")
+    .setAuthor({
+      name: "LAST STAND  ·  RAID OPERATIONS",
+      iconURL: guild.iconURL() ?? undefined,
+    })
+    .setTitle("RAID NOTIFICATION")
     .setDescription(
-      `${divider}\n` +
-      `> ${message}\n` +
-      `${divider}`
+      `${HR}\n` +
+      `▸  **TARGET** ${DOT} ${target}\n` +
+      `▸  **DIFFICULTY** ${DOT} \`${meta.label}\`\n` +
+      `▸  **ISSUED BY** ${DOT} <@${interaction.user.id}>\n` +
+      `${HR}\n` +
+      `**BRIEFING**\n` +
+      `> ${message}`
     )
     .addFields(
-      {
-        name: "» DIFFICULTY",
-        value: `\`\`\`[ ${meta.label} ]\`\`\``,
-        inline: true,
-      },
-      {
-        name: "» TARGET",
-        value: `\`\`\`${target.toUpperCase()}\`\`\``,
-        inline: true,
-      },
-      {
-        name: "» STATUS",
-        value: `\`\`\`ACTIVE\`\`\``,
-        inline: true,
-      },
-      {
-        name: "» ISSUED BY",
-        value: `\`\`\`${interaction.user.username.toUpperCase()}\`\`\``,
-        inline: true,
-      },
-      {
-        name: "» THREAT LEVEL",
-        value: `\`\`\`${meta.tier}\`\`\``,
-        inline: true,
-      },
-      {
-        name: "» ORDERS",
-        value: `\`\`\`DEPLOY IMMEDIATELY\`\`\``,
-        inline: true,
-      },
+      { name: "• Status",  value: "`ACTIVE`",   inline: true },
+      { name: "• Orders",  value: "`DEPLOY NOW`", inline: true },
     )
-    .setFooter({ text: "LAST STAND  //  RAID OPERATIONS  //  CLASSIFIED" })
+    .setFooter({ text: `Last Stand (LS)  ·  Raid Operations` })
     .setTimestamp();
 
   const button = new ButtonBuilder()
-    .setLabel("JOIN OPERATION")
+    .setLabel("JOIN RAID")
     .setStyle(ButtonStyle.Link)
     .setURL(gameLink);
 
@@ -147,7 +112,7 @@ export async function executeRaidAnnounce(
   } catch (err) {
     console.error("[RAIDANNOUNCE] Failed to fetch guild members:", err);
     await interaction.editReply({
-      content: "❌ Failed to fetch guild members. Make sure I have the **Server Members Intent**.",
+      content: "Failed to fetch guild members. Make sure I have the Server Members Intent.",
     });
     return;
   }
@@ -155,7 +120,7 @@ export async function executeRaidAnnounce(
   const targets = members.filter((m) => !m.user.bot);
 
   if (targets.size === 0) {
-    await interaction.editReply({ content: "⚠️ No members found to DM." });
+    await interaction.editReply({ content: "No members found to DM." });
     return;
   }
 
@@ -172,6 +137,6 @@ export async function executeRaidAnnounce(
 
   const failNote = failed > 0 ? ` *(${failed} had DMs closed)*` : "";
   await interaction.editReply({
-    content: `✅ Raid alert dispatched to **${sent}** operatives.${failNote}`,
+    content: `Raid alert sent to **${sent}** clan members.${failNote}`,
   });
 }
