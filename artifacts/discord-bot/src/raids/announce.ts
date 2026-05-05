@@ -14,11 +14,11 @@ const URL_RE = /^https?:\/\/\S+$/i;
 
 const DIFFICULTY_META: Record<
   string,
-  { label: string; emoji: string; color: number }
+  { label: string; color: number; tier: string }
 > = {
-  low:  { label: "LOW",  emoji: "🟢", color: 0x16a34a },
-  mid:  { label: "MID",  emoji: "🟠", color: 0xf97316 },
-  high: { label: "HIGH", emoji: "🔴", color: 0xdc2626 },
+  low:  { label: "LOW",  color: 0x5a0000, tier: "THREAT LEVEL » LOW"  },
+  mid:  { label: "MID",  color: 0x8B0000, tier: "THREAT LEVEL » MID"  },
+  high: { label: "HIGH", color: 0x0a0a0a, tier: "THREAT LEVEL » HIGH" },
 };
 
 export const raidAnnounceData = new SlashCommandBuilder()
@@ -64,7 +64,6 @@ export async function executeRaidAnnounce(
     return;
   }
 
-  // ── Permission: ManageGuild OR has a "Clan Lead" role ──────────────────────
   const member = interaction.member as GuildMember | null;
   const hasManageGuild = member?.permissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
   const hasClanLead = !!member?.roles?.cache?.some((r) => CLAN_LEAD_RE.test(r.name));
@@ -89,26 +88,59 @@ export async function executeRaidAnnounce(
 
   const meta = DIFFICULTY_META[difficulty] ?? DIFFICULTY_META.mid;
 
-  // ── Build the raid card ────────────────────────────────────────────────────
+  const divider = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
+
   const embed = new EmbedBuilder()
     .setColor(meta.color)
-    .setTitle("🚨 RAID STARTED")
-    .setDescription(message)
-    .addFields(
-      { name: "⚔️ Difficulty", value: `${meta.emoji} **${meta.label}**`, inline: true },
-      { name: "🎯 Targets",    value: target,                            inline: true }
+    .setAuthor({ name: "// LAST STAND MILITARY COMMAND  »  RAID DISPATCH" })
+    .setTitle("[ LAST STAND: COMBAT ALERT ]")
+    .setDescription(
+      `${divider}\n` +
+      `> ${message}\n` +
+      `${divider}`
     )
-    .setFooter({ text: "Premium Raid System • LAST STAND Management" })
+    .addFields(
+      {
+        name: "» DIFFICULTY",
+        value: `\`\`\`[ ${meta.label} ]\`\`\``,
+        inline: true,
+      },
+      {
+        name: "» TARGET",
+        value: `\`\`\`${target.toUpperCase()}\`\`\``,
+        inline: true,
+      },
+      {
+        name: "» STATUS",
+        value: `\`\`\`ACTIVE\`\`\``,
+        inline: true,
+      },
+      {
+        name: "» ISSUED BY",
+        value: `\`\`\`${interaction.user.username.toUpperCase()}\`\`\``,
+        inline: true,
+      },
+      {
+        name: "» THREAT LEVEL",
+        value: `\`\`\`${meta.tier}\`\`\``,
+        inline: true,
+      },
+      {
+        name: "» ORDERS",
+        value: `\`\`\`DEPLOY IMMEDIATELY\`\`\``,
+        inline: true,
+      },
+    )
+    .setFooter({ text: "LAST STAND  //  RAID OPERATIONS  //  CLASSIFIED" })
     .setTimestamp();
 
   const button = new ButtonBuilder()
-    .setLabel("🚀 Join Raid")
+    .setLabel("JOIN OPERATION")
     .setStyle(ButtonStyle.Link)
     .setURL(gameLink);
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 
-  // ── Fetch every member in this guild ───────────────────────────────────────
   let members;
   try {
     members = await guild.members.fetch();
@@ -127,7 +159,6 @@ export async function executeRaidAnnounce(
     return;
   }
 
-  // ── DM each member ─────────────────────────────────────────────────────────
   let sent = 0;
   let failed = 0;
   for (const m of targets.values()) {
@@ -141,6 +172,6 @@ export async function executeRaidAnnounce(
 
   const failNote = failed > 0 ? ` *(${failed} had DMs closed)*` : "";
   await interaction.editReply({
-    content: `✅ Raid alert sent to **${sent}** clan members.${failNote}`,
+    content: `✅ Raid alert dispatched to **${sent}** operatives.${failNote}`,
   });
 }
