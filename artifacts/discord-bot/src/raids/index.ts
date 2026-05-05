@@ -69,7 +69,7 @@ async function getRobloxUserId(username: string): Promise<number | null> {
 async function getRobloxAvatar(userId: number): Promise<string | null> {
   try {
     const res = await fetch(
-      `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`
+      `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=420x420&format=Png&isCircular=false`
     );
     const data = (await res.json()) as { data?: { imageUrl?: string }[] };
     return data.data?.[0]?.imageUrl ?? null;
@@ -116,8 +116,8 @@ export const startRaidData = new SlashCommandBuilder()
   .addStringOption((o) =>
     o
       .setName("join_server")
-      .setDescription("Roblox game / server link (https://...)")
-      .setRequired(true)
+      .setDescription("Roblox game / server link (https://...) (optional)")
+      .setRequired(false)
   )
   .addStringOption((o) =>
     o
@@ -144,7 +144,7 @@ export async function executeStartRaid(
   const raidType      = interaction.options.getString("type",            true);
   const robloxUser    = interaction.options.getString("roblox_username");
   const robloxProfile = interaction.options.getString("roblox_profile");
-  const joinServer    = interaction.options.getString("join_server",     true);
+  const joinServer    = interaction.options.getString("join_server");
   const allies        = interaction.options.getString("allies",          true);
   const enemies       = interaction.options.getString("enemies",         true);
   const raidRole      = interaction.options.getRole("raid_role");
@@ -164,15 +164,27 @@ export async function executeStartRaid(
 
   const nowUnix = Math.floor(Date.now() / 1000);
 
+  // Each field on its own line with a blank line after the header for visual height
   const descLines: string[] = [
     `⚔️ **${raidType}** · 🟢 Ongoing`,
     "",
   ];
-  if (robloxUser) descLines.push(`🎮 **Roblox:** ${robloxUser}`);
-  descLines.push(`💬 **Discord:** <@${interaction.user.id}>`);
-  descLines.push(`⏱️ **Started:** <t:${nowUnix}:R>`);
-  descLines.push(`🤝 **Allies:** ${allies}`);
-  descLines.push(`💀 **Enemies:** ${enemies}`);
+  if (robloxUser) {
+    descLines.push(`🎮 **Roblox**`);
+    descLines.push(robloxUser);
+    descLines.push("");
+  }
+  descLines.push(`💬 **Discord**`);
+  descLines.push(`<@${interaction.user.id}>`);
+  descLines.push("");
+  descLines.push(`⏱️ **Started**`);
+  descLines.push(`<t:${nowUnix}:R>`);
+  descLines.push("");
+  descLines.push(`🤝 **Allies**`);
+  descLines.push(allies);
+  descLines.push("");
+  descLines.push(`💀 **Enemies**`);
+  descLines.push(enemies);
 
   const embed = new EmbedBuilder()
     .setColor(raidColor(raidType))
@@ -180,7 +192,7 @@ export async function executeStartRaid(
 
   if (avatarUrl) embed.setThumbnail(avatarUrl);
 
-  // Row 1 — link buttons (Roblox Profile only shown if URL was provided)
+  // Build button row — only include buttons where a URL was provided
   const row1Buttons: ButtonBuilder[] = [];
   if (robloxProfile) {
     row1Buttons.push(
@@ -190,41 +202,40 @@ export async function executeStartRaid(
         .setURL(robloxProfile)
     );
   }
-  row1Buttons.push(
-    new ButtonBuilder()
-      .setLabel("🔗 Join Server")
-      .setStyle(ButtonStyle.Link)
-      .setURL(joinServer)
-  );
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(...row1Buttons);
+  if (joinServer) {
+    row1Buttons.push(
+      new ButtonBuilder()
+        .setLabel("🔗 Join Server")
+        .setStyle(ButtonStyle.Link)
+        .setURL(joinServer)
+    );
+  }
 
   // Ping content — @everyone and the raid role if provided
   const roleSnowflakes: string[] = [];
   if (raidRole) roleSnowflakes.push(raidRole.id);
-
   const pingContent = raidRole ? `@everyone ${raidRole}` : `@everyone`;
 
-  const raidMsg = await channel.send({
+  const msgPayload: Parameters<typeof channel.send>[0] = {
     content: pingContent,
     embeds: [embed],
-    components: [row1],
     allowedMentions: { parse: ["everyone"], roles: roleSnowflakes },
-  });
+  };
+  if (row1Buttons.length > 0) {
+    msgPayload.components = [
+      new ActionRowBuilder<ButtonBuilder>().addComponents(...row1Buttons),
+    ];
+  }
 
-  // Create a thread for raid chat, then append "Chat Here" button
+  const raidMsg = await channel.send(msgPayload);
+
+  // Create a public thread — Discord renders the native "X >" thread link
+  // automatically under the message; no extra button needed.
   try {
-    const thread = await raidMsg.startThread({
+    await raidMsg.startThread({
       name: `${raidType} — Chat Here`,
       autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
     });
-    const threadUrl = `https://discord.com/channels/${interaction.guildId}/${thread.id}`;
-    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setLabel(`💬 ${raidType} — Chat Here`)
-        .setStyle(ButtonStyle.Link)
-        .setURL(threadUrl)
-    );
-    await raidMsg.edit({ components: [row1, row2] });
   } catch {
     // Thread creation is best-effort — callout is still live without it
   }
