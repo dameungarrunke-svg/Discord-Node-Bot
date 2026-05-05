@@ -256,18 +256,15 @@ export async function cmdEmojiList(message: Message, args: string[]): Promise<vo
 }
 
 /**
- * `lowo emojisync` — auto-build the emoji override file from this server's
- * custom emojis. For every guild emoji whose name matches a catalog key,
- * persist `<:name:id>` (or `<a:name:id>` for animated) into
- * `data/lowo_emojis.json` and hot-swap it into memory immediately.
+ * `lowo emojisync` — auto-build the emoji override file from the bot's
+ * application emojis (uploaded in Discord Developer Portal → Emojis tab).
+ * For every application emoji whose name matches a catalog key, persist
+ * `<:name:id>` (or `<a:name:id>` for animated) into `data/lowo_emojis.json`
+ * and hot-swap it into memory immediately.
  *
  * Restricted to bot owner (`LOWO_OWNER_ID`) or members with Manage Server.
  */
 export async function cmdEmojiSync(message: Message): Promise<void> {
-  if (!message.guild) {
-    await message.reply(`${emoji("fail")} \`emojisync\` must be used in a server.`);
-    return;
-  }
   const isOwner = process.env.LOWO_OWNER_ID === message.author.id;
   const isAdmin = message.member?.permissions.has(PermissionFlagsBits.ManageGuild) ?? false;
   if (!isOwner && !isAdmin) {
@@ -275,17 +272,24 @@ export async function cmdEmojiSync(message: Message): Promise<void> {
     return;
   }
 
-  const cat = new Set(catalogKeys());
-  const guildEmojis = await message.guild.emojis.fetch().catch(() => null);
-  if (!guildEmojis) {
-    await message.reply(`${emoji("fail")} Couldn't read this server's emojis.`);
+  const app = message.client.application;
+  if (!app) {
+    await message.reply(`${emoji("fail")} Could not access application data.`);
     return;
   }
 
+  const appEmojis = await app.emojis.fetch().catch(() => null);
+  if (!appEmojis) {
+    await message.reply(`${emoji("fail")} Couldn't fetch application emojis. Make sure the bot is fully ready.`);
+    return;
+  }
+
+  const cat = new Set(catalogKeys());
   const map: Record<string, string> = {};
   const matched: string[] = [];
   const skipped: string[] = [];
-  for (const e of guildEmojis.values()) {
+
+  for (const e of appEmojis.values()) {
     if (!e.name) continue;
     if (!cat.has(e.name)) { skipped.push(e.name); continue; }
     map[e.name] = `<${e.animated ? "a" : ""}:${e.name}:${e.id}>`;
@@ -295,8 +299,8 @@ export async function cmdEmojiSync(message: Message): Promise<void> {
   if (matched.length === 0) {
     await message.reply([
       `${emoji("warn")} **No catalog matches found.**`,
-      `Found **${guildEmojis.size}** custom emoji${guildEmojis.size === 1 ? "" : "s"} in this server, but none have names matching catalog keys.`,
-      `${emoji("info")} Run \`lowo emojis\` to see catalog keys, then re-upload your emojis using those exact names (case-sensitive).`,
+      `Found **${appEmojis.size}** application emoji${appEmojis.size === 1 ? "" : "s"}, but none have names matching catalog keys.`,
+      `${emoji("info")} Upload emojis in the **Discord Developer Portal → your app → Emojis tab**, name them after catalog keys (run \`lowo emojis\` to see all), then re-run \`lowo emojisync\`.`,
     ].join("\n"));
     return;
   }
@@ -307,34 +311,28 @@ export async function cmdEmojiSync(message: Message): Promise<void> {
   const more = matched.length > 18 ? `  *…+${matched.length - 18} more*` : "";
   const missing = catalogKeys().filter((k) => !map[k]);
   await message.reply([
-    `${emoji("success")} **Synced ${matched.length} custom emoji${matched.length === 1 ? "" : "s"}** into \`data/lowo_emojis.json\`. Live immediately. ${emoji("sparkles")}`,
+    `${emoji("success")} **Synced ${matched.length} application emoji${matched.length === 1 ? "" : "s"}** into \`data/lowo_emojis.json\`. Live immediately. ${emoji("sparkles")}`,
     sample + more,
     "",
     `${emoji("info")} ${missing.length} catalog slot${missing.length === 1 ? "" : "s"} still on unicode fallback (run \`lowo emojis\` to see all).`,
-    skipped.length > 0 ? `${emoji("dot")} ${skipped.length} server emoji${skipped.length === 1 ? "" : "s"} ignored (name didn't match a catalog key).` : "",
+    skipped.length > 0 ? `${emoji("dot")} ${skipped.length} emoji${skipped.length === 1 ? "" : "s"} ignored (name didn't match a catalog key).` : "",
   ].filter(Boolean).join("\n"));
 }
 
 /**
- * `lowo emojiupload` — drag-and-drop image attachments into Discord chat with
- * this command. The bot uploads each image to your server as a custom emoji
- * (filename stem becomes the emoji name) AND registers it in the catalog. One
- * step, no Server Settings UI.
+ * `lowo emojiupload` — drag-and-drop image attachments into Discord chat.
+ * The bot uploads each image as a bot application emoji (visible across all
+ * servers) AND registers it in the catalog immediately. No server permissions
+ * needed — emojis live on the bot application itself.
  *
  * Filename rules:
  *   - `cowoncy.png` → uploads as `:cowoncy:` and maps the `cowoncy` catalog slot
  *   - Stem must match a known catalog key (run `lowo emojis` to see all keys)
  *   - PNG/JPG/GIF/WebP, ≤256 KB each (Discord limit)
  *
- * Restricted to bot owner or members with Manage Server. The bot itself needs
- * the **Manage Expressions** permission in this server (grant it once via
- * Server Settings → Roles → bot's role).
+ * Restricted to bot owner (`LOWO_OWNER_ID`) or members with Manage Server.
  */
 export async function cmdEmojiUpload(message: Message): Promise<void> {
-  if (!message.guild) {
-    await message.reply(`${emoji("fail")} \`emojiupload\` must be used in a server.`);
-    return;
-  }
   const isOwner = process.env.LOWO_OWNER_ID === message.author.id;
   const isAdmin = message.member?.permissions.has(PermissionFlagsBits.ManageGuild) ?? false;
   if (!isOwner && !isAdmin) {
@@ -342,12 +340,9 @@ export async function cmdEmojiUpload(message: Message): Promise<void> {
     return;
   }
 
-  const me = message.guild.members.me;
-  if (!me?.permissions.has(PermissionFlagsBits.ManageGuildExpressions)) {
-    await message.reply([
-      `${emoji("fail")} I'm missing the **Manage Expressions** permission in this server, so I can't upload emojis.`,
-      `${emoji("info")} Fix: Server Settings → Roles → my role → enable **Manage Expressions**, then re-run.`,
-    ].join("\n"));
+  const app = message.client.application;
+  if (!app) {
+    await message.reply(`${emoji("fail")} Could not access application data.`);
     return;
   }
 
@@ -357,15 +352,21 @@ export async function cmdEmojiUpload(message: Message): Promise<void> {
       `${emoji("dot")} Drag image files into Discord chat (PNG/JPG/GIF/WebP, ≤256 KB each).`,
       `${emoji("dot")} Name the file after the catalog key — e.g. \`cowoncy.png\` becomes \`:cowoncy:\`.`,
       `${emoji("dot")} Attach as many as you want in one message, then send with \`lowo emojiupload\` as the message text.`,
-      `${emoji("dot")} Repeat in multiple messages until done. Run \`lowo emojis\` to see all catalog keys.`,
+      `${emoji("dot")} Emojis upload to the **bot application** (visible everywhere, no server limit).`,
+      `${emoji("dot")} Run \`lowo emojis\` to see all catalog keys.`,
     ].join("\n"));
     return;
   }
 
   const cat = new Set(catalogKeys());
+
+  // Build a map of already-existing application emojis by name
   const existingByName = new Map<string, { id: string; animated: boolean }>();
-  for (const e of message.guild.emojis.cache.values()) {
-    if (e.name) existingByName.set(e.name, { id: e.id, animated: !!e.animated });
+  const existing = await app.emojis.fetch().catch(() => null);
+  if (existing) {
+    for (const e of existing.values()) {
+      if (e.name) existingByName.set(e.name, { id: e.id, animated: !!e.animated });
+    }
   }
 
   const partial: Record<string, string> = {};
@@ -381,14 +382,14 @@ export async function cmdEmojiUpload(message: Message): Promise<void> {
     if (!isImg) { skipped.push(`${filename} *(not an image)*`); continue; }
     if ((att.size ?? 0) > 256_000) { skipped.push(`${filename} *(>256 KB)*`); continue; }
 
-    const existing = existingByName.get(stem);
-    if (existing) {
-      partial[stem] = `<${existing.animated ? "a" : ""}:${stem}:${existing.id}>`;
+    const prev = existingByName.get(stem);
+    if (prev) {
+      partial[stem] = `<${prev.animated ? "a" : ""}:${stem}:${prev.id}>`;
       reused.push(stem);
       continue;
     }
     try {
-      const created = await message.guild.emojis.create({ attachment: att.url, name: stem });
+      const created = await app.emojis.create({ attachment: att.url, name: stem });
       partial[stem] = `<${created.animated ? "a" : ""}:${stem}:${created.id}>`;
       uploaded.push(stem);
     } catch (err) {
@@ -401,11 +402,11 @@ export async function cmdEmojiUpload(message: Message): Promise<void> {
 
   const lines: string[] = [];
   if (uploaded.length > 0) {
-    lines.push(`${emoji("success")} **Uploaded ${uploaded.length} new emoji${uploaded.length === 1 ? "" : "s"}** & registered in catalog ${emoji("sparkles")}`);
+    lines.push(`${emoji("success")} **Uploaded ${uploaded.length} new application emoji${uploaded.length === 1 ? "" : "s"}** & registered in catalog ${emoji("sparkles")}`);
     lines.push(uploaded.map((k) => `${emoji(k)} \`${k}\``).join("  "));
   }
   if (reused.length > 0) {
-    lines.push(`${emoji("ok")} **Re-used ${reused.length} existing server emoji${reused.length === 1 ? "" : "s"}** (already uploaded with the right name): ${reused.map((k) => `\`${k}\``).join(", ")}`);
+    lines.push(`${emoji("ok")} **Re-used ${reused.length} existing application emoji${reused.length === 1 ? "" : "s"}**: ${reused.map((k) => `\`${k}\``).join(", ")}`);
   }
   if (skipped.length > 0) {
     lines.push(`${emoji("warn")} **Skipped ${skipped.length}:**`);
