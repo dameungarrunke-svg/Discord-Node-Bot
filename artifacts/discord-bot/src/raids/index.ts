@@ -104,13 +104,13 @@ export const startRaidData = new SlashCommandBuilder()
   .addStringOption((o) =>
     o
       .setName("roblox_username")
-      .setDescription("Your Roblox username")
-      .setRequired(true)
+      .setDescription("Your Roblox username (optional)")
+      .setRequired(false)
   )
   .addStringOption((o) =>
     o
       .setName("roblox_profile")
-      .setDescription("Your Roblox profile URL (https://...) — optional")
+      .setDescription("Your Roblox profile URL (https://...) (optional)")
       .setRequired(false)
   )
   .addStringOption((o) =>
@@ -142,7 +142,7 @@ export async function executeStartRaid(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
   const raidType      = interaction.options.getString("type",            true);
-  const robloxUser    = interaction.options.getString("roblox_username", true);
+  const robloxUser    = interaction.options.getString("roblox_username");
   const robloxProfile = interaction.options.getString("roblox_profile");
   const joinServer    = interaction.options.getString("join_server",     true);
   const allies        = interaction.options.getString("allies",          true);
@@ -155,23 +155,28 @@ export async function executeStartRaid(
     return;
   }
 
-  // Fetch Roblox avatar thumbnail (best-effort — doesn't block on failure)
+  // Fetch Roblox avatar thumbnail only if username was provided
   let avatarUrl: string | null = null;
-  const userId = await getRobloxUserId(robloxUser);
-  if (userId) avatarUrl = await getRobloxAvatar(userId);
+  if (robloxUser) {
+    const userId = await getRobloxUserId(robloxUser);
+    if (userId) avatarUrl = await getRobloxAvatar(userId);
+  }
 
   const nowUnix = Math.floor(Date.now() / 1000);
 
+  const descLines: string[] = [
+    `⚔️ **${raidType}** · 🟢 Ongoing`,
+    "",
+  ];
+  if (robloxUser) descLines.push(`🎮 **Roblox:** ${robloxUser}`);
+  descLines.push(`💬 **Discord:** <@${interaction.user.id}>`);
+  descLines.push(`⏱️ **Started:** <t:${nowUnix}:R>`);
+  descLines.push(`🤝 **Allies:** ${allies}`);
+  descLines.push(`💀 **Enemies:** ${enemies}`);
+
   const embed = new EmbedBuilder()
     .setColor(raidColor(raidType))
-    .setDescription(
-      `⚔️ **${raidType}** · 🟢 Ongoing\n\n` +
-      `🎮 **Roblox:** ${robloxUser}\n` +
-      `💬 **Discord:** <@${interaction.user.id}>\n` +
-      `⏱️ **Started:** <t:${nowUnix}:R>\n` +
-      `🤝 **Allies:** ${allies}\n` +
-      `💀 **Enemies:** ${enemies}`
-    );
+    .setDescription(descLines.join("\n"));
 
   if (avatarUrl) embed.setThumbnail(avatarUrl);
 
