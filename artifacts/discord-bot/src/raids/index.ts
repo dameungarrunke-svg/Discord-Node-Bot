@@ -110,8 +110,8 @@ export const startRaidData = new SlashCommandBuilder()
   .addStringOption((o) =>
     o
       .setName("roblox_profile")
-      .setDescription("Your Roblox profile URL (https://...)")
-      .setRequired(true)
+      .setDescription("Your Roblox profile URL (https://...) — optional")
+      .setRequired(false)
   )
   .addStringOption((o) =>
     o
@@ -143,7 +143,7 @@ export async function executeStartRaid(
 ): Promise<void> {
   const raidType      = interaction.options.getString("type",            true);
   const robloxUser    = interaction.options.getString("roblox_username", true);
-  const robloxProfile = interaction.options.getString("roblox_profile",  true);
+  const robloxProfile = interaction.options.getString("roblox_profile");
   const joinServer    = interaction.options.getString("join_server",     true);
   const allies        = interaction.options.getString("allies",          true);
   const enemies       = interaction.options.getString("enemies",         true);
@@ -175,17 +175,23 @@ export async function executeStartRaid(
 
   if (avatarUrl) embed.setThumbnail(avatarUrl);
 
-  // Row 1 — link buttons
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setLabel("🔍 Roblox Profile")
-      .setStyle(ButtonStyle.Link)
-      .setURL(robloxProfile),
+  // Row 1 — link buttons (Roblox Profile only shown if URL was provided)
+  const row1Buttons: ButtonBuilder[] = [];
+  if (robloxProfile) {
+    row1Buttons.push(
+      new ButtonBuilder()
+        .setLabel("🔍 Roblox Profile")
+        .setStyle(ButtonStyle.Link)
+        .setURL(robloxProfile)
+    );
+  }
+  row1Buttons.push(
     new ButtonBuilder()
       .setLabel("🔗 Join Server")
       .setStyle(ButtonStyle.Link)
       .setURL(joinServer)
   );
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(...row1Buttons);
 
   // Ping content — @everyone and the raid role if provided
   const roleSnowflakes: string[] = [];
