@@ -3,12 +3,17 @@ import {
   PermissionFlagsBits,
   ChatInputCommandInteraction,
   EmbedBuilder,
-  MessageFlags,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   TextChannel,
+  ThreadAutoArchiveDuration,
 } from "discord.js";
 import { saveRaidResult, nextRaidNumber } from "./store.js";
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
+
+// ─── Helpers shared by /endraid ──────────────────────────────────────────────
 
 function shortDate(): string {
   return new Date().toLocaleDateString("en-US", {
@@ -45,78 +50,104 @@ function findChannel(
   return null;
 }
 
-// ─── /startraid ──────────────────────────────────────────────────────────────
+// ─── Roblox API helpers ───────────────────────────────────────────────────────
+
+async function getRobloxUserId(username: string): Promise<number | null> {
+  try {
+    const res = await fetch("https://users.roblox.com/v1/usernames/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usernames: [username], excludeBannedUsers: false }),
+    });
+    const data = (await res.json()) as { data?: { id: number }[] };
+    return data.data?.[0]?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function getRobloxAvatar(userId: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`
+    );
+    const data = (await res.json()) as { data?: { imageUrl?: string }[] };
+    return data.data?.[0]?.imageUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ─── /startraid ───────────────────────────────────────────────────────────────
+
+function raidColor(type: string): number {
+  if (type === "IMPORTANT RAID" || type === "Serious Raid") return 0x8b0000;
+  return 0x2b2d31;
+}
 
 export const startRaidData = new SlashCommandBuilder()
   .setName("startraid")
-  .setDescription("Deploy a raid alert to the server.")
+  .setDescription("Deploy a raid callout to the server.")
+  .setDefaultMemberPermissions(ADMIN)
   .addStringOption((o) =>
-    o.setName("clan_name").setDescription("Your clan name (LS)").setRequired(true)
+    o
+      .setName("type")
+      .setDescription("Type of raid")
+      .setRequired(true)
+      .addChoices(
+        { name: "Normal Raid",    value: "Normal Raid"    },
+        { name: "Serious Raid",   value: "Serious Raid"   },
+        { name: "IMPORTANT RAID", value: "IMPORTANT RAID" },
+        { name: "Teamer Raid",    value: "Teamer Raid"    }
+      )
   )
   .addStringOption((o) =>
-    o.setName("target").setDescription("Target clan name").setRequired(true)
+    o
+      .setName("roblox_username")
+      .setDescription("Your Roblox username")
+      .setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("game_link").setDescription("Roblox game link").setRequired(true)
+    o
+      .setName("roblox_profile")
+      .setDescription("Your Roblox profile URL (https://...)")
+      .setRequired(true)
   )
   .addStringOption((o) =>
-    o.setName("people_count").setDescription("Members needed (e.g. 15)").setRequired(true)
+    o
+      .setName("join_server")
+      .setDescription("Roblox game / server link (https://...)")
+      .setRequired(true)
+  )
+  .addStringOption((o) =>
+    o
+      .setName("allies")
+      .setDescription("Allied clans joining the raid")
+      .setRequired(true)
+  )
+  .addStringOption((o) =>
+    o
+      .setName("enemies")
+      .setDescription("Enemy clans / target group")
+      .setRequired(true)
   )
   .addRoleOption((o) =>
-    o.setName("ping_role").setDescription("Role to ping").setRequired(false)
-  )
-  .addStringOption((o) =>
-    o.setName("allies").setDescription("Allied clans joining (optional)").setRequired(false)
-  )
-  .addStringOption((o) =>
-    o.setName("notes").setDescription("Mission briefing (optional)").setRequired(false)
+    o
+      .setName("raid_role")
+      .setDescription("Raid role to ping alongside @everyone (optional)")
+      .setRequired(false)
   );
 
 export async function executeStartRaid(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  const clanName    = interaction.options.getString("clan_name", true);
-  const target      = interaction.options.getString("target", true);
-  const gameLink    = interaction.options.getString("game_link", true);
-  const peopleCount = interaction.options.getString("people_count", true);
-  const pingRole    = interaction.options.getRole("ping_role");
-  const allies      = interaction.options.getString("allies") || "None";
-  const notes       = interaction.options.getString("notes");
-
-  const raidNumber = nextRaidNumber();
-
-  const fields: { name: string; value: string; inline?: boolean }[] = [
-    {
-      name: "◈  GAME LINK",
-      value: `[▸ Enter the Battlefield](${gameLink})`,
-    },
-  ];
-
-  if (notes) {
-    fields.push({
-      name: "◈  MISSION BRIEFING",
-      value: `*${notes}*`,
-    });
-  }
-
-  const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setAuthor({
-      name: "◇  RAID STARTING",
-      iconURL: interaction.guild?.iconURL() ?? undefined,
-    })
-    .setTitle(`${clanName}  ——  ${target}`)
-    .setDescription(
-      `> Members Needed · **${peopleCount}**\n` +
-      `> Allied Clans · ${allies}\n` +
-      `> Date · ${shortDate()}`
-    )
-    .addFields(fields)
-    .setFooter({
-      text: `Raid #${raidNumber}  ·  Called by ${interaction.user.username}`,
-      iconURL: interaction.user.displayAvatarURL(),
-    })
-    .setTimestamp();
+  const raidType      = interaction.options.getString("type",            true);
+  const robloxUser    = interaction.options.getString("roblox_username", true);
+  const robloxProfile = interaction.options.getString("roblox_profile",  true);
+  const joinServer    = interaction.options.getString("join_server",     true);
+  const allies        = interaction.options.getString("allies",          true);
+  const enemies       = interaction.options.getString("enemies",         true);
+  const raidRole      = interaction.options.getRole("raid_role");
 
   const channel = interaction.channel as TextChannel | null;
   if (!channel) {
@@ -124,14 +155,73 @@ export async function executeStartRaid(
     return;
   }
 
-  await channel.send({
-    content: pingRole ? `${pingRole}` : undefined,
+  // Fetch Roblox avatar thumbnail (best-effort — doesn't block on failure)
+  let avatarUrl: string | null = null;
+  const userId = await getRobloxUserId(robloxUser);
+  if (userId) avatarUrl = await getRobloxAvatar(userId);
+
+  const nowUnix = Math.floor(Date.now() / 1000);
+
+  const embed = new EmbedBuilder()
+    .setColor(raidColor(raidType))
+    .setDescription(
+      `⚔️ **${raidType}** · 🟢 Ongoing\n\n` +
+      `🎮 **Roblox:** ${robloxUser}\n` +
+      `💬 **Discord:** <@${interaction.user.id}>\n` +
+      `⏱️ **Started:** <t:${nowUnix}:R>\n` +
+      `🤝 **Allies:** ${allies}\n` +
+      `💀 **Enemies:** ${enemies}`
+    );
+
+  if (avatarUrl) embed.setThumbnail(avatarUrl);
+
+  // Row 1 — link buttons
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setLabel("🔍 Roblox Profile")
+      .setStyle(ButtonStyle.Link)
+      .setURL(robloxProfile),
+    new ButtonBuilder()
+      .setLabel("🔗 Join Server")
+      .setStyle(ButtonStyle.Link)
+      .setURL(joinServer)
+  );
+
+  // Ping content — @everyone and the raid role if provided
+  const roleSnowflakes: string[] = [];
+  if (raidRole) roleSnowflakes.push(raidRole.id);
+
+  const pingContent = raidRole ? `@everyone ${raidRole}` : `@everyone`;
+
+  const raidMsg = await channel.send({
+    content: pingContent,
     embeds: [embed],
+    components: [row1],
+    allowedMentions: { parse: ["everyone"], roles: roleSnowflakes },
   });
-  await interaction.editReply({ content: `✅ Raid #${raidNumber} deployed.` });
+
+  // Create a thread for raid chat, then append "Chat Here" button
+  try {
+    const thread = await raidMsg.startThread({
+      name: `${raidType} — Chat Here`,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
+    });
+    const threadUrl = `https://discord.com/channels/${interaction.guildId}/${thread.id}`;
+    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setLabel(`💬 ${raidType} — Chat Here`)
+        .setStyle(ButtonStyle.Link)
+        .setURL(threadUrl)
+    );
+    await raidMsg.edit({ components: [row1, row2] });
+  } catch {
+    // Thread creation is best-effort — callout is still live without it
+  }
+
+  await interaction.editReply({ content: `✅ Raid callout deployed.` });
 }
 
-// ─── /endraid ────────────────────────────────────────────────────────────────
+// ─── /endraid ─────────────────────────────────────────────────────────────────
 
 export const endRaidData = new SlashCommandBuilder()
   .setName("endraid")
@@ -148,9 +238,9 @@ export const endRaidData = new SlashCommandBuilder()
       .setDescription("Raid outcome")
       .setRequired(true)
       .addChoices(
-        { name: "Victory — We won",          value: "victory" },
-        { name: "Defeat — We lost",           value: "defeat"  },
-        { name: "Draw — It was even",         value: "draw"    },
+        { name: "Victory — We won",          value: "victory"   },
+        { name: "Defeat — We lost",           value: "defeat"    },
+        { name: "Draw — It was even",         value: "draw"      },
         { name: "Contested — Unclear result", value: "contested" }
       )
   )
@@ -170,9 +260,9 @@ export const endRaidData = new SlashCommandBuilder()
 export async function executeEndRaid(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
-  const clanName      = interaction.options.getString("clan_name", true);
-  const opponentClan  = interaction.options.getString("opponent_clan", true);
-  const result        = interaction.options.getString("result", true);
+  const clanName      = interaction.options.getString("clan_name",      true);
+  const opponentClan  = interaction.options.getString("opponent_clan",  true);
+  const result        = interaction.options.getString("result",         true);
   const topPerformers = interaction.options.getString("top_performers", true);
   const notes         = interaction.options.getString("notes");
 
@@ -185,10 +275,10 @@ export async function executeEndRaid(
   };
 
   const outcomeMap: Record<string, Outcome> = {
-    victory:   { authorLabel: "◇  VICTORY",   outcomeDisplay: "🟢 WIN",           color: 0x16a34a },
-    defeat:    { authorLabel: "◇  DEFEAT",     outcomeDisplay: "🔴 LOSS",           color: 0xb91c1c },
-    draw:      { authorLabel: "◇  DRAW",       outcomeDisplay: "🟡 DRAW",           color: 0xd97706 },
-    contested: { authorLabel: "◇  CONTESTED",  outcomeDisplay: "🟣 CONTESTED",      color: 0x7c3aed },
+    victory:   { authorLabel: "◇  VICTORY",   outcomeDisplay: "🟢 WIN",       color: 0x16a34a },
+    defeat:    { authorLabel: "◇  DEFEAT",     outcomeDisplay: "🔴 LOSS",      color: 0xb91c1c },
+    draw:      { authorLabel: "◇  DRAW",       outcomeDisplay: "🟡 DRAW",      color: 0xd97706 },
+    contested: { authorLabel: "◇  CONTESTED",  outcomeDisplay: "🟣 CONTESTED", color: 0x7c3aed },
   };
 
   const outcome = outcomeMap[result] ?? outcomeMap.draw;
@@ -239,11 +329,7 @@ export async function executeEndRaid(
     raidNumber,
   });
 
-  const resultsChannel = findChannel(
-    interaction,
-    "raid-results",
-    "ʀᴀɪᴅ-ʀᴇsᴜʟᴛs"
-  );
+  const resultsChannel = findChannel(interaction, "raid-results", "ʀᴀɪᴅ-ʀᴇsᴜʟᴛs");
 
   if (resultsChannel) {
     await resultsChannel.send({ embeds: [embed] });
