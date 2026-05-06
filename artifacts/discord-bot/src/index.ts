@@ -90,6 +90,7 @@ import { isFunEnabled, setFunEnabled } from "./fun/toggle.js";
 import { helpData, executeHelp } from "./commands/help.js";
 import { handlePurgeCommand, purgeConfigData, executePurgeConfig } from "./moderation/purge.js";
 import { handleLowoCommand } from "./lowo/router.js";
+import { saveOverrides, catalogKeys } from "./lowo/emojis.js";
 import { formatShopCategory } from "./lowo/shop.js";
 import { SHOP_CATEGORIES, type ShopCategory } from "./lowo/data.js";
 import { SHOP_BUTTON_PREFIX, ZOO_BUTTON_PREFIX } from "./lowo/embeds.js";
@@ -483,6 +484,27 @@ client.once(Events.ClientReady, async (readyClient) => {
 
   // Start Lowo cron (lottery draw + global event scheduler)
   try { startLowoCron(readyClient); } catch (err) { console.error("[LOWO CRON] start failed:", err); }
+
+  // Auto-sync Lowo application emojis so custom emojis survive every Railway deploy
+  try {
+    const appEmojis = await readyClient.application.emojis.fetch();
+    const catLower = new Map<string, string>();
+    for (const k of catalogKeys()) catLower.set(k.toLowerCase(), k);
+    const map: Record<string, string> = {};
+    for (const e of appEmojis.values()) {
+      if (!e.name) continue;
+      const key = catLower.get(e.name.toLowerCase());
+      if (key) map[key] = `<${e.animated ? "a" : ""}:${e.name}:${e.id}>`;
+    }
+    if (Object.keys(map).length > 0) {
+      saveOverrides(map);
+      console.log(`[LOWO] Auto-synced ${Object.keys(map).length} application emoji(s) on startup.`);
+    } else {
+      console.log("[LOWO] No application emojis matched catalog keys — using unicode fallbacks.");
+    }
+  } catch (err) {
+    console.error("[LOWO] Failed to auto-sync application emojis on startup:", err);
+  }
 
   if (readyClient.guilds.cache.size === 0) {
     console.warn("[WARN] No guilds in cache — bot may not be in any server.");

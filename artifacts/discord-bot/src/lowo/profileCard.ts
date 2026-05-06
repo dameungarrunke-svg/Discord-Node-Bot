@@ -265,14 +265,14 @@ export async function generateProfileCard(user: User): Promise<Buffer> {
 
   // Stats grid
   const stats: Array<[string, string]> = [
-    ["💰 Cowoncy",  u.cowoncy.toLocaleString()],
-    ["✨ Essence",  u.essence.toLocaleString()],
-    ["🐾 Animals",  String(Object.values(u.zoo).reduce((a, b) => a + b, 0))],
-    ["📕 Dex",      String(u.dex.length)],
-    ["🗡️ Weapons", String(u.weapons.length)],
-    ["⭐ Rep",      String(u.rep)],
-    ["🔥 Streak",   `${u.dailyStreak}d`],
-    ["💍 Status",   u.marriedTo ? "💕 Married" : "Single"],
+    ["Cowoncy",  u.cowoncy.toLocaleString()],
+    ["Essence",  u.essence.toLocaleString()],
+    ["Animals",  String(Object.values(u.zoo).reduce((a, b) => a + b, 0))],
+    ["Dex",      String(u.dex.length)],
+    ["Weapons",  String(u.weapons.length)],
+    ["Rep",      String(u.rep)],
+    ["Streak",   `${u.dailyStreak}d`],
+    ["Status",   u.marriedTo ? "Married" : "Single"],
   ];
 
   ctx.font = "16px NotoSans, sans-serif";

@@ -10,6 +10,7 @@ import {
   ThreadAutoArchiveDuration,
 } from "discord.js";
 import { saveRaidResult, nextRaidNumber } from "./store.js";
+import { emoji } from "../lowo/emojis.js";
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
 
@@ -166,7 +167,7 @@ export async function executeStartRaid(
 
   // Each field on its own line with a blank line after the header for visual height
   const descLines: string[] = [
-    `⚔️ **${raidType}** · 🟢 Ongoing`,
+    `${emoji("battle")} **${raidType}** · ${emoji("on")} Ongoing`,
     "",
   ];
   if (robloxUser) {
@@ -297,10 +298,10 @@ export async function executeEndRaid(
   };
 
   const outcomeMap: Record<string, Outcome> = {
-    victory:   { authorLabel: "◇  VICTORY",   outcomeDisplay: "🟢 WIN",       color: 0x16a34a },
-    defeat:    { authorLabel: "◇  DEFEAT",     outcomeDisplay: "🔴 LOSS",      color: 0xb91c1c },
-    draw:      { authorLabel: "◇  DRAW",       outcomeDisplay: "🟡 DRAW",      color: 0xd97706 },
-    contested: { authorLabel: "◇  CONTESTED",  outcomeDisplay: "🟣 CONTESTED", color: 0x7c3aed },
+    victory:   { authorLabel: "◇  VICTORY",   outcomeDisplay: `${emoji("win")} WIN`,          color: 0x16a34a },
+    defeat:    { authorLabel: "◇  DEFEAT",     outcomeDisplay: `${emoji("loss")} LOSS`,        color: 0xb91c1c },
+    draw:      { authorLabel: "◇  DRAW",       outcomeDisplay: `${emoji("draw")} DRAW`,        color: 0xd97706 },
+    contested: { authorLabel: "◇  CONTESTED",  outcomeDisplay: `${emoji("versus")} CONTESTED`, color: 0x7c3aed },
   };
 
   const outcome = outcomeMap[result] ?? outcomeMap.draw;
