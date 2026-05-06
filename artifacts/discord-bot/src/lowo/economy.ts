@@ -17,9 +17,9 @@ export async function cmdCowoncy(message: Message, _args: string[]): Promise<voi
     .setThumbnail(target.displayAvatarURL({ size: 256 }))
     .setTitle(`${emoji("cowoncy")} Balance`)
     .addFields(statsGrid({
-      "🪙 Cowoncy":  u.cowoncy,
-      "✨ Essence":  u.essence,
-      "💎 Lowo Cash": u.lowoCash,
+      [`${emoji("coin")} Cowoncy`]:   u.cowoncy,
+      [`${emoji("essence")} Essence`]: u.essence,
+      [`${emoji("lowoCash")} Lowo Cash`]: u.lowoCash,
     }));
   await replyEmbed(message, e);
 }
@@ -32,7 +32,7 @@ export async function cmdCash(message: Message): Promise<void> {
     .setAuthor({ name: `${target.username}'s Premium Wallet`, iconURL: target.displayAvatarURL({ size: 128 }) })
     .setThumbnail(target.displayAvatarURL({ size: 256 }))
     .setTitle(`${emoji("cash")} Lowo Cash`)
-    .setDescription(`💎 **${target.username}** has ${val(u.lowoCash)} Lowo Cash *(premium currency)*.`)
+    .setDescription(`${emoji("lowoCash")} **${target.username}** has ${val(u.lowoCash)} Lowo Cash *(premium currency)*.`)
     .addFields(
       { name: "How to earn", value: "+1 every **50 hunts**", inline: true },
       { name: "How to spend", value: "`lowo shop premium`", inline: true },
@@ -108,7 +108,7 @@ export async function cmdGive(message: Message, args: string[]): Promise<void> {
   updateUser(target.id, (x) => { x.cowoncy += amount; });
   const e = successEmbed(message, "Transfer Complete")
     .setThumbnail(target.displayAvatarURL({ size: 128 }))
-    .setDescription(`Sent ${val(amount)} 🪙 cowoncy to **${target.username}**.`);
+    .setDescription(`Sent ${val(amount)} ${emoji("coin")} cowoncy to **${target.username}**.`);
   await replyEmbed(message, e);
 }
 
@@ -138,7 +138,7 @@ export async function cmdRep(message: Message): Promise<void> {
   const them = getUser(target.id);
   const e = successEmbed(message, "Reputation Given!")
     .setThumbnail(target.displayAvatarURL({ size: 128 }))
-    .setDescription(`⭐ **${message.author.username}** gave rep to **${target.username}** — they now have ${val(them.rep)} rep!`);
+    .setDescription(`${emoji("rep")} **${message.author.username}** gave rep to **${target.username}** — they now have ${val(them.rep)} rep!`);
   await replyEmbed(message, e);
 }
 

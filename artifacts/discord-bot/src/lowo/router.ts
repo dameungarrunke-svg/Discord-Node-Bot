@@ -40,6 +40,7 @@ import { cmdCorrupt } from "./corrupt.js";
 import { cmdVoidShop } from "./voidshop.js";
 import { cmdUpdateLogs } from "./updateLogs.js";
 import { setCensored, isCensored } from "./censor.js";
+import { isSocialsEnabled, setSocialsEnabled } from "./socials.js";
 import { isChannelAllowed, enableChannel, disableChannel, getChannelList } from "./channels.js";
 
 import { getUser } from "./storage.js";
@@ -83,6 +84,40 @@ async function cmdCensor(message: Message, args: string[]): Promise<void> {
   } else {
     await message.reply("Usage: `lowo censor on|off`");
   }
+}
+
+async function cmdSocials(message: Message, args: string[]): Promise<void> {
+  const sub = args[0]?.toLowerCase();
+  if (!message.guildId) { await message.reply("❌ Server-only command."); return; }
+  if (!sub) {
+    const on = isSocialsEnabled(message.guildId);
+    await message.reply(`💕 Social features on this server: **${on ? "ON" : "OFF"}**\n_Usage: \`lowo socials on|off\` (admin)_`);
+    return;
+  }
+  const member = message.member;
+  if (!member?.permissions.has(PermissionFlagsBits.ManageGuild)) {
+    await message.reply("❌ You need **Manage Server** permission.");
+    return;
+  }
+  if (sub === "on" || sub === "enable") {
+    setSocialsEnabled(message.guildId, true);
+    await message.reply("💕 Social features **enabled** — hug, kiss, pat, emotes, actions and more are active.");
+  } else if (sub === "off" || sub === "disable") {
+    setSocialsEnabled(message.guildId, false);
+    await message.reply("🔒 Social features **disabled** — all social, emote, and action commands are turned off on this server.");
+  } else {
+    await message.reply("Usage: `lowo socials on|off`");
+  }
+}
+
+function socialGuard(handler: Handler): Handler {
+  return async (message, args) => {
+    if (!isSocialsEnabled(message.guildId)) {
+      await message.reply("🔒 Social features are **disabled** on this server. An admin can run `lowo socials on` to enable them.");
+      return;
+    }
+    return handler(message, args);
+  };
 }
 
 async function cmdChannelEnable(message: Message, _args: string[]): Promise<void> {
@@ -176,10 +211,12 @@ const HANDLERS: Record<string, Handler> = {
   blackjack: cmdBlackjack, bj: cmdBlackjack, lottery: cmdLottery,
   // minigames
   piku: cmdPiku, pikureset: cmdPikuReset, pet: cmdPet, feed: cmdFeed,
-  // social
-  hug: cmdHug, kiss: cmdKiss, slap: cmdSlap, pat: cmdPat, cuddle: cmdCuddle, poke: cmdPoke,
-  propose: cmdPropose, marry: cmdPropose, divorce: cmdDivorce,
-  lowoify: cmdLowoify, ship: cmdShip,
+  // social (guarded — off by default can be toggled with `lowo socials on|off`)
+  hug: socialGuard(cmdHug), kiss: socialGuard(cmdKiss), slap: socialGuard(cmdSlap),
+  pat: socialGuard(cmdPat), cuddle: socialGuard(cmdCuddle), poke: socialGuard(cmdPoke),
+  propose: socialGuard(cmdPropose), marry: socialGuard(cmdPropose),
+  divorce: socialGuard(cmdDivorce),
+  lowoify: socialGuard(cmdLowoify), ship: socialGuard(cmdShip),
   // shop
   shop: cmdShop, buy: cmdBuy, setbg: cmdSetBg, background: cmdSetBg,
   // quests
@@ -202,6 +239,7 @@ const HANDLERS: Record<string, Handler> = {
   skills: cmdSkills, skill: cmdSkills, sk: cmdSkills,
   event: cmdEvent, events: cmdEvent, ev: cmdEvent,
   censor: cmdCensor,
+  socials: cmdSocials,
   enable: cmdChannelEnable,
   disable: cmdChannelDisable,
   channel: cmdChannelList,
@@ -211,20 +249,28 @@ const HANDLERS: Record<string, Handler> = {
   "8b": Util.cmd8ball, "8ball": Util.cmd8ball, roll: Util.cmdRoll, choose: Util.cmdChoose,
   define: Util.cmdDefine, gif: Util.cmdGif, pic: Util.cmdPic, translate: Util.cmdTranslate,
   bell: Util.cmdBell, math: Util.cmdMath, color: Util.cmdColor, ping: Util.cmdPing, stats: Util.cmdStats,
-  // emotes (self)
-  blush: Emotes.cmdBlush, cry: Emotes.cmdCry, dance: Emotes.cmdDance, lewd: Emotes.cmdLewd,
-  pout: Emotes.cmdPout, shrug: Emotes.cmdShrug, sleepy: Emotes.cmdSleepy, smile: Emotes.cmdSmile,
-  smug: Emotes.cmdSmug, thumbsup: Emotes.cmdThumbsup, thumbs: Emotes.cmdThumbsup, wag: Emotes.cmdWag,
-  thinking: Emotes.cmdThinking, triggered: Emotes.cmdTriggered, teehee: Emotes.cmdTeehee,
-  deredere: Emotes.cmdDeredere, thonking: Emotes.cmdThonking, scoff: Emotes.cmdScoff,
-  happy: Emotes.cmdHappy, grin: Emotes.cmdGrin,
-  // actions (target @user)
-  lick: Actions.cmdLick, nom: Actions.cmdNom, stare: Actions.cmdStare, highfive: Actions.cmdHighfive,
-  bite: Actions.cmdBite, greet: Actions.cmdGreet, punch: Actions.cmdPunch,
-  handholding: Actions.cmdHandholding, tickle: Actions.cmdTickle, kill: Actions.cmdKill,
-  hold: Actions.cmdHold, pats: Actions.cmdPats, wave: Actions.cmdWave, boop: Actions.cmdBoop,
-  snuggle: Actions.cmdSnuggle, bully: Actions.cmdBully,
-  fuck: Actions.cmdFuck, frick: Actions.cmdFuck, fk: Actions.cmdFuck,
+  // emotes — guarded by socials toggle
+  blush: socialGuard(Emotes.cmdBlush), cry: socialGuard(Emotes.cmdCry),
+  dance: socialGuard(Emotes.cmdDance), lewd: socialGuard(Emotes.cmdLewd),
+  pout: socialGuard(Emotes.cmdPout), shrug: socialGuard(Emotes.cmdShrug),
+  sleepy: socialGuard(Emotes.cmdSleepy), smile: socialGuard(Emotes.cmdSmile),
+  smug: socialGuard(Emotes.cmdSmug), thumbsup: socialGuard(Emotes.cmdThumbsup),
+  thumbs: socialGuard(Emotes.cmdThumbsup), wag: socialGuard(Emotes.cmdWag),
+  thinking: socialGuard(Emotes.cmdThinking), triggered: socialGuard(Emotes.cmdTriggered),
+  teehee: socialGuard(Emotes.cmdTeehee), deredere: socialGuard(Emotes.cmdDeredere),
+  thonking: socialGuard(Emotes.cmdThonking), scoff: socialGuard(Emotes.cmdScoff),
+  happy: socialGuard(Emotes.cmdHappy), grin: socialGuard(Emotes.cmdGrin),
+  // actions (target @user) — guarded by socials toggle
+  lick: socialGuard(Actions.cmdLick), nom: socialGuard(Actions.cmdNom),
+  stare: socialGuard(Actions.cmdStare), highfive: socialGuard(Actions.cmdHighfive),
+  bite: socialGuard(Actions.cmdBite), greet: socialGuard(Actions.cmdGreet),
+  punch: socialGuard(Actions.cmdPunch), handholding: socialGuard(Actions.cmdHandholding),
+  tickle: socialGuard(Actions.cmdTickle), kill: socialGuard(Actions.cmdKill),
+  hold: socialGuard(Actions.cmdHold), pats: socialGuard(Actions.cmdPats),
+  wave: socialGuard(Actions.cmdWave), boop: socialGuard(Actions.cmdBoop),
+  snuggle: socialGuard(Actions.cmdSnuggle), bully: socialGuard(Actions.cmdBully),
+  fuck: socialGuard(Actions.cmdFuck), frick: socialGuard(Actions.cmdFuck),
+  fk: socialGuard(Actions.cmdFuck),
   // memes
   spongebobchicken: Memes.cmdSpongebobChicken, slapcar: Memes.cmdSlapcar, isthisa: Memes.cmdIsthisa,
   drake: Memes.cmdDrake, distractedbf: Memes.cmdDistractedbf, communismcat: Memes.cmdCommunismcat,
@@ -379,7 +425,7 @@ const HELP_CATEGORIES: Record<string, { title: string; lines: string[] }> = {
       "**Trade** — `trade @u` → `trade add cowoncy|essence|animal|weapon …` → both `trade confirm`",
       "**Gambling** — `slots <amt>` `coinflip h|t <amt>` `blackjack <amt>` `lottery info|buy <n>`",
       "**Pets/Garden** — `piku` `pikureset` `pet` `feed`",
-      "**Mod** — `censor on|off` *(server admin)*",
+      "**Mod** — `censor on|off` · `socials on|off` *(server admin)*",
       "**Utility** — `8b <q>` `roll` `choose a,b,c` `define <w>` `gif <q>` `pic` `math` `color` `ping` `stats`",
       "**Emotes** — `blush cry dance lewd pout shrug sleepy smile smug thumbsup wag thinking triggered teehee deredere thonking scoff happy grin`",
       "**Actions** — `lick nom stare highfive bite greet punch handholding tickle kill hold pats wave boop snuggle bully fuck`",
