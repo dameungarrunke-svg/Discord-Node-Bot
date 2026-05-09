@@ -137,6 +137,73 @@ import {
 } from "./moderation/commands.js";
 import { handleModerationMessage } from "./moderation/monitor.js";
 import { scan } from "./moderation/detector.js";
+import {
+  kickData, executeKick,
+  banData, executeBan,
+  tempbanData, executeTempban,
+  muteData, executeMute,
+  unmuteData, executeUnmute,
+  timeoutData, executeTimeout,
+  purgeData, executePurge,
+  slowmodeData, executeSlowmode,
+  lockData, executeLock,
+  unlockData, executeUnlock,
+  warningsData, executeWarnings,
+} from "./moderation/modActions.js";
+import {
+  setupData, executeSetup,
+  prefixData, executePrefix,
+  setroleData, executeSetrole,
+  setlogData, executeSetlog,
+  antispamData, executeAntispam,
+  automodData, executeAutomod,
+  adminBackupData, executeAdminBackup,
+  auditlogData, executeAuditlog,
+  configData, executeConfig,
+  permissionData, executePermission,
+  welcomeData, executeWelcome,
+  embedData, executeEmbed,
+} from "./admin/commands.js";
+import {
+  userinfoData, executeUserinfo,
+  serverinfoData, executeServerinfo,
+  avatarData, executeAvatar,
+  roleinfoData, executeRoleinfo,
+  reminderData, executeReminder,
+  afkData, executeAfk,
+  botinfoData, executeBotinfo,
+  pingData, executePing,
+  channelinfoData, executeChannelinfo,
+  translateData, executeTranslate,
+  timeData, executeTime,
+  getAfkStatus, clearAfk,
+} from "./utility/utilCommands.js";
+import {
+  balanceData, executeBalance,
+  dailyData, executeDaily,
+  weeklyData, executeWeekly,
+  workData, executeWork,
+  shopData, executeShop,
+  buyData, executeBuy,
+  transferData, executeTransfer,
+  robData, executeRob,
+  investData, executeInvest,
+  crimeData, executeCrime,
+  inventoryData, executeInventory,
+  ecoLeaderboardData, executeEcoLeaderboard,
+} from "./economy/commands.js";
+import {
+  playData, executePlay,
+  pauseData, executePause,
+  resumeData, executeResume,
+  skipData, executeSkip,
+  queueData, executeQueue,
+  volumeData, executeVolume,
+  nowplayingData, executeNowplaying,
+  shuffleData, executeShuffle,
+  loopData, executeLoop,
+  stopData, executeStop,
+} from "./music/commands.js";
 
 const token = process.env.DISCORD_BOT_TOKEN ?? process.env.DISCORD_TOKEN;
 if (!token) {
@@ -216,6 +283,67 @@ const commands = [
   stopLsXpSystemData.toJSON(),
   dashboardData.toJSON(),
   universalLeaderboardData.toJSON(),
+  // Moderation actions
+  kickData.toJSON(),
+  banData.toJSON(),
+  tempbanData.toJSON(),
+  muteData.toJSON(),
+  unmuteData.toJSON(),
+  timeoutData.toJSON(),
+  purgeData.toJSON(),
+  slowmodeData.toJSON(),
+  lockData.toJSON(),
+  unlockData.toJSON(),
+  warningsData.toJSON(),
+  // Admin
+  setupData.toJSON(),
+  prefixData.toJSON(),
+  setroleData.toJSON(),
+  setlogData.toJSON(),
+  antispamData.toJSON(),
+  automodData.toJSON(),
+  adminBackupData.toJSON(),
+  auditlogData.toJSON(),
+  configData.toJSON(),
+  permissionData.toJSON(),
+  welcomeData.toJSON(),
+  embedData.toJSON(),
+  // Utility
+  userinfoData.toJSON(),
+  serverinfoData.toJSON(),
+  avatarData.toJSON(),
+  roleinfoData.toJSON(),
+  reminderData.toJSON(),
+  afkData.toJSON(),
+  botinfoData.toJSON(),
+  pingData.toJSON(),
+  channelinfoData.toJSON(),
+  translateData.toJSON(),
+  timeData.toJSON(),
+  // Economy
+  balanceData.toJSON(),
+  dailyData.toJSON(),
+  weeklyData.toJSON(),
+  workData.toJSON(),
+  shopData.toJSON(),
+  buyData.toJSON(),
+  transferData.toJSON(),
+  robData.toJSON(),
+  investData.toJSON(),
+  crimeData.toJSON(),
+  inventoryData.toJSON(),
+  ecoLeaderboardData.toJSON(),
+  // Music
+  playData.toJSON(),
+  pauseData.toJSON(),
+  resumeData.toJSON(),
+  skipData.toJSON(),
+  queueData.toJSON(),
+  volumeData.toJSON(),
+  nowplayingData.toJSON(),
+  shuffleData.toJSON(),
+  loopData.toJSON(),
+  stopData.toJSON(),
 ];
 
 const onMemeData = new SlashCommandBuilder()
@@ -305,6 +433,67 @@ const slashHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<
   stoplsxpsystem: executeStopLsXpSystem,
   dashboard: executeDashboard,
   leaderboard: executeUniversalLeaderboard,
+  // Moderation actions
+  kick: executeKick,
+  ban: executeBan,
+  tempban: executeTempban,
+  mute: executeMute,
+  unmute: executeUnmute,
+  timeout: executeTimeout,
+  purge: executePurge,
+  slowmode: executeSlowmode,
+  lock: executeLock,
+  unlock: executeUnlock,
+  warnings: executeWarnings,
+  // Admin
+  setup: executeSetup,
+  prefix: executePrefix,
+  setrole: executeSetrole,
+  setlog: executeSetlog,
+  antispam: executeAntispam,
+  automod: executeAutomod,
+  backup: executeAdminBackup,
+  auditlog: executeAuditlog,
+  config: executeConfig,
+  permission: executePermission,
+  welcome: executeWelcome,
+  embed: executeEmbed,
+  // Utility
+  userinfo: executeUserinfo,
+  serverinfo: executeServerinfo,
+  avatar: executeAvatar,
+  roleinfo: executeRoleinfo,
+  reminder: executeReminder,
+  afk: executeAfk,
+  botinfo: executeBotinfo,
+  ping: executePing,
+  channelinfo: executeChannelinfo,
+  translate: executeTranslate,
+  time: executeTime,
+  // Economy
+  balance: executeBalance,
+  daily: executeDaily,
+  weekly: executeWeekly,
+  work: executeWork,
+  shop: executeShop,
+  buy: executeBuy,
+  transfer: executeTransfer,
+  rob: executeRob,
+  invest: executeInvest,
+  crime: executeCrime,
+  inventory: executeInventory,
+  ecotop: executeEcoLeaderboard,
+  // Music
+  play: executePlay,
+  pause: executePause,
+  resume: executeResume,
+  skip: executeSkip,
+  queue: executeQueue,
+  volume: executeVolume,
+  nowplaying: executeNowplaying,
+  shuffle: executeShuffle,
+  loop: executeLoop,
+  stop: executeStop,
   ...FUN_HANDLERS,
   onmeme: async (i) => {
     setFunEnabled(true);
@@ -541,6 +730,25 @@ client.on(Events.MessageCreate, async (message: Message) => {
     console.error("[MODERATION] Unhandled error:", err)
   );
 
+  // AFK system — clear AFK on message, notify if mentioning AFK user
+  {
+    const afkStatus = getAfkStatus(message.author.id);
+    if (afkStatus) {
+      clearAfk(message.author.id);
+      message.reply({ content: `👋 Welcome back! Your AFK status has been cleared.` }).catch(() => {});
+    }
+    if (message.mentions.users.size > 0) {
+      for (const [userId, user] of message.mentions.users) {
+        if (userId === message.author.id) continue;
+        const s = getAfkStatus(userId);
+        if (s) {
+          const since = Math.floor(s.since / 1000);
+          (message.channel as import("discord.js").TextChannel).send({ content: `💤 **${user.username}** is AFK: *${s.reason}* (since <t:${since}:R>)` }).catch(() => {});
+        }
+      }
+    }
+  }
+
   // XP leveling system
   processMessage(message, client).catch((err) =>
     console.error("[LEVELING] Unhandled error:", err)
@@ -607,6 +815,18 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
     const PUBLIC_COMMANDS = new Set([
       "levellb", "weeklylb", "rank", "leaderboard", "help",
+      // Utility — public
+      "userinfo", "serverinfo", "avatar", "roleinfo", "botinfo", "ping",
+      "channelinfo", "time", "afk", "reminder",
+      // Economy — public
+      "balance", "daily", "weekly", "work", "shop", "buy", "transfer",
+      "rob", "invest", "crime", "inventory", "ecotop",
+      // Music — public
+      "play", "pause", "resume", "skip", "queue", "volume",
+      "nowplaying", "shuffle", "loop", "stop",
+      // Moderation — public result (visible in channel)
+      "warnings",
+      // Fun
       ...FUN_COMMAND_NAMES,
     ]);
     // /onmeme and /offmeme are admin-only and reply ephemerally
