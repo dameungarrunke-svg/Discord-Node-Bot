@@ -15,6 +15,7 @@ import {
 } from "discord.js";
 import http from "http";
 import { initPersistence, flushAll } from "./persistence.js";
+import { handleMewoCommand } from "./mewo/router.js";
 
 import { data as setupPanelData, execute as setupPanelExecute } from "./commands/setupChallengePanel.js";
 import { handleCreateTicket } from "./tickets/ticketFlow.js";
@@ -709,6 +710,12 @@ client.on(Events.MessageCreate, async (message: Message) => {
       if (handled) return;
     }).catch((err) => console.error("[LOWO] Unhandled error:", err));
     if (content.toLowerCase().startsWith("lowo ") || content.toLowerCase() === "lowo") return;
+  }
+
+  // mewo multi-purpose command system
+  if (content.toLowerCase().startsWith("mewo")) {
+    handleMewoCommand(message).catch((err) => console.error("[MEWO] Unhandled error:", err));
+    if (content.toLowerCase().startsWith("mewo ") || content.toLowerCase() === "mewo") return;
   }
 
   if (content === "!ping") {
