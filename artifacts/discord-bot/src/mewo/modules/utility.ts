@@ -220,6 +220,42 @@ export const cmdQrGenerate: Handler = async (msg, args) => {
   });
 };
 
+export const cmdQrScan: Handler = async (msg) => {
+  const attachment = msg.attachments.first();
+  if (!attachment) {
+    await msg.reply({ embeds: [err("Attach an image containing a QR code. Usage: `mewo qr scan` + image attachment")] });
+    return;
+  }
+  const thinking = await msg.reply({
+    embeds: [new EmbedBuilder().setColor(0x5865F2).setDescription("🔍 Scanning QR code...")]
+  });
+  try {
+    const res = await fetch(
+      `https://api.qrserver.com/v1/read-qr-code/?outputformat=json&fileurl=${encodeURIComponent(attachment.url)}`,
+      { headers: { "User-Agent": "MewoBot/1.0" } }
+    );
+    const data = await res.json() as Array<{
+      symbol: Array<{ data: string | null; error: string | null }>;
+    }>;
+    const result = data?.[0]?.symbol?.[0];
+    if (!result || result.error || !result.data) {
+      await thinking.edit({ embeds: [err("No QR code detected. Make sure the image is clear and the QR is visible.")] });
+      return;
+    }
+    await thinking.edit({
+      embeds: [new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle("QR Code Scanned")
+        .setThumbnail(attachment.url)
+        .addFields({ name: "Content", value: `\`\`\`${result.data.slice(0, 1000)}\`\`\``, inline: false })
+        .setFooter({ text: "mewo • utility • qrserver.com" })
+      ],
+    });
+  } catch (e) {
+    await thinking.edit({ embeds: [err(`QR scan failed: ${(e as Error).message}`)] });
+  }
+};
+
 export const cmdConvertId2User: Handler = async (msg, args) => {
   const id = args[0];
   if (!id || !/^\d{17,20}$/.test(id)) {
@@ -298,6 +334,73 @@ export const cmdIpLookup: Handler = async (msg, args) => {
     });
   } catch {
     await msg.reply({ embeds: [err("Could not look up that IP address.")] });
+  }
+};
+
+export const cmdIpPing: Handler = async (msg, args) => {
+  const host = args[0];
+  if (!host) {
+    await msg.reply({ embeds: [err("Provide a host or IP. Usage: `mewo ip ping <host>`")] });
+    return;
+  }
+  const thinking = await msg.reply({
+    embeds: [new EmbedBuilder().setColor(0x5865F2).setDescription(`📡 Pinging \`${host}\` from multiple locations...`)]
+  });
+  try {
+    const createRes = await fetch("https://api.globalping.io/v1/measurements", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": "MewoBot/1.0" },
+      body: JSON.stringify({
+        target: host,
+        type: "ping",
+        limit: 4,
+        locations: [{ magic: "world" }],
+        measurementOptions: { packets: 3 },
+      }),
+    });
+    if (!createRes.ok) {
+      const e = await createRes.json() as { error?: { message?: string } };
+      throw new Error(e.error?.message ?? `HTTP ${createRes.status}`);
+    }
+    const { id } = await createRes.json() as { id: string };
+    let result: Record<string, unknown> | null = null;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 1500));
+      const pollRes = await fetch(`https://api.globalping.io/v1/measurements/${id}`, {
+        headers: { "User-Agent": "MewoBot/1.0" }
+      });
+      const pollData = await pollRes.json() as { status: string; results: unknown[] };
+      if (pollData.status === "finished") { result = pollData as Record<string, unknown>; break; }
+    }
+    if (!result) throw new Error("Measurement timed out");
+
+    const probes = result["results"] as Array<{
+      probe: { continent: string; country: string; city: string; network: string };
+      result: { stats?: { min?: number; max?: number; avg?: number; loss?: number }; rawOutput?: string; status?: string };
+    }>;
+
+    const rows = probes.map(p => {
+      const loc = `${p.probe.city ?? "?"}, ${p.probe.country ?? "?"}`;
+      const stats = p.result?.stats;
+      if (!stats || p.result.status === "failed") return `🔴 **${loc}** — timeout`;
+      const loss = stats.loss ?? 0;
+      const avg = stats.avg?.toFixed(1) ?? "?";
+      const min = stats.min?.toFixed(1) ?? "?";
+      const max = stats.max?.toFixed(1) ?? "?";
+      const icon = loss === 0 ? "🟢" : loss < 50 ? "🟡" : "🔴";
+      return `${icon} **${loc}** — avg: \`${avg}ms\` min: \`${min}ms\` max: \`${max}ms\` loss: \`${loss}%\``;
+    });
+
+    await thinking.edit({
+      embeds: [new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle(`📡 Global Ping — \`${host}\``)
+        .setDescription(rows.join("\n\n"))
+        .setFooter({ text: "mewo • utility • globalping.io" })
+      ],
+    });
+  } catch (e) {
+    await thinking.edit({ embeds: [err(`Ping failed: ${(e as Error).message}`)] });
   }
 };
 
@@ -406,8 +509,8 @@ export const cmdAbout: Handler = async (msg) => {
       )
       .addFields(
         { name: "Prefix", value: "`mewo`", inline: true },
-        { name: "Modules", value: "8", inline: true },
-        { name: "Commands", value: "100+", inline: true },
+        { name: "Modules", value: "9", inline: true },
+        { name: "Commands", value: "120+", inline: true },
         { name: "Setup", value: "`mewo enable` in any channel\nRequires **Manage Channels**", inline: false }
       )
       .setFooter({ text: "mewo • utility" })

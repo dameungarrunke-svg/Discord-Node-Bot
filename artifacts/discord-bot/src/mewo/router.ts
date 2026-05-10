@@ -14,40 +14,37 @@ import {
 } from "./modules/roleplay.js";
 import {
   cmdBase64Encode, cmdBase64Decode, cmdAvatar, cmdBanner, cmdPing,
-  cmdDiscordUser, cmdTimezoneSet, cmdTimezoneView, cmdQrGenerate,
-  cmdConvertId2User, cmdConvertUser2Id, cmdIpLookup, cmdDomainLookup,
+  cmdDiscordUser, cmdTimezoneSet, cmdTimezoneView, cmdQrGenerate, cmdQrScan,
+  cmdConvertId2User, cmdConvertUser2Id, cmdIpLookup, cmdIpPing, cmdDomainLookup,
   cmdTranslate, cmdMe, cmdAbout, cmdInvite, cmdCustomizeColor,
 } from "./modules/utility.js";
 import {
   cmdChatgpt, cmdLlama, cmdAiUsage, cmdOcr, cmdScreenshot, cmdDownload,
+  cmdGrokImagine, cmdPerplexity, cmdTtsOpenai, cmdTtsElevenlabs, cmdDeepGeolocate,
 } from "./modules/ai.js";
 import {
   cmdRps, cmdTictactoe, cmdBlackjack, cmdCookie, cmdSnake,
 } from "./modules/games.js";
 import {
   cmdGithub, cmdMinecraftServer, cmdMinecraftUser, cmdMinecraftSkin,
-  cmdMinecraftRandomserver, cmdYoutube, cmdSteam,
+  cmdMinecraftRandomserver, cmdYoutube, cmdSteam, cmdSoundcloud,
 } from "./modules/search.js";
 import {
   cmdTagCreate, cmdTagDelete, cmdTagEdit, cmdTagList, cmdTagSend,
 } from "./modules/tags.js";
+import {
+  cmdFakeMessage, cmdFakeReply, cmdFakeQuote,
+} from "./modules/fake.js";
+import {
+  cmdShazam, cmdBypass, cmdSocialscan, cmdSherlock,
+} from "./modules/social.js";
+import {
+  cmdWallet, cmdWalletDaily, cmdWalletPay, cmdWalletLeaderboard, cmdWalletGamble,
+} from "./modules/wallet.js";
 
 type Handler = (msg: Message, args: string[]) => Promise<void>;
 
 const PREFIX = "mewo";
-
-function comingSoon(feature: string): Handler {
-  return async (msg) => {
-    await msg.reply({
-      embeds: [new EmbedBuilder()
-        .setColor(0xFEE75C)
-        .setTitle("Coming Soon")
-        .setDescription(`**${feature}** is not yet available. Check back for updates!`)
-        .setFooter({ text: "mewo" })
-      ],
-    });
-  };
-}
 
 function unknownCmd(group?: string): Handler {
   return async (msg) => {
@@ -72,16 +69,15 @@ const AI_CMDS: Record<string, Handler> = {
   ocr: cmdOcr,
   screenshot: cmdScreenshot,
   download: cmdDownload,
-  "grok-imagine": comingSoon("AI Image Generation (Grok)"),
-  geolocate: comingSoon("AI Geolocation"),
-  deepgeolocate: comingSoon("AI Deep Geolocation"),
-  perplexity: comingSoon("Perplexity Web Search"),
-  tts: comingSoon("Text to Speech (use: mewo ai tts elevenlabs or openai)"),
+  "grok-imagine": cmdGrokImagine,
+  geolocate: cmdDeepGeolocate,
+  deepgeolocate: cmdDeepGeolocate,
+  perplexity: cmdPerplexity,
 };
 
 const AI_TTS_CMDS: Record<string, Handler> = {
-  elevenlabs: comingSoon("ElevenLabs TTS (requires ELEVENLABS_API_KEY)"),
-  openai: comingSoon("OpenAI TTS (requires OPENAI_API_KEY)"),
+  elevenlabs: cmdTtsElevenlabs,
+  openai: cmdTtsOpenai,
 };
 
 const BASE64_CMDS: Record<string, Handler> = {
@@ -109,6 +105,7 @@ const SEARCH_CMDS: Record<string, Handler> = {
   youtube: cmdYoutube,
   github: cmdGithub,
   steam: cmdSteam,
+  soundcloud: cmdSoundcloud,
 };
 
 const MINECRAFT_CMDS: Record<string, Handler> = {
@@ -138,26 +135,42 @@ const CONVERT_CMDS: Record<string, Handler> = {
 
 const QR_CMDS: Record<string, Handler> = {
   generate: cmdQrGenerate,
-  scan: comingSoon("QR Scan (requires image attachment)"),
+  scan: cmdQrScan,
 };
 
 const CUSTOMIZE_CMDS: Record<string, Handler> = {
   color: cmdCustomizeColor,
-  wallet: comingSoon("Wallet Customization"),
+  wallet: cmdWallet,
 };
 
 const DISCORD_CMDS: Record<string, Handler> = {
   user: cmdDiscordUser,
-  dsa: comingSoon("Discord DSA Lookup"),
 };
 
 const IP_CMDS: Record<string, Handler> = {
   lookup: cmdIpLookup,
-  ping: comingSoon("Global IP Ping"),
+  ping: cmdIpPing,
 };
 
 const DOMAIN_CMDS: Record<string, Handler> = {
   lookup: cmdDomainLookup,
+};
+
+const FAKE_CMDS: Record<string, Handler> = {
+  message: cmdFakeMessage,
+  msg: cmdFakeMessage,
+  reply: cmdFakeReply,
+  quote: cmdFakeQuote,
+};
+
+const WALLET_CMDS: Record<string, Handler> = {
+  balance: cmdWallet,
+  daily: cmdWalletDaily,
+  pay: cmdWalletPay,
+  leaderboard: cmdWalletLeaderboard,
+  lb: cmdWalletLeaderboard,
+  gamble: cmdWalletGamble,
+  bet: cmdWalletGamble,
 };
 
 // ─── Main router ──────────────────────────────────────────────────────────────
@@ -166,11 +179,8 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
   const content = message.content.trim();
   const lower = content.toLowerCase();
 
-  // Must start with "mewo" (exactly, case-insensitive)
   if (!lower.startsWith(PREFIX)) return false;
   const afterPrefix = content.slice(PREFIX.length);
-
-  // Must be "mewo" alone, or "mewo <space>..." — prevent matching "mewo!" etc
   if (afterPrefix !== "" && afterPrefix[0] !== " ") return false;
 
   const rest = afterPrefix.trim();
@@ -178,13 +188,11 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
   const cmd = parts[0]?.toLowerCase() ?? "";
   const args = parts.slice(1);
 
-  // "mewo" alone or "mewo help" → show help (always allowed, no channel check)
   if (!cmd || cmd === "help") {
     await handleHelp(message, args).catch(console.error);
     return true;
   }
 
-  // ── Channel enable/disable — no channel-enabled check needed ──────────────
   if (cmd === "enable") {
     if (!message.member?.permissions.has(PermissionFlagsBits.ManageChannels)) {
       await message.reply({
@@ -228,13 +236,12 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
     return true;
   }
 
-  // ── All other commands require the channel to be enabled ─────────────────
   if (!isChannelEnabled(message.channelId)) return false;
 
   try {
     switch (cmd) {
 
-      // ── Fun ────────────────────────────────────────────────────────────────
+      // ── Fun ──────────────────────────────────────────────────────────────────
       case "8ball":        await cmd8ball(message, args);        break;
       case "coinflip":     await cmdCoinflip(message, args);     break;
       case "rate":         await cmdRate(message, args);          break;
@@ -254,31 +261,23 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
       case "badtranslate": await cmdBadtranslate(message, args); break;
       case "emojimix":     await cmdEmojimix(message, args);     break;
 
-      // ── Utility ────────────────────────────────────────────────────────────
-      case "ping":    await cmdPing(message, args);    break;
-      case "avatar":  await cmdAvatar(message, args);  break;
-      case "banner":  await cmdBanner(message, args);  break;
-      case "me":      await cmdMe(message, args);      break;
-      case "about":   await cmdAbout(message, args);   break;
-      case "invite":  await cmdInvite(message, args);  break;
+      // ── Utility ──────────────────────────────────────────────────────────────
+      case "ping":      await cmdPing(message, args);      break;
+      case "avatar":    await cmdAvatar(message, args);    break;
+      case "banner":    await cmdBanner(message, args);    break;
+      case "me":        await cmdMe(message, args);        break;
+      case "about":     await cmdAbout(message, args);     break;
+      case "invite":    await cmdInvite(message, args);    break;
       case "translate": await cmdTranslate(message, args); break;
 
-      // ── Coming-soon stubs (single-word) ────────────────────────────────────
-      case "bypass":
-      case "shazam":
-      case "soundcloud":
-      case "voicemessage":
-      case "button":
-      case "socialscan":
-      case "sherlock":
-      case "download":
-        await comingSoon(cmd.charAt(0).toUpperCase() + cmd.slice(1))(message, args);
-        break;
-      case "fake":
-        await comingSoon("Fake Media Generation (fake message, convo, quote, etc.)")(message, args);
-        break;
+      // ── Social ───────────────────────────────────────────────────────────────
+      case "shazam":      await cmdShazam(message, args);      break;
+      case "bypass":      await cmdBypass(message, args);      break;
+      case "socialscan":  await cmdSocialscan(message, args);  break;
+      case "sherlock":    await cmdSherlock(message, args);    break;
+      case "soundcloud":  await cmdSoundcloud(message, args);  break;
 
-      // ── Groups ─────────────────────────────────────────────────────────────
+      // ── Groups ───────────────────────────────────────────────────────────────
 
       case "ai": {
         const sub = args[0]?.toLowerCase();
@@ -286,7 +285,12 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
           const subSub = args[1]?.toLowerCase();
           const h = subSub ? AI_TTS_CMDS[subSub] : null;
           if (h) await h(message, args.slice(2));
-          else await comingSoon("Text to Speech")(message, args);
+          else {
+            await message.reply({
+              embeds: [new EmbedBuilder().setColor(0xED4245)
+                .setDescription("❌ Usage: `mewo ai tts openai <text>` or `mewo ai tts elevenlabs <text>`")]
+            });
+          }
           break;
         }
         const h = sub ? AI_CMDS[sub] : null;
@@ -399,7 +403,7 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
         else {
           await message.reply({
             embeds: [new EmbedBuilder().setColor(0xED4245)
-              .setDescription("❌ Usage: `mewo ip lookup <ip>`")]
+              .setDescription("❌ Usage: `mewo ip lookup <ip>` or `mewo ip ping <host>`")]
           });
         }
         break;
@@ -417,10 +421,37 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
         break;
       }
 
-      // ── Settings / info aliases ─────────────────────────────────────────────
+      case "fake": {
+        const h = FAKE_CMDS[args[0]?.toLowerCase()];
+        if (h) await h(message, args.slice(1));
+        else {
+          await message.reply({
+            embeds: [new EmbedBuilder()
+              .setColor(0x5865F2)
+              .setTitle("Fake Media Generation")
+              .setDescription(
+                "`mewo fake message @user <text>` — Fake Discord message\n" +
+                "`mewo fake reply @replied_to @author <text>` — Fake reply\n" +
+                "`mewo fake quote @user <text>` — Fake quote card"
+              )
+              .setFooter({ text: "mewo • fake" })
+            ],
+          });
+        }
+        break;
+      }
+
+      case "wallet": {
+        const sub = args[0]?.toLowerCase();
+        if (!sub) { await cmdWallet(message, []); break; }
+        const h = WALLET_CMDS[sub];
+        if (h) await h(message, args.slice(1));
+        else await unknownCmd("wallet")(message, args);
+        break;
+      }
+
       case "settings": await cmdAbout(message, args); break;
 
-      // ── Default ────────────────────────────────────────────────────────────
       default:
         await message.reply({
           embeds: [new EmbedBuilder()

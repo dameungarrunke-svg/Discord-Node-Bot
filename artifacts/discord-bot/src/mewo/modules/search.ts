@@ -269,3 +269,98 @@ export const cmdSteam: Handler = async (msg, args) => {
     await msg.reply({ embeds: [err("Could not reach Steam API.")] });
   }
 };
+
+// ─── SOUNDCLOUD ──────────────────────────────────────────────────────────────
+
+export const cmdSoundcloud: Handler = async (msg, args) => {
+  if (!args.length) {
+    await msg.reply({ embeds: [err("Provide a search query or SoundCloud URL. Usage: `mewo soundcloud <query>`")] });
+    return;
+  }
+  const query = args.join(" ");
+  const clientId = process.env.SOUNDCLOUD_CLIENT_ID;
+  const isUrl = query.startsWith("https://soundcloud.com/");
+
+  if (isUrl) {
+    try {
+      const resolveUrl = clientId
+        ? `https://api.soundcloud.com/resolve?url=${encodeURIComponent(query)}&client_id=${clientId}`
+        : `https://soundcloud.com/oembed?format=json&url=${encodeURIComponent(query)}`;
+      const res = await fetch(resolveUrl, { headers: { "User-Agent": "MewoBot/1.0" } });
+      if (!res.ok) throw new Error("Not found");
+      const d = await res.json() as {
+        title?: string; username?: string; author_name?: string;
+        description?: string; thumbnail_url?: string; author_url?: string;
+        permalink_url?: string; playback_count?: number; likes_count?: number;
+        duration?: number;
+      };
+      const title = d.title ?? "Unknown Track";
+      const artist = d.username ?? d.author_name ?? "Unknown";
+      const thumb = d.thumbnail_url;
+      const link = d.permalink_url ?? query;
+      const embed = new EmbedBuilder()
+        .setColor(0xFF5500)
+        .setTitle(`SoundCloud — ${title}`)
+        .setURL(link)
+        .addFields({ name: "Artist", value: artist, inline: true })
+        .setFooter({ text: "mewo • search • SoundCloud" });
+      if (thumb) embed.setThumbnail(thumb);
+      if (d.playback_count) embed.addFields({ name: "Plays", value: d.playback_count.toLocaleString(), inline: true });
+      if (d.likes_count) embed.addFields({ name: "Likes", value: d.likes_count.toLocaleString(), inline: true });
+      await msg.reply({ embeds: [embed] });
+      return;
+    } catch {
+      await msg.reply({ embeds: [err("Could not resolve that SoundCloud URL.")] });
+      return;
+    }
+  }
+
+  if (!clientId) {
+    await msg.reply({
+      embeds: [new EmbedBuilder()
+        .setColor(0xFF5500)
+        .setTitle("SoundCloud Search")
+        .setDescription(
+          `**[Search "${query}" on SoundCloud](https://soundcloud.com/search?q=${encodeURIComponent(query)})**\n\n` +
+          "To enable direct search, set `SOUNDCLOUD_CLIENT_ID` in your Railway environment variables.\n" +
+          "You can extract a client ID from SoundCloud's web app JS bundle."
+        )
+        .setFooter({ text: "mewo • search • SoundCloud" })
+      ],
+    });
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      `https://api.soundcloud.com/search?q=${encodeURIComponent(query)}&limit=5&client_id=${clientId}`,
+      { headers: { "User-Agent": "MewoBot/1.0" } }
+    );
+    if (!res.ok) throw new Error("API error");
+    const d = await res.json() as {
+      collection?: Array<{
+        title: string; permalink_url: string; user?: { username: string };
+        playback_count?: number; duration?: number; artwork_url?: string;
+      }>;
+    };
+    if (!d.collection?.length) {
+      await msg.reply({ embeds: [err("No results found.")] });
+      return;
+    }
+    const tracks = d.collection.slice(0, 5);
+    const desc = tracks.map((t, i) => {
+      const dur = t.duration ? `${Math.floor(t.duration / 60000)}:${String(Math.floor((t.duration % 60000) / 1000)).padStart(2, "0")}` : "?";
+      return `**${i + 1}.** [${t.title}](${t.permalink_url})\n> ${t.user?.username ?? "Unknown"} · ${dur}`;
+    }).join("\n\n");
+    await msg.reply({
+      embeds: [new EmbedBuilder()
+        .setColor(0xFF5500)
+        .setTitle(`SoundCloud — ${query}`)
+        .setDescription(desc)
+        .setFooter({ text: "mewo • search • SoundCloud" })
+      ],
+    });
+  } catch {
+    await msg.reply({ embeds: [err("Could not reach SoundCloud API.")] });
+  }
+};

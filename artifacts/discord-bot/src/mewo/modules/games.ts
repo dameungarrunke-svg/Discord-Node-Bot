@@ -333,15 +333,130 @@ export const cmdBlackjack: Handler = async (msg) => {
   });
 };
 
-// ─── SNAKE (coming soon) ─────────────────────────────────────────────────────
+// ─── SNAKE ────────────────────────────────────────────────────────────────────
+
+const SNAKE_SIZE = 5;
+const EMPTY = "⬛";
+const FOOD = "🍎";
+const HEAD = "🐍";
+const BODY = "🟩";
+
+interface SnakeState {
+  snake: Array<[number, number]>;
+  food: [number, number];
+  dir: [number, number];
+  score: number;
+  alive: boolean;
+}
+
+function randomCell(avoid: Array<[number, number]>): [number, number] {
+  let r: [number, number];
+  do {
+    r = [Math.floor(Math.random() * SNAKE_SIZE), Math.floor(Math.random() * SNAKE_SIZE)];
+  } while (avoid.some(([ar, ac]) => ar === r[0] && ac === r[1]));
+  return r;
+}
+
+function renderGrid(state: SnakeState): string {
+  const grid: string[][] = Array.from({ length: SNAKE_SIZE }, () => Array(SNAKE_SIZE).fill(EMPTY));
+  for (let i = 1; i < state.snake.length; i++) grid[state.snake[i][0]][state.snake[i][1]] = BODY;
+  grid[state.snake[0][0]][state.snake[0][1]] = HEAD;
+  grid[state.food[0]][state.food[1]] = FOOD;
+  return grid.map(row => row.join("")).join("\n");
+}
+
+function buildSnakeRows(gameId: string, disabled = false): ActionRowBuilder<ButtonBuilder>[] {
+  const upRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`snake_${gameId}_noop1`).setLabel("\u200B").setStyle(ButtonStyle.Secondary).setDisabled(true),
+    new ButtonBuilder().setCustomId(`snake_${gameId}_up`).setEmoji("⬆️").setStyle(ButtonStyle.Secondary).setDisabled(disabled),
+    new ButtonBuilder().setCustomId(`snake_${gameId}_noop2`).setLabel("\u200B").setStyle(ButtonStyle.Secondary).setDisabled(true),
+  );
+  const midRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`snake_${gameId}_left`).setEmoji("⬅️").setStyle(ButtonStyle.Secondary).setDisabled(disabled),
+    new ButtonBuilder().setCustomId(`snake_${gameId}_down`).setEmoji("⬇️").setStyle(ButtonStyle.Secondary).setDisabled(disabled),
+    new ButtonBuilder().setCustomId(`snake_${gameId}_right`).setEmoji("➡️").setStyle(ButtonStyle.Secondary).setDisabled(disabled),
+  );
+  return [upRow, midRow];
+}
+
+function snakeStep(state: SnakeState): SnakeState {
+  const [hr, hc] = state.snake[0];
+  const [dr, dc] = state.dir;
+  const nr = hr + dr;
+  const nc = hc + dc;
+  if (nr < 0 || nr >= SNAKE_SIZE || nc < 0 || nc >= SNAKE_SIZE) return { ...state, alive: false };
+  if (state.snake.some(([r, c]) => r === nr && c === nc)) return { ...state, alive: false };
+  const newSnake: Array<[number, number]> = [[nr, nc], ...state.snake];
+  const ateFood = nr === state.food[0] && nc === state.food[1];
+  if (!ateFood) newSnake.pop();
+  const newFood: [number, number] = ateFood ? randomCell(newSnake) : state.food;
+  return { ...state, snake: newSnake, food: newFood, score: state.score + (ateFood ? 1 : 0), alive: true };
+}
 
 export const cmdSnake: Handler = async (msg) => {
-  await msg.reply({
-    embeds: [new EmbedBuilder()
-      .setColor(0x57F287)
-      .setTitle("Snake")
-      .setDescription("Interactive snake game is coming soon!\n\nThis will be a real-time button-controlled snake on a grid.")
-      .setFooter({ text: "mewo • games • coming soon" })
-    ],
+  const gameId = Date.now().toString(36);
+  const initSnake: Array<[number, number]> = [[2, 2]];
+  let state: SnakeState = {
+    snake: initSnake,
+    food: randomCell(initSnake),
+    dir: [0, 1],
+    score: 0,
+    alive: true,
+  };
+
+  const buildEmbed = (s: SnakeState, over = false) => new EmbedBuilder()
+    .setColor(over ? 0xED4245 : 0x57F287)
+    .setTitle(over ? "🐍 Game Over!" : "🐍 Snake")
+    .setDescription(`\`\`\`\n${renderGrid(s)}\n\`\`\``)
+    .addFields({ name: "Score", value: `${s.score}`, inline: true })
+    .setFooter({ text: "mewo • games • use buttons to move" });
+
+  const sent = await msg.reply({ embeds: [buildEmbed(state)], components: buildSnakeRows(gameId) });
+
+  const collector = sent.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    filter: i => i.customId.startsWith(`snake_${gameId}_`) && i.user.id === msg.author.id,
+    time: 120_000,
+    idle: 30_000,
+  });
+
+  const DIRS: Record<string, [number, number]> = {
+    up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1],
+  };
+
+  collector.on("collect", async (btn) => {
+    const dir = btn.customId.split("_")[2];
+    if (!DIRS[dir]) { await btn.deferUpdate(); return; }
+    const newDir = DIRS[dir];
+    const oppDir: [number, number] = [-state.dir[0], -state.dir[1]];
+    if (newDir[0] === oppDir[0] && newDir[1] === oppDir[1]) { await btn.deferUpdate(); return; }
+    state.dir = newDir;
+    state = snakeStep(state);
+    if (!state.alive) {
+      collector.stop("dead");
+      await btn.update({
+        embeds: [buildEmbed(state, true).setDescription(`\`\`\`\n${renderGrid(state)}\n\`\`\`\n\n💀 **You crashed!** Final score: **${state.score}**`)],
+        components: buildSnakeRows(gameId, true),
+      });
+      return;
+    }
+    const maxScore = SNAKE_SIZE * SNAKE_SIZE - 1;
+    if (state.score >= maxScore) {
+      collector.stop("win");
+      await btn.update({
+        embeds: [buildEmbed(state).setColor(0xFEE75C).setTitle("🏆 You won Snake!").setDescription(`\`\`\`\n${renderGrid(state)}\n\`\`\`\n\n**Perfect score!** 🎉`)],
+        components: buildSnakeRows(gameId, true),
+      });
+      return;
+    }
+    await btn.update({ embeds: [buildEmbed(state)], components: buildSnakeRows(gameId) });
+  });
+
+  collector.on("end", async (_, reason) => {
+    if (reason === "dead" || reason === "win") return;
+    await sent.edit({
+      embeds: [buildEmbed(state, true).setDescription(`\`\`\`\n${renderGrid(state)}\n\`\`\`\n\n⏱️ **Timed out.** Final score: **${state.score}**`)],
+      components: buildSnakeRows(gameId, true),
+    }).catch(() => {});
   });
 };

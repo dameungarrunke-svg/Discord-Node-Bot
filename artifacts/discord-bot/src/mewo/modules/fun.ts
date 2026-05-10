@@ -222,7 +222,6 @@ export const cmdMath: Handler = async (msg, args) => {
     return;
   }
   try {
-    // eslint-disable-next-line no-new-func
     const result = new Function("Math", `"use strict"; return (${expr});`)(Math) as unknown;
     if (typeof result !== "number" || !isFinite(result)) throw new Error("Not a number");
     await msg.reply({
@@ -375,13 +374,56 @@ export const cmdBadtranslate: Handler = async (msg, args) => {
   }
 };
 
-export const cmdEmojimix: Handler = async (msg) => {
+function emojiToHex(emoji: string): string | null {
+  const codePoints = [...emoji].map(c => c.codePointAt(0)?.toString(16)).filter(Boolean);
+  if (!codePoints.length) return null;
+  return codePoints.join("-").replace(/-fe0f/g, "");
+}
+
+export const cmdEmojimix: Handler = async (msg, args) => {
+  if (args.length < 2) {
+    await msg.reply({ embeds: [err("Provide two emojis. Usage: `mewo emojimix <emoji1> <emoji2>`")] });
+    return;
+  }
+  const e1 = args[0];
+  const e2 = args[1];
+  const hex1 = emojiToHex(e1);
+  const hex2 = emojiToHex(e2);
+  if (!hex1 || !hex2) {
+    await msg.reply({ embeds: [err("Could not parse one or both emojis. Use standard Unicode emojis.")] });
+    return;
+  }
+  const dates = ["20230301", "20220815", "20220406", "20210831", "20210521"];
+  let imageUrl: string | null = null;
+  for (const date of dates) {
+    const url = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${hex1}/u${hex1}_u${hex2}.png`;
+    try {
+      const res = await fetch(url, { method: "HEAD" });
+      if (res.ok) { imageUrl = url; break; }
+    } catch { continue; }
+    const urlAlt = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${hex2}/u${hex2}_u${hex1}.png`;
+    try {
+      const res2 = await fetch(urlAlt, { method: "HEAD" });
+      if (res2.ok) { imageUrl = urlAlt; break; }
+    } catch { continue; }
+  }
+  if (!imageUrl) {
+    await msg.reply({
+      embeds: [new EmbedBuilder()
+        .setColor(0xFF73FA)
+        .setTitle("Emoji Mix")
+        .setDescription(`No mix found for ${e1} + ${e2}.\n\nTry different emojis, or visit [Emoji Kitchen](https://emojikitchen.dev/) to explore combos.`)
+        .setFooter({ text: "mewo • fun • Google Emoji Kitchen" })
+      ],
+    });
+    return;
+  }
   await msg.reply({
     embeds: [new EmbedBuilder()
       .setColor(0xFF73FA)
-      .setTitle("Emoji Mix")
-      .setDescription("Emoji mixing is coming soon!\n\nFor now, check out [Emoji Kitchen](https://emojikitchen.dev/) to mix emojis manually.")
-      .setFooter({ text: "mewo • fun • coming soon" })
+      .setTitle(`Emoji Mix — ${e1} + ${e2}`)
+      .setImage(imageUrl)
+      .setFooter({ text: "mewo • fun • Google Emoji Kitchen" })
     ],
   });
 };

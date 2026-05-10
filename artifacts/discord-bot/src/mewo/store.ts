@@ -15,25 +15,33 @@ export interface MewoTag {
   createdAt: string;
 }
 
+interface WalletEntry {
+  balance: number;
+  dailyDate: string;
+}
+
 interface MewoData {
   enabledChannels: string[];
   tags: Record<string, Record<string, MewoTag>>;
   timezones: Record<string, string>;
   embedColors: Record<string, string>;
   aiUsage: Record<string, { chatgpt: number; llama: number; resetDate: string }>;
+  wallets: Record<string, WalletEntry>;
 }
 
 function load(): MewoData {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
   if (!existsSync(FILE)) {
-    const empty: MewoData = { enabledChannels: [], tags: {}, timezones: {}, embedColors: {}, aiUsage: {} };
+    const empty: MewoData = { enabledChannels: [], tags: {}, timezones: {}, embedColors: {}, aiUsage: {}, wallets: {} };
     writeFileSync(FILE, JSON.stringify(empty, null, 2), "utf-8");
     return empty;
   }
   try {
-    return JSON.parse(readFileSync(FILE, "utf-8")) as MewoData;
+    const d = JSON.parse(readFileSync(FILE, "utf-8")) as MewoData;
+    if (!d.wallets) d.wallets = {};
+    return d;
   } catch {
-    return { enabledChannels: [], tags: {}, timezones: {}, embedColors: {}, aiUsage: {} };
+    return { enabledChannels: [], tags: {}, timezones: {}, embedColors: {}, aiUsage: {}, wallets: {} };
   }
 }
 
@@ -128,4 +136,51 @@ export function incrementAiUsage(userId: string, model: "chatgpt" | "llama"): vo
   u[model]++;
   d.aiUsage[userId] = u;
   save(d);
+}
+
+export function getWallet(userId: string): WalletEntry {
+  const d = load();
+  return d.wallets[userId] ?? { balance: 0, dailyDate: "" };
+}
+
+export function setWalletBalance(userId: string, balance: number): void {
+  const d = load();
+  const w = d.wallets[userId] ?? { balance: 0, dailyDate: "" };
+  w.balance = balance;
+  d.wallets[userId] = w;
+  save(d);
+}
+
+export function claimDaily(userId: string): { claimed: boolean; amount: number; balance: number } {
+  const d = load();
+  const today = new Date().toISOString().slice(0, 10);
+  const w = d.wallets[userId] ?? { balance: 0, dailyDate: "" };
+  if (w.dailyDate === today) return { claimed: false, amount: 0, balance: w.balance };
+  const amount = Math.floor(Math.random() * 400) + 100;
+  w.balance += amount;
+  w.dailyDate = today;
+  d.wallets[userId] = w;
+  save(d);
+  return { claimed: true, amount, balance: w.balance };
+}
+
+export function transferCoins(fromId: string, toId: string, amount: number): boolean {
+  const d = load();
+  const from = d.wallets[fromId] ?? { balance: 0, dailyDate: "" };
+  const to = d.wallets[toId] ?? { balance: 0, dailyDate: "" };
+  if (from.balance < amount) return false;
+  from.balance -= amount;
+  to.balance += amount;
+  d.wallets[fromId] = from;
+  d.wallets[toId] = to;
+  save(d);
+  return true;
+}
+
+export function getWalletLeaderboard(limit = 10): Array<{ userId: string; balance: number }> {
+  const d = load();
+  return Object.entries(d.wallets)
+    .map(([userId, w]) => ({ userId, balance: w.balance }))
+    .sort((a, b) => b.balance - a.balance)
+    .slice(0, limit);
 }
