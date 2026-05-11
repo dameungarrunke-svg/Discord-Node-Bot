@@ -25,7 +25,7 @@ const MODULES: Record<string, { emoji: string; desc: string; commands: string[] 
       "`mewo lyrics <song>` — Find song lyrics",
       "`mewo nitro` — Send a fake nitro gift",
       "`mewo badtranslate <text>` — Chain bad translations",
-      "`mewo emojimix <e1> <e2>` — Mix two emojis",
+      "`mewo emojimix <e1> <e2>` — Mix two emojis (Google Emoji Kitchen)",
     ],
   },
   utility: {
@@ -39,45 +39,50 @@ const MODULES: Record<string, { emoji: string; desc: string; commands: string[] 
       "`mewo banner [@user]` — View user banner",
       "`mewo ping` — Bot latency",
       "`mewo qr generate <text>` — Generate a QR code",
+      "`mewo qr scan` + image — Read a QR code from image",
+      "`mewo ip lookup <ip>` — IP address geolocation",
+      "`mewo ip ping <host>` — Global ping from multiple locations",
+      "`mewo domain lookup <domain>` — DNS records lookup",
       "`mewo timezone set <tz>` — Set your timezone (IANA format)",
       "`mewo timezone view [tz/@user]` — View a timezone",
       "`mewo convert discordid2user <id>` — ID to user",
       "`mewo convert discorduser2id @user` — User to ID",
-      "`mewo ip lookup <ip>` — IP address information",
-      "`mewo domain lookup <domain>` — DNS records lookup",
-      "`mewo discord user @user` — View Discord user profile",
-      "`mewo me [@user]` — View user info",
+      "`mewo discord user @user` — Full Discord user profile",
+      "`mewo me [@user]` — View user info & roles",
       "`mewo about` — About mewo",
-      "`mewo invite` — Get invite link",
-      "`mewo customize color [hex]` — Customize embed color",
+      "`mewo invite` — Get bot invite link",
+      "`mewo customize color [hex]` — Customize your embed color",
     ],
   },
   ai: {
     emoji: "🤖",
     desc: "AI-powered commands",
     commands: [
-      "`mewo ai chatgpt <prompt>` — Ask ChatGPT (set OPENAI_API_KEY)",
-      "`mewo ai llama <prompt>` — Ask LLaMA 3.1 (set GROQ_API_KEY)",
+      "`mewo ai chatgpt <prompt>` — Ask ChatGPT GPT-4o Mini (needs `OPENAI_API_KEY`)",
+      "`mewo ai llama <prompt>` — Ask LLaMA 3.1 via Groq (needs `GROQ_API_KEY`)",
+      "`mewo ai perplexity <query>` — AI web search with citations (needs `PERPLEXITY_API_KEY`)",
+      "`mewo ai grok-imagine <prompt>` — Generate image via xAI Grok (needs `GROK_API_KEY`)",
+      "`mewo ai ocr` + image — Extract text from image (uses free OCR.space key)",
+      "`mewo ai screenshot <url>` — Screenshot any website (free, no key needed)",
+      "`mewo ai download <url>` — Download media from YouTube/TikTok/etc (free)",
+      "`mewo ai tts openai <text>` — Text-to-speech via OpenAI (needs `OPENAI_API_KEY`)",
+      "`mewo ai tts elevenlabs <text>` — Text-to-speech via ElevenLabs (needs `ELEVENLABS_API_KEY`)",
+      "`mewo ai deepgeolocate <ip>` — Deep multi-source IP geolocation (free)",
       "`mewo ai usage` — Check your daily AI usage limits",
-      "`mewo ai ocr` — Extract text from image (coming soon)",
-      "`mewo ai screenshot <url>` — Screenshot a website (coming soon)",
-      "`mewo ai download <url>` — Download media (coming soon)",
-      "`mewo ai grok-imagine <prompt>` — Generate image (coming soon)",
-      "`mewo ai perplexity <query>` — Perplexity search (coming soon)",
     ],
   },
   roleplay: {
     emoji: "🎭",
-    desc: "Roleplay GIF commands — most work with @mentions",
+    desc: "Roleplay GIF commands — all work with optional @mentions",
     commands: [
-      "`mewo roleplay baka [@u]`   `mewo roleplay bite [@u]`",
-      "`mewo roleplay cry`         `mewo roleplay cuddle [@u]`",
-      "`mewo roleplay feed [@u]`   `mewo roleplay handhold [@u]`",
+      "`mewo roleplay baka [@u]`     `mewo roleplay bite [@u]`",
+      "`mewo roleplay cry`           `mewo roleplay cuddle [@u]`",
+      "`mewo roleplay feed [@u]`     `mewo roleplay handhold [@u]`",
       "`mewo roleplay handshake [@u]` `mewo roleplay highfive [@u]`",
-      "`mewo roleplay hug [@u]`    `mewo roleplay kick [@u]`",
-      "`mewo roleplay kiss [@u]`   `mewo roleplay pat [@u]`",
-      "`mewo roleplay peck [@u]`   `mewo roleplay poke [@u]`",
-      "`mewo roleplay punch [@u]`  `mewo roleplay shoot [@u]`",
+      "`mewo roleplay hug [@u]`      `mewo roleplay kick [@u]`",
+      "`mewo roleplay kiss [@u]`     `mewo roleplay pat [@u]`",
+      "`mewo roleplay peck [@u]`     `mewo roleplay poke [@u]`",
+      "`mewo roleplay punch [@u]`    `mewo roleplay shoot [@u]`",
       "`mewo roleplay slap [@u]`",
     ],
   },
@@ -86,10 +91,10 @@ const MODULES: Record<string, { emoji: string; desc: string; commands: string[] 
     desc: "Interactive Discord games",
     commands: [
       "`mewo games rps` — Rock Paper Scissors vs bot",
-      "`mewo games tictactoe @player` — TicTacToe vs someone",
-      "`mewo games blackjack` — Blackjack vs bot",
-      "`mewo games cookie` — First to click wins a cookie!",
-      "`mewo games snake` — Snake game (coming soon)",
+      "`mewo games tictactoe @player` — Tic Tac Toe (2 players)",
+      "`mewo games blackjack` — Blackjack vs bot (hit/stand)",
+      "`mewo games cookie` — First to click wins a cookie",
+      "`mewo games snake` — Playable snake on a 5×5 emoji grid",
     ],
   },
   search: {
@@ -99,10 +104,41 @@ const MODULES: Record<string, { emoji: string; desc: string; commands: string[] 
       "`mewo search youtube <query>` — Search YouTube videos",
       "`mewo search github <username>` — GitHub profile lookup",
       "`mewo search steam <game>` — Search Steam store",
+      "`mewo soundcloud <query or URL>` — SoundCloud search/lookup",
       "`mewo search minecraft server <addr>` — MC server status",
       "`mewo search minecraft user <user>` — MC player info",
       "`mewo search minecraft skin <user>` — MC player skin",
       "`mewo search minecraft randomserver` — Random MC server",
+    ],
+  },
+  social: {
+    emoji: "🌐",
+    desc: "Social media OSINT and tools",
+    commands: [
+      "`mewo shazam` + audio file — Identify a song",
+      "`mewo bypass <url>` — Resolve redirects + paywall bypass links",
+      "`mewo socialscan <username>` — Check username across 7 platforms",
+      "`mewo sherlock <username>` — Full OSINT username search (12 platforms)",
+    ],
+  },
+  fake: {
+    emoji: "🎨",
+    desc: "Generate fake Discord images with real user avatars",
+    commands: [
+      "`mewo fake message @user <text>` — Fake Discord message card",
+      "`mewo fake reply @replied_to @author <text>` — Fake reply card",
+      "`mewo fake quote @user <text>` — Stylized quote card",
+    ],
+  },
+  wallet: {
+    emoji: "🪙",
+    desc: "Server coin economy system",
+    commands: [
+      "`mewo wallet` — View your coin balance",
+      "`mewo wallet daily` — Claim 100–500 coins once per day",
+      "`mewo wallet pay @user <amount>` — Send coins to someone",
+      "`mewo wallet leaderboard` — Top 10 richest users",
+      "`mewo wallet gamble <amount|all>` — Gamble coins (55% win rate)",
     ],
   },
   tags: {
@@ -114,13 +150,6 @@ const MODULES: Record<string, { emoji: string; desc: string; commands: string[] 
       "`mewo tags edit <name> <content>` — Edit a tag",
       "`mewo tags list` — List all server tags",
       "`mewo tags send <name>` — Post a tag",
-    ],
-  },
-  customize: {
-    emoji: "⚙️",
-    desc: "Personalize your mewo experience",
-    commands: [
-      "`mewo customize color [hex]` — Set your embed color (e.g. #FF0080)",
     ],
   },
 };
@@ -157,13 +186,12 @@ export const handleHelp: Handler = async (msg, args) => {
       .setDescription(
         "A powerful multi-purpose prefix command system.\n" +
         "Use `mewo help <module>` to see commands for each module.\n\n" +
-        "**Setup:** `mewo enable` in any channel to activate commands there.\n" +
-        "`mewo disable` to turn off in a channel. Requires **Manage Channels** perm."
+        "Commands work in **all channels** — no setup required."
       )
       .addFields(fields)
       .addFields({
         name: "\u200B",
-        value: `**Prefix:** \`mewo\`  |  **Total Commands:** ${totalCommands}+`,
+        value: `**Prefix:** \`mewo\`  |  **Modules:** ${Object.keys(MODULES).length}  |  **Commands:** ${totalCommands}+`,
         inline: false,
       })
       .setThumbnail(msg.client.user.displayAvatarURL())

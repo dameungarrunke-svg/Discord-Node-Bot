@@ -1,6 +1,5 @@
 import type { Message } from "discord.js";
-import { EmbedBuilder, PermissionFlagsBits } from "discord.js";
-import { isChannelEnabled, enableChannel, disableChannel } from "./store.js";
+import { EmbedBuilder } from "discord.js";
 import { handleHelp } from "./help.js";
 import {
   cmd8ball, cmdCoinflip, cmdRate, cmdHotcalc, cmdHowgay, cmdHowautistic,
@@ -194,49 +193,28 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
   }
 
   if (cmd === "enable") {
-    if (!message.member?.permissions.has(PermissionFlagsBits.ManageChannels)) {
-      await message.reply({
-        embeds: [new EmbedBuilder().setColor(0xED4245)
-          .setDescription("❌ You need **Manage Channels** permission to enable mewo here.")]
-      });
-      return true;
-    }
-    enableChannel(message.channelId);
     await message.reply({
       embeds: [new EmbedBuilder()
         .setColor(0x57F287)
-        .setTitle("mewo Enabled")
-        .setDescription(
-          `mewo commands are now **enabled** in <#${message.channelId}>.\n\n` +
-          "Use `mewo help` to see all available commands."
-        )
-        .setFooter({ text: "mewo • channel settings" })
+        .setTitle("mewo — Always Active")
+        .setDescription("mewo commands are available in **all channels** by default. No setup needed!\n\nUse `mewo help` to see all available commands.")
+        .setFooter({ text: "mewo" })
       ],
     });
     return true;
   }
 
   if (cmd === "disable") {
-    if (!message.member?.permissions.has(PermissionFlagsBits.ManageChannels)) {
-      await message.reply({
-        embeds: [new EmbedBuilder().setColor(0xED4245)
-          .setDescription("❌ You need **Manage Channels** permission to disable mewo here.")]
-      });
-      return true;
-    }
-    disableChannel(message.channelId);
     await message.reply({
       embeds: [new EmbedBuilder()
-        .setColor(0xED4245)
-        .setTitle("mewo Disabled")
-        .setDescription(`mewo commands are now **disabled** in <#${message.channelId}>.`)
-        .setFooter({ text: "mewo • channel settings" })
+        .setColor(0x5865F2)
+        .setTitle("mewo — Channel Management")
+        .setDescription("mewo commands work in all channels. To restrict usage, remove the bot's **Send Messages** permission in channels where you don't want it.")
+        .setFooter({ text: "mewo" })
       ],
     });
     return true;
   }
-
-  if (!isChannelEnabled(message.channelId)) return false;
 
   try {
     switch (cmd) {
