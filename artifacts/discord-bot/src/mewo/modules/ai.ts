@@ -20,17 +20,19 @@ export const cmdChatgpt: Handler = async (msg, args) => {
     await msg.reply({ embeds: [err(`Daily limit reached (${AI_DAILY_LIMIT} requests). Resets at midnight UTC.`)] });
     return;
   }
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const groqKey = process.env.GROQ_API_KEY;
-  if (!openaiKey && !groqKey) {
+  const openaiKey   = process.env.OPENAI_API_KEY;
+  const sambaKey    = process.env.SAMBANOVA_API_KEY;
+  const groqKey     = process.env.GROQ_API_KEY;
+  if (!openaiKey && !sambaKey && !groqKey) {
     await msg.reply({
       embeds: [new EmbedBuilder()
         .setColor(0xFEE75C)
         .setTitle("AI Chat — Setup Required")
         .setDescription(
           "Add at least one of these to your Railway environment variables:\n\n" +
-          "**Free option:** `GROQ_API_KEY` — Get a free key at [console.groq.com](https://console.groq.com) (uses LLaMA 3.1)\n" +
-          "**Paid option:** `OPENAI_API_KEY` — Get a key at [platform.openai.com](https://platform.openai.com/api-keys) (uses GPT-4o Mini)"
+          "**Free (recommended):** `SAMBANOVA_API_KEY` — Get a free key at [cloud.sambanova.ai](https://cloud.sambanova.ai) (uses Llama 3.3 70B)\n" +
+          "**Free alt:** `GROQ_API_KEY` — Get a free key at [console.groq.com](https://console.groq.com) (uses LLaMA 3.1 8B)\n" +
+          "**Paid:** `OPENAI_API_KEY` — [platform.openai.com](https://platform.openai.com/api-keys) (uses GPT-4o Mini)"
         )
         .setFooter({ text: "mewo • ai" })
       ],
@@ -38,23 +40,37 @@ export const cmdChatgpt: Handler = async (msg, args) => {
     return;
   }
   const prompt = args.join(" ");
-  const usingGroq = !openaiKey && !!groqKey;
+
+  let apiUrl: string;
+  let model: string;
+  let authKey: string;
+  let label: string;
+  let thinkingText: string;
+
+  if (openaiKey) {
+    apiUrl = "https://api.openai.com/v1/chat/completions";
+    model  = "gpt-4o-mini";
+    authKey = openaiKey;
+    label  = "AI Chat — GPT-4o Mini";
+    thinkingText = "💭 Thinking with ChatGPT...";
+  } else if (sambaKey) {
+    apiUrl = "https://api.sambanova.ai/v1/chat/completions";
+    model  = "Meta-Llama-3.3-70B-Instruct";
+    authKey = sambaKey;
+    label  = "AI Chat — Llama 3.3 70B (SambaNova)";
+    thinkingText = "🦙 Thinking with Llama 3.3...";
+  } else {
+    apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+    model  = "llama-3.1-8b-instant";
+    authKey = groqKey!;
+    label  = "AI Chat — LLaMA 3.1 (Groq)";
+    thinkingText = "🦙 Thinking with LLaMA...";
+  }
+
   const typing = await msg.reply({
-    embeds: [new EmbedBuilder().setColor(0x00B4FF).setDescription(usingGroq ? "🦙 Thinking with LLaMA..." : "💭 Thinking with ChatGPT...")]
+    embeds: [new EmbedBuilder().setColor(0x00B4FF).setDescription(thinkingText)]
   });
   try {
-    let apiUrl: string;
-    let model: string;
-    let authKey: string;
-    if (usingGroq) {
-      apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-      model = "llama-3.1-8b-instant";
-      authKey = groqKey!;
-    } else {
-      apiUrl = "https://api.openai.com/v1/chat/completions";
-      model = "gpt-4o-mini";
-      authKey = openaiKey!;
-    }
     const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authKey}` },
@@ -74,12 +90,12 @@ export const cmdChatgpt: Handler = async (msg, args) => {
     await typing.edit({
       embeds: [new EmbedBuilder()
         .setColor(0x00B4FF)
-        .setTitle(usingGroq ? "AI Chat — LLaMA 3.1 (Free)" : "AI Chat — GPT-4o Mini")
+        .setTitle(label)
         .addFields(
           { name: "Question", value: prompt.slice(0, 1024), inline: false },
-          { name: "Answer", value: reply.slice(0, 1024), inline: false }
+          { name: "Answer",   value: reply.slice(0, 1024),  inline: false }
         )
-        .setFooter({ text: `mewo • ai • ${usingGroq ? "LLaMA-3.1 via Groq (free)" : "GPT-4o Mini"} • ${usage.chatgpt + 1}/${AI_DAILY_LIMIT} daily` })
+        .setFooter({ text: `mewo • ai • ${model} • ${usage.chatgpt + 1}/${AI_DAILY_LIMIT} daily` })
       ],
     });
   } catch (e) {
@@ -97,28 +113,51 @@ export const cmdLlama: Handler = async (msg, args) => {
     await msg.reply({ embeds: [err(`Daily limit reached (${AI_DAILY_LIMIT} requests). Resets at midnight UTC.`)] });
     return;
   }
-  const key = process.env.GROQ_API_KEY;
-  if (!key) {
+  const sambaKey = process.env.SAMBANOVA_API_KEY;
+  const groqKey  = process.env.GROQ_API_KEY;
+  if (!sambaKey && !groqKey) {
     await msg.reply({
       embeds: [new EmbedBuilder()
         .setColor(0xFEE75C)
         .setTitle("LLaMA — Setup Required")
-        .setDescription("Set `GROQ_API_KEY` in your Railway environment variables to enable this command.\n\nGet a **free** key at [console.groq.com](https://console.groq.com).")
+        .setDescription(
+          "Set one of these in your Railway environment variables:\n\n" +
+          "**Recommended (free):** `SAMBANOVA_API_KEY` — [cloud.sambanova.ai](https://cloud.sambanova.ai) (Llama 3.3 70B)\n" +
+          "**Alt (free):** `GROQ_API_KEY` — [console.groq.com](https://console.groq.com) (LLaMA 3.1 8B)"
+        )
         .setFooter({ text: "mewo • ai" })
       ],
     });
     return;
   }
   const prompt = args.join(" ");
+
+  let apiUrl: string;
+  let model: string;
+  let authKey: string;
+  let label: string;
+
+  if (sambaKey) {
+    apiUrl  = "https://api.sambanova.ai/v1/chat/completions";
+    model   = "Meta-Llama-3.3-70B-Instruct";
+    authKey = sambaKey;
+    label   = "Llama 3.3 70B (SambaNova)";
+  } else {
+    apiUrl  = "https://api.groq.com/openai/v1/chat/completions";
+    model   = "llama-3.1-8b-instant";
+    authKey = groqKey!;
+    label   = "LLaMA 3.1 8B (Groq)";
+  }
+
   const typing = await msg.reply({
     embeds: [new EmbedBuilder().setColor(0x00B4FF).setDescription("🦙 Thinking with LLaMA...")]
   });
   try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const res = await fetch(apiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authKey}` },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model,
         messages: [{ role: "user", content: prompt }],
         max_tokens: 1000,
       }),
@@ -133,16 +172,16 @@ export const cmdLlama: Handler = async (msg, args) => {
     await typing.edit({
       embeds: [new EmbedBuilder()
         .setColor(0x00B4FF)
-        .setTitle("LLaMA 3.1")
+        .setTitle(`LLaMA — ${label}`)
         .addFields(
           { name: "Question", value: prompt.slice(0, 1024), inline: false },
-          { name: "Answer", value: reply.slice(0, 1024), inline: false }
+          { name: "Answer",   value: reply.slice(0, 1024),  inline: false }
         )
-        .setFooter({ text: `mewo • ai • LLaMA-3.1-8b-instant • ${usage.llama + 1}/${AI_DAILY_LIMIT} daily` })
+        .setFooter({ text: `mewo • ai • ${model} • ${usage.llama + 1}/${AI_DAILY_LIMIT} daily` })
       ],
     });
   } catch (e) {
-    await typing.edit({ embeds: [err(`Groq error: ${(e as Error).message}`)] });
+    await typing.edit({ embeds: [err(`AI error: ${(e as Error).message}`)] });
   }
 };
 
@@ -152,14 +191,22 @@ export const cmdAiUsage: Handler = async (msg) => {
     const filled = Math.round((used / max) * 10);
     return `\`${"█".repeat(filled)}${"░".repeat(10 - filled)}\` ${used}/${max}`;
   };
+  const chatLabel = process.env.OPENAI_API_KEY
+    ? "ChatGPT (GPT-4o Mini)"
+    : process.env.SAMBANOVA_API_KEY
+      ? "AI Chat (Llama 3.3 70B — SambaNova)"
+      : "AI Chat (LLaMA 3.1 — Groq)";
+  const llamaLabel = process.env.SAMBANOVA_API_KEY
+    ? "LLaMA (Llama 3.3 70B — SambaNova)"
+    : "LLaMA 3.1 (Groq)";
   await msg.reply({
     embeds: [new EmbedBuilder()
       .setColor(0x00B4FF)
       .setTitle("AI Usage — Today")
       .addFields(
-        { name: "ChatGPT (GPT-4o Mini)", value: bar(usage.chatgpt, AI_DAILY_LIMIT), inline: false },
-        { name: "LLaMA 3.1 (Groq)", value: bar(usage.llama, AI_DAILY_LIMIT), inline: false },
-        { name: "Resets", value: "Daily at **midnight UTC**", inline: false }
+        { name: chatLabel,  value: bar(usage.chatgpt, AI_DAILY_LIMIT), inline: false },
+        { name: llamaLabel, value: bar(usage.llama,   AI_DAILY_LIMIT), inline: false },
+        { name: "Resets",   value: "Daily at **midnight UTC**",         inline: false }
       )
       .setFooter({ text: "mewo • ai" })
     ],
