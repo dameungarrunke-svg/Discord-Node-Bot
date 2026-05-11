@@ -20,28 +20,46 @@ export const cmdChatgpt: Handler = async (msg, args) => {
     await msg.reply({ embeds: [err(`Daily limit reached (${AI_DAILY_LIMIT} requests). Resets at midnight UTC.`)] });
     return;
   }
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!openaiKey && !groqKey) {
     await msg.reply({
       embeds: [new EmbedBuilder()
         .setColor(0xFEE75C)
-        .setTitle("ChatGPT — Setup Required")
-        .setDescription("Set `OPENAI_API_KEY` in your Railway environment variables to enable this command.\n\nGet a key at [platform.openai.com](https://platform.openai.com/api-keys).")
+        .setTitle("AI Chat — Setup Required")
+        .setDescription(
+          "Add at least one of these to your Railway environment variables:\n\n" +
+          "**Free option:** `GROQ_API_KEY` — Get a free key at [console.groq.com](https://console.groq.com) (uses LLaMA 3.1)\n" +
+          "**Paid option:** `OPENAI_API_KEY` — Get a key at [platform.openai.com](https://platform.openai.com/api-keys) (uses GPT-4o Mini)"
+        )
         .setFooter({ text: "mewo • ai" })
       ],
     });
     return;
   }
   const prompt = args.join(" ");
+  const usingGroq = !openaiKey && !!groqKey;
   const typing = await msg.reply({
-    embeds: [new EmbedBuilder().setColor(0x00B4FF).setDescription("💭 Thinking...")]
+    embeds: [new EmbedBuilder().setColor(0x00B4FF).setDescription(usingGroq ? "🦙 Thinking with LLaMA..." : "💭 Thinking with ChatGPT...")]
   });
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    let apiUrl: string;
+    let model: string;
+    let authKey: string;
+    if (usingGroq) {
+      apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+      model = "llama-3.1-8b-instant";
+      authKey = groqKey!;
+    } else {
+      apiUrl = "https://api.openai.com/v1/chat/completions";
+      model = "gpt-4o-mini";
+      authKey = openaiKey!;
+    }
+    const res = await fetch(apiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authKey}` },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model,
         messages: [{ role: "user", content: prompt }],
         max_tokens: 1000,
       }),
@@ -56,16 +74,16 @@ export const cmdChatgpt: Handler = async (msg, args) => {
     await typing.edit({
       embeds: [new EmbedBuilder()
         .setColor(0x00B4FF)
-        .setTitle("ChatGPT")
+        .setTitle(usingGroq ? "AI Chat — LLaMA 3.1 (Free)" : "AI Chat — GPT-4o Mini")
         .addFields(
           { name: "Question", value: prompt.slice(0, 1024), inline: false },
           { name: "Answer", value: reply.slice(0, 1024), inline: false }
         )
-        .setFooter({ text: `mewo • ai • GPT-4o Mini • ${usage.chatgpt + 1}/${AI_DAILY_LIMIT} daily` })
+        .setFooter({ text: `mewo • ai • ${usingGroq ? "LLaMA-3.1 via Groq (free)" : "GPT-4o Mini"} • ${usage.chatgpt + 1}/${AI_DAILY_LIMIT} daily` })
       ],
     });
   } catch (e) {
-    await typing.edit({ embeds: [err(`OpenAI error: ${(e as Error).message}`)] });
+    await typing.edit({ embeds: [err(`AI error: ${(e as Error).message}`)] });
   }
 };
 
@@ -281,49 +299,30 @@ export const cmdDownload: Handler = async (msg, args) => {
 
 export const cmdGrokImagine: Handler = async (msg, args) => {
   if (!args.length) {
-    await msg.reply({ embeds: [err("Provide a prompt. Usage: `mewo ai grok-imagine <prompt>`")] });
-    return;
-  }
-  const key = process.env.GROK_API_KEY;
-  if (!key) {
-    await msg.reply({
-      embeds: [new EmbedBuilder()
-        .setColor(0xFEE75C)
-        .setTitle("Grok Image Generation — Setup Required")
-        .setDescription("Set `GROK_API_KEY` in your Railway environment variables.\n\nGet a key at [x.ai](https://x.ai).")
-        .setFooter({ text: "mewo • ai" })
-      ],
-    });
+    await msg.reply({ embeds: [err("Provide a prompt. Usage: `mewo ai imagine <prompt>`")] });
     return;
   }
   const prompt = args.join(" ");
   const thinking = await msg.reply({
-    embeds: [new EmbedBuilder().setColor(0x00B4FF).setDescription("🎨 Generating image...")]
+    embeds: [new EmbedBuilder().setColor(0x00B4FF).setDescription("🎨 Generating image... (free, no key needed)")]
   });
   try {
-    const res = await fetch("https://api.x.ai/v1/images/generations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({ model: "grok-2-image-1212", prompt, n: 1, response_format: "url" }),
-    });
-    const data = await res.json() as {
-      data?: Array<{ url: string }>;
-      error?: { message: string };
-    };
-    if (data.error) throw new Error(data.error.message);
-    const imageUrl = data.data?.[0]?.url;
-    if (!imageUrl) throw new Error("No image returned");
+    const encoded = encodeURIComponent(prompt);
+    const seed = Math.floor(Math.random() * 999999);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&seed=${seed}&nologo=true&enhance=true`;
+    const check = await fetch(imageUrl, { method: "HEAD" });
+    if (!check.ok) throw new Error("Image service unavailable");
     await thinking.edit({
       embeds: [new EmbedBuilder()
         .setColor(0x00B4FF)
-        .setTitle("Grok Image Generation")
+        .setTitle("AI Image Generation")
         .setDescription(`> ${prompt}`)
         .setImage(imageUrl)
-        .setFooter({ text: "mewo • ai • xAI Grok" })
+        .setFooter({ text: "mewo • ai • Pollinations.ai (free)" })
       ],
     });
   } catch (e) {
-    await thinking.edit({ embeds: [err(`Grok error: ${(e as Error).message}`)] });
+    await thinking.edit({ embeds: [err(`Image generation failed: ${(e as Error).message}`)] });
   }
 };
 
