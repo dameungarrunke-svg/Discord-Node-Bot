@@ -25,7 +25,7 @@ interface MewoData {
   tags: Record<string, Record<string, MewoTag>>;
   timezones: Record<string, string>;
   embedColors: Record<string, string>;
-  aiUsage: Record<string, { chatgpt: number; llama: number; resetDate: string }>;
+  aiUsage: Record<string, { chatgpt: number; llama: number; deepseek: number; resetDate: string }>;
   wallets: Record<string, WalletEntry>;
 }
 
@@ -120,20 +120,20 @@ export function setEmbedColor(userId: string, hex: string): void {
   save(d);
 }
 
-export function getAiUsage(userId: string): { chatgpt: number; llama: number; resetDate: string } {
+export function getAiUsage(userId: string): { chatgpt: number; llama: number; deepseek: number; resetDate: string } {
   const d = load();
   const today = new Date().toISOString().slice(0, 10);
   const u = d.aiUsage[userId];
-  if (!u || u.resetDate !== today) return { chatgpt: 0, llama: 0, resetDate: today };
-  return u;
+  if (!u || u.resetDate !== today) return { chatgpt: 0, llama: 0, deepseek: 0, resetDate: today };
+  return { chatgpt: u.chatgpt ?? 0, llama: u.llama ?? 0, deepseek: u.deepseek ?? 0, resetDate: u.resetDate };
 }
 
-export function incrementAiUsage(userId: string, model: "chatgpt" | "llama"): void {
+export function incrementAiUsage(userId: string, model: "chatgpt" | "llama" | "deepseek"): void {
   const d = load();
   const today = new Date().toISOString().slice(0, 10);
-  const u = d.aiUsage[userId] ?? { chatgpt: 0, llama: 0, resetDate: today };
-  if (u.resetDate !== today) { u.chatgpt = 0; u.llama = 0; u.resetDate = today; }
-  u[model]++;
+  const u = d.aiUsage[userId] ?? { chatgpt: 0, llama: 0, deepseek: 0, resetDate: today };
+  if (u.resetDate !== today) { u.chatgpt = 0; u.llama = 0; u.deepseek = 0; u.resetDate = today; }
+  u[model] = (u[model] ?? 0) + 1;
   d.aiUsage[userId] = u;
   save(d);
 }

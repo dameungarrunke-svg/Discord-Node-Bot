@@ -204,13 +204,76 @@ export const cmdAiUsage: Handler = async (msg) => {
       .setColor(0x00B4FF)
       .setTitle("AI Usage — Today")
       .addFields(
-        { name: chatLabel,  value: bar(usage.chatgpt, AI_DAILY_LIMIT), inline: false },
-        { name: llamaLabel, value: bar(usage.llama,   AI_DAILY_LIMIT), inline: false },
-        { name: "Resets",   value: "Daily at **midnight UTC**",         inline: false }
+        { name: chatLabel,              value: bar(usage.chatgpt,  AI_DAILY_LIMIT), inline: false },
+        { name: llamaLabel,             value: bar(usage.llama,    AI_DAILY_LIMIT), inline: false },
+        { name: "DeepSeek-V3.2 (SambaNova)", value: bar(usage.deepseek, AI_DAILY_LIMIT), inline: false },
+        { name: "Resets",               value: "Daily at **midnight UTC**",          inline: false }
       )
       .setFooter({ text: "mewo • ai" })
     ],
   });
+};
+
+export const cmdDeepseek: Handler = async (msg, args) => {
+  if (!args.length) {
+    await msg.reply({ embeds: [err("Provide a prompt. Usage: `mewo ai deepseek <prompt>`")] });
+    return;
+  }
+  const usage = getAiUsage(msg.author.id);
+  if (usage.deepseek >= AI_DAILY_LIMIT) {
+    await msg.reply({ embeds: [err(`Daily limit reached (${AI_DAILY_LIMIT} requests). Resets at midnight UTC.`)] });
+    return;
+  }
+  const sambaKey = process.env.SAMBANOVA_API_KEY;
+  if (!sambaKey) {
+    await msg.reply({
+      embeds: [new EmbedBuilder()
+        .setColor(0xFEE75C)
+        .setTitle("DeepSeek — Setup Required")
+        .setDescription(
+          "Set `SAMBANOVA_API_KEY` in your Railway environment variables to enable this command.\n\n" +
+          "Get a **free** key at [cloud.sambanova.ai](https://cloud.sambanova.ai)."
+        )
+        .setFooter({ text: "mewo • ai" })
+      ],
+    });
+    return;
+  }
+  const prompt = args.join(" ");
+  const typing = await msg.reply({
+    embeds: [new EmbedBuilder().setColor(0x4B5CC4).setDescription("🧠 Thinking with DeepSeek...")]
+  });
+  try {
+    const res = await fetch("https://api.sambanova.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sambaKey}` },
+      body: JSON.stringify({
+        model: "DeepSeek-V3-0324",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 1500,
+      }),
+    });
+    const data = await res.json() as {
+      choices?: Array<{ message: { content: string } }>;
+      error?: { message: string };
+    };
+    if (data.error) throw new Error(data.error.message);
+    const reply = data.choices?.[0]?.message?.content ?? "No response.";
+    incrementAiUsage(msg.author.id, "deepseek");
+    await typing.edit({
+      embeds: [new EmbedBuilder()
+        .setColor(0x4B5CC4)
+        .setTitle("DeepSeek-V3 — SambaNova (Free)")
+        .addFields(
+          { name: "Prompt", value: prompt.slice(0, 1024), inline: false },
+          { name: "Answer", value: reply.slice(0, 1024),  inline: false }
+        )
+        .setFooter({ text: `mewo • ai • DeepSeek-V3-0324 via SambaNova • ${usage.deepseek + 1}/${AI_DAILY_LIMIT} daily` })
+      ],
+    });
+  } catch (e) {
+    await typing.edit({ embeds: [err(`DeepSeek error: ${(e as Error).message}`)] });
+  }
 };
 
 export const cmdOcr: Handler = async (msg) => {

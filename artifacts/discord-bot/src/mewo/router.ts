@@ -20,6 +20,7 @@ import {
 import {
   cmdChatgpt, cmdLlama, cmdAiUsage, cmdOcr, cmdScreenshot, cmdDownload,
   cmdGrokImagine, cmdPerplexity, cmdTtsOpenai, cmdTtsElevenlabs, cmdDeepGeolocate,
+  cmdDeepseek,
 } from "./modules/ai.js";
 import {
   cmdRps, cmdTictactoe, cmdBlackjack, cmdCookie, cmdSnake,
@@ -64,6 +65,7 @@ function unknownCmd(group?: string): Handler {
 const AI_CMDS: Record<string, Handler> = {
   chatgpt: cmdChatgpt,
   llama: cmdLlama,
+  deepseek: cmdDeepseek,
   usage: cmdAiUsage,
   ocr: cmdOcr,
   screenshot: cmdScreenshot,
