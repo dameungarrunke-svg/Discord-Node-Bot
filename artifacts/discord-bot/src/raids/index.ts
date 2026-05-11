@@ -104,6 +104,18 @@ export const startRaidData = new SlashCommandBuilder()
   )
   .addStringOption((o) =>
     o
+      .setName("allies")
+      .setDescription("Allied clans joining the raid")
+      .setRequired(true)
+  )
+  .addStringOption((o) =>
+    o
+      .setName("enemies")
+      .setDescription("Enemy clans / target group")
+      .setRequired(true)
+  )
+  .addStringOption((o) =>
+    o
       .setName("roblox_username")
       .setDescription("Your Roblox username (optional)")
       .setRequired(false)
@@ -119,18 +131,6 @@ export const startRaidData = new SlashCommandBuilder()
       .setName("join_server")
       .setDescription("Roblox game / server link (https://...) (optional)")
       .setRequired(false)
-  )
-  .addStringOption((o) =>
-    o
-      .setName("allies")
-      .setDescription("Allied clans joining the raid")
-      .setRequired(true)
-  )
-  .addStringOption((o) =>
-    o
-      .setName("enemies")
-      .setDescription("Enemy clans / target group")
-      .setRequired(true)
   )
   .addRoleOption((o) =>
     o
