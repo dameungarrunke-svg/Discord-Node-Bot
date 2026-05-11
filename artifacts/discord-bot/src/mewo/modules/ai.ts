@@ -31,7 +31,6 @@ export const cmdChatgpt: Handler = async (msg, args) => {
     await msg.reply({ embeds: [unavailable()] });
     return;
   }
-  const prompt = args.join(" ");
 
   let apiUrl: string;
   let model: string;
@@ -51,6 +50,7 @@ export const cmdChatgpt: Handler = async (msg, args) => {
     authKey = groqKey!;
   }
 
+  const prompt = args.join(" ");
   const typing = await msg.reply({
     embeds: [new EmbedBuilder().setColor(0x00B4FF).setDescription("💭 Processing your request...")]
   });
@@ -58,17 +58,16 @@ export const cmdChatgpt: Handler = async (msg, args) => {
     const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authKey}` },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 1000,
-      }),
+      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], max_tokens: 1000 }),
     });
     const data = await res.json() as {
       choices?: Array<{ message: { content: string } }>;
-      error?: { message: string };
+      error?: { message?: string };
     };
-    if (data.error) throw new Error(data.error.message);
+    if (!res.ok || data.error) {
+      console.error(`[MEWO AI] chatgpt HTTP ${res.status}:`, JSON.stringify(data.error ?? {}));
+      throw new Error("api error");
+    }
     const reply = data.choices?.[0]?.message?.content ?? "No response.";
     incrementAiUsage(msg.author.id, "chatgpt");
     await typing.edit({
@@ -82,7 +81,8 @@ export const cmdChatgpt: Handler = async (msg, args) => {
         .setFooter({ text: `mewo • ai • ${usage.chatgpt + 1}/${AI_DAILY_LIMIT} daily` })
       ],
     });
-  } catch {
+  } catch (e) {
+    console.error("[MEWO AI] chatgpt error:", e);
     await typing.edit({ embeds: [err("Something went wrong. Please try again.")] });
   }
 };
@@ -103,7 +103,6 @@ export const cmdLlama: Handler = async (msg, args) => {
     await msg.reply({ embeds: [unavailable()] });
     return;
   }
-  const prompt = args.join(" ");
 
   let apiUrl: string;
   let model: string;
@@ -119,6 +118,7 @@ export const cmdLlama: Handler = async (msg, args) => {
     authKey = groqKey!;
   }
 
+  const prompt = args.join(" ");
   const typing = await msg.reply({
     embeds: [new EmbedBuilder().setColor(0x00B4FF).setDescription("💭 Processing your request...")]
   });
@@ -126,17 +126,16 @@ export const cmdLlama: Handler = async (msg, args) => {
     const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authKey}` },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 1000,
-      }),
+      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], max_tokens: 1000 }),
     });
     const data = await res.json() as {
       choices?: Array<{ message: { content: string } }>;
-      error?: { message: string };
+      error?: { message?: string };
     };
-    if (data.error) throw new Error(data.error.message);
+    if (!res.ok || data.error) {
+      console.error(`[MEWO AI] llama HTTP ${res.status}:`, JSON.stringify(data.error ?? {}));
+      throw new Error("api error");
+    }
     const reply = data.choices?.[0]?.message?.content ?? "No response.";
     incrementAiUsage(msg.author.id, "llama");
     await typing.edit({
@@ -150,7 +149,8 @@ export const cmdLlama: Handler = async (msg, args) => {
         .setFooter({ text: `mewo • ai • ${usage.llama + 1}/${AI_DAILY_LIMIT} daily` })
       ],
     });
-  } catch {
+  } catch (e) {
+    console.error("[MEWO AI] llama error:", e);
     await typing.edit({ embeds: [err("Something went wrong. Please try again.")] });
   }
 };
@@ -199,17 +199,16 @@ export const cmdDeepseek: Handler = async (msg, args) => {
     const res = await fetch("https://api.sambanova.ai/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sambaKey}` },
-      body: JSON.stringify({
-        model: "DeepSeek-V3-0324",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 1500,
-      }),
+      body: JSON.stringify({ model: "DeepSeek-V3-0324", messages: [{ role: "user", content: prompt }], max_tokens: 1500 }),
     });
     const data = await res.json() as {
       choices?: Array<{ message: { content: string } }>;
-      error?: { message: string };
+      error?: { message?: string };
     };
-    if (data.error) throw new Error(data.error.message);
+    if (!res.ok || data.error) {
+      console.error(`[MEWO AI] deepseek HTTP ${res.status}:`, JSON.stringify(data.error ?? {}));
+      throw new Error("api error");
+    }
     const reply = data.choices?.[0]?.message?.content ?? "No response.";
     incrementAiUsage(msg.author.id, "deepseek");
     await typing.edit({
@@ -223,7 +222,8 @@ export const cmdDeepseek: Handler = async (msg, args) => {
         .setFooter({ text: `mewo • ai • ${usage.deepseek + 1}/${AI_DAILY_LIMIT} daily` })
       ],
     });
-  } catch {
+  } catch (e) {
+    console.error("[MEWO AI] deepseek error:", e);
     await typing.edit({ embeds: [err("Something went wrong. Please try again.")] });
   }
 };
@@ -266,7 +266,8 @@ export const cmdOcr: Handler = async (msg) => {
         .setFooter({ text: "mewo • ai" })
       ],
     });
-  } catch {
+  } catch (e) {
+    console.error("[MEWO AI] ocr error:", e);
     await thinking.edit({ embeds: [err("Something went wrong. Please try again.")] });
   }
 };
@@ -284,7 +285,7 @@ export const cmdScreenshot: Handler = async (msg, args) => {
   try {
     const screenshotUrl = `https://image.thum.io/get/width/1280/crop/720/noanimate/${encodeURIComponent(url)}`;
     const check = await fetch(screenshotUrl, { method: "HEAD" });
-    if (!check.ok) throw new Error("unavailable");
+    if (!check.ok) throw new Error(`HEAD ${check.status}`);
     await thinking.edit({
       embeds: [new EmbedBuilder()
         .setColor(0x00B4FF)
@@ -295,7 +296,8 @@ export const cmdScreenshot: Handler = async (msg, args) => {
         .setFooter({ text: "mewo • ai" })
       ],
     });
-  } catch {
+  } catch (e) {
+    console.error("[MEWO AI] screenshot error:", e);
     await thinking.edit({ embeds: [err("Could not take a screenshot of that URL.")] });
   }
 };
@@ -315,15 +317,17 @@ export const cmdDownload: Handler = async (msg, args) => {
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
       body: JSON.stringify({ url, videoQuality: "720", filenameStyle: "pretty" }),
     });
-    if (!res.ok) throw new Error("unavailable");
+    if (!res.ok) throw new Error(`cobalt HTTP ${res.status}`);
     const data = await res.json() as {
       status: string;
       url?: string;
-      filename?: string;
       error?: { code?: string };
       picker?: Array<{ url: string; thumb?: string }>;
     };
-    if (data.status === "error") throw new Error("error");
+    if (data.status === "error") {
+      console.error("[MEWO AI] download cobalt error:", data.error?.code);
+      throw new Error("cobalt error");
+    }
     if (data.status === "picker" && data.picker?.length) {
       const links = data.picker.slice(0, 5).map((p, i) => `[Media ${i + 1}](${p.url})`).join("\n");
       await thinking.edit({
@@ -347,8 +351,9 @@ export const cmdDownload: Handler = async (msg, args) => {
       });
       return;
     }
-    throw new Error("no url");
-  } catch {
+    throw new Error("no url returned");
+  } catch (e) {
+    console.error("[MEWO AI] download error:", e);
     await thinking.edit({ embeds: [err("Could not download that URL. Make sure it is a supported platform.")] });
   }
 };
@@ -367,7 +372,7 @@ export const cmdGrokImagine: Handler = async (msg, args) => {
     const seed = Math.floor(Math.random() * 999999);
     const imageUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&seed=${seed}&nologo=true&enhance=true`;
     const check = await fetch(imageUrl, { method: "HEAD" });
-    if (!check.ok) throw new Error("unavailable");
+    if (!check.ok) throw new Error(`HEAD ${check.status}`);
     await thinking.edit({
       embeds: [new EmbedBuilder()
         .setColor(0x00B4FF)
@@ -377,7 +382,8 @@ export const cmdGrokImagine: Handler = async (msg, args) => {
         .setFooter({ text: "mewo • ai" })
       ],
     });
-  } catch {
+  } catch (e) {
+    console.error("[MEWO AI] imagine error:", e);
     await thinking.edit({ embeds: [err("Image generation failed. Please try again.")] });
   }
 };
@@ -400,18 +406,17 @@ export const cmdPerplexity: Handler = async (msg, args) => {
     const res = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({
-        model: "sonar",
-        messages: [{ role: "user", content: query }],
-        max_tokens: 800,
-      }),
+      body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: query }], max_tokens: 800 }),
     });
     const data = await res.json() as {
       choices?: Array<{ message: { content: string } }>;
       citations?: string[];
-      error?: { message: string };
+      error?: { message?: string };
     };
-    if (data.error) throw new Error(data.error.message);
+    if (!res.ok || data.error) {
+      console.error(`[MEWO AI] perplexity HTTP ${res.status}:`, JSON.stringify(data.error ?? {}));
+      throw new Error("api error");
+    }
     const answer = data.choices?.[0]?.message?.content ?? "No answer.";
     const citations = data.citations?.slice(0, 3) ?? [];
     const embed = new EmbedBuilder()
@@ -424,7 +429,8 @@ export const cmdPerplexity: Handler = async (msg, args) => {
       embed.addFields({ name: "Sources", value: citations.map((c, i) => `[${i + 1}] ${c}`).join("\n").slice(0, 1024), inline: false });
     }
     await thinking.edit({ embeds: [embed] });
-  } catch {
+  } catch (e) {
+    console.error("[MEWO AI] perplexity error:", e);
     await thinking.edit({ embeds: [err("Something went wrong. Please try again.")] });
   }
 };
@@ -449,7 +455,10 @@ export const cmdTtsOpenai: Handler = async (msg, args) => {
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
       body: JSON.stringify({ model: "tts-1", voice: "alloy", input: text }),
     });
-    if (!res.ok) throw new Error("tts failed");
+    if (!res.ok) {
+      console.error(`[MEWO AI] tts-openai HTTP ${res.status}`);
+      throw new Error("tts failed");
+    }
     const buffer = Buffer.from(await res.arrayBuffer());
     await thinking.delete().catch(() => {});
     await msg.reply({
@@ -461,7 +470,8 @@ export const cmdTtsOpenai: Handler = async (msg, args) => {
       ],
       files: [{ attachment: buffer, name: "speech.mp3" }],
     });
-  } catch {
+  } catch (e) {
+    console.error("[MEWO AI] tts-openai error:", e);
     await thinking.edit({ embeds: [err("Something went wrong. Please try again.")] });
   }
 };
@@ -484,14 +494,13 @@ export const cmdTtsElevenlabs: Handler = async (msg, args) => {
   try {
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: "POST",
-      headers: {
-        "xi-api-key": key,
-        "Content-Type": "application/json",
-        "Accept": "audio/mpeg",
-      },
+      headers: { "xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg" },
       body: JSON.stringify({ text, model_id: "eleven_monolingual_v1", voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
     });
-    if (!res.ok) throw new Error("tts failed");
+    if (!res.ok) {
+      console.error(`[MEWO AI] tts-elevenlabs HTTP ${res.status}`);
+      throw new Error("tts failed");
+    }
     const buffer = Buffer.from(await res.arrayBuffer());
     await thinking.delete().catch(() => {});
     await msg.reply({
@@ -503,7 +512,8 @@ export const cmdTtsElevenlabs: Handler = async (msg, args) => {
       ],
       files: [{ attachment: buffer, name: "speech.mp3" }],
     });
-  } catch {
+  } catch (e) {
+    console.error("[MEWO AI] tts-elevenlabs error:", e);
     await thinking.edit({ embeds: [err("Something went wrong. Please try again.")] });
   }
 };
@@ -530,17 +540,17 @@ export const cmdDeepGeolocate: Handler = async (msg, args) => {
 
     const pick = (...vals: unknown[]) => vals.find(v => v && String(v) !== "N/A" && String(v) !== "undefined" && String(v) !== "") ?? "N/A";
 
-    const country = pick(d1?.["country_name"], d2?.["country"], d3?.["country"]);
-    const region  = pick(d1?.["region"], d2?.["regionName"], d3?.["region"]);
-    const city    = pick(d1?.["city"], d2?.["city"], d3?.["city"]);
-    const isp     = pick(d1?.["org"], d2?.["isp"], d3?.["org"]);
-    const asn     = pick(d1?.["asn"], d2?.["as"], d3?.["org"]);
-    const tz      = pick(d1?.["timezone"], d2?.["timezone"], d3?.["timezone"]);
-    const lat     = pick(d1?.["latitude"], d2?.["lat"]);
-    const lon     = pick(d1?.["longitude"], d2?.["lon"]);
-    const postal  = pick(d1?.["postal"], d2?.["zip"], d3?.["postal"]);
-    const mobile  = d2?.["mobile"] ?? "Unknown";
-    const proxy   = d2?.["proxy"] ?? "Unknown";
+    const country = pick(d1?.["country_name"], d2?.["country"],    d3?.["country"]);
+    const region  = pick(d1?.["region"],       d2?.["regionName"], d3?.["region"]);
+    const city    = pick(d1?.["city"],          d2?.["city"],       d3?.["city"]);
+    const isp     = pick(d1?.["org"],           d2?.["isp"],        d3?.["org"]);
+    const asn     = pick(d1?.["asn"],           d2?.["as"],         d3?.["org"]);
+    const tz      = pick(d1?.["timezone"],      d2?.["timezone"],   d3?.["timezone"]);
+    const lat     = pick(d1?.["latitude"],      d2?.["lat"]);
+    const lon     = pick(d1?.["longitude"],     d2?.["lon"]);
+    const postal  = pick(d1?.["postal"],        d2?.["zip"],        d3?.["postal"]);
+    const mobile  = d2?.["mobile"]  ?? "Unknown";
+    const proxy   = d2?.["proxy"]   ?? "Unknown";
     const hosting = d2?.["hosting"] ?? "Unknown";
 
     const mapsUrl = lat !== "N/A" && lon !== "N/A"
@@ -568,7 +578,8 @@ export const cmdDeepGeolocate: Handler = async (msg, args) => {
         .setFooter({ text: "mewo • ai" })
       ],
     });
-  } catch {
+  } catch (e) {
+    console.error("[MEWO AI] deepgeolocate error:", e);
     await thinking.edit({ embeds: [err("Something went wrong. Please try again.")] });
   }
 };
