@@ -1,6 +1,8 @@
 import type { Message } from "discord.js";
 import { EmbedBuilder } from "discord.js";
 import { handleHelp } from "./help.js";
+import { checkCooldown } from "./cooldowns.js";
+import { isChannelEnabled, getEnabledChannels, enableChannel, disableChannel } from "./store.js";
 import {
   cmd8ball, cmdCoinflip, cmdRate, cmdHotcalc, cmdHowgay, cmdHowautistic,
   cmdPpsize, cmdShip, cmdSay, cmdRizz, cmdRoast, cmdMath, cmdAsciify,
@@ -46,6 +48,16 @@ type Handler = (msg: Message, args: string[]) => Promise<void>;
 
 const PREFIX = "mewo";
 
+function cooldownReply(msg: Message, seconds: number): Promise<void> {
+  return msg.reply({
+    embeds: [new EmbedBuilder()
+      .setColor(0xFEE75C)
+      .setDescription(`⏳ Slow down! Wait **${seconds}s** before using this command again.`)
+      .setFooter({ text: "mewo • cooldown" })
+    ],
+  }).then(() => {});
+}
+
 function unknownCmd(group?: string): Handler {
   return async (msg) => {
     await msg.reply({
@@ -71,6 +83,7 @@ const AI_CMDS: Record<string, Handler> = {
   screenshot: cmdScreenshot,
   download: cmdDownload,
   "grok-imagine": cmdGrokImagine,
+  imagine: cmdGrokImagine,
   geolocate: cmdDeepGeolocate,
   deepgeolocate: cmdDeepGeolocate,
   perplexity: cmdPerplexity,
@@ -101,6 +114,13 @@ const ROLEPLAY_CMDS: Record<string, Handler> = {
   pat: cmdPat, peck: cmdPeck, poke: cmdPoke, punch: cmdPunch,
   shoot: cmdShoot, slap: cmdSlap, help: cmdRoleplayHelp,
 };
+
+// Direct shortcut set — allows `mewo hug @user` without needing `mewo roleplay hug`
+const ROLEPLAY_SHORTCUTS = new Set([
+  "baka", "bite", "cry", "cuddle", "feed", "handhold", "handshake",
+  "highfive", "hug", "kick", "kiss", "pat", "peck", "poke", "punch",
+  "shoot", "slap",
+]);
 
 const SEARCH_CMDS: Record<string, Handler> = {
   youtube: cmdYoutube,
@@ -189,17 +209,26 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
   const cmd = parts[0]?.toLowerCase() ?? "";
   const args = parts.slice(1);
 
+  // ── Channel gating ───────────────────────────────────────────────────────────
+  const enabledChannels = getEnabledChannels();
+  if (enabledChannels.length > 0 && !enabledChannels.includes(message.channelId)) {
+    return true;
+  }
+
   if (!cmd || cmd === "help") {
     await handleHelp(message, args).catch(console.error);
     return true;
   }
 
   if (cmd === "enable") {
+    if (!message.guildId) { await message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ Server-only.")] }); return true; }
+    if (!message.member?.permissions.has(8n)) { await message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ You need Administrator permission.")] }); return true; }
+    enableChannel(message.channelId);
     await message.reply({
       embeds: [new EmbedBuilder()
         .setColor(0x57F287)
-        .setTitle("mewo — Always Active")
-        .setDescription("mewo commands are available in **all channels** by default. No setup needed!\n\nUse `mewo help` to see all available commands.")
+        .setTitle("mewo — Channel Enabled")
+        .setDescription(`mewo commands are now **enabled** in <#${message.channelId}>.\n\nOnce any channel is enabled, mewo will only respond in enabled channels.`)
         .setFooter({ text: "mewo" })
       ],
     });
@@ -207,11 +236,20 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
   }
 
   if (cmd === "disable") {
+    if (!message.guildId) { await message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ Server-only.")] }); return true; }
+    if (!message.member?.permissions.has(8n)) { await message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ You need Administrator permission.")] }); return true; }
+    disableChannel(message.channelId);
+    const remaining = getEnabledChannels();
     await message.reply({
       embeds: [new EmbedBuilder()
         .setColor(0x5865F2)
-        .setTitle("mewo — Channel Management")
-        .setDescription("mewo commands work in all channels. To restrict usage, remove the bot's **Send Messages** permission in channels where you don't want it.")
+        .setTitle("mewo — Channel Disabled")
+        .setDescription(
+          `mewo commands are now **disabled** in <#${message.channelId}>.\n\n` +
+          (remaining.length === 0
+            ? "No enabled channels remain — mewo is now **active everywhere**."
+            : `Still active in: ${remaining.map(id => `<#${id}>`).join(", ")}`)
+        )
         .setFooter({ text: "mewo" })
       ],
     });
@@ -219,6 +257,12 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
   }
 
   try {
+    // ── Roleplay direct shortcuts ─────────────────────────────────────────────
+    if (ROLEPLAY_SHORTCUTS.has(cmd)) {
+      const handler = ROLEPLAY_CMDS[cmd];
+      if (handler) { await handler(message, args); return true; }
+    }
+
     switch (cmd) {
 
       // ── Fun ──────────────────────────────────────────────────────────────────
@@ -272,6 +316,14 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
             });
           }
           break;
+        }
+        if (sub === "chatgpt" || sub === "llama" || sub === "deepseek") {
+          const cd = checkCooldown(message.author.id, `ai_${sub}`, 8);
+          if (cd !== false) { await cooldownReply(message, cd); break; }
+        }
+        if (sub === "imagine" || sub === "screenshot" || sub === "download") {
+          const cd = checkCooldown(message.author.id, `ai_${sub}`, 15);
+          if (cd !== false) { await cooldownReply(message, cd); break; }
         }
         const h = sub ? AI_CMDS[sub] : null;
         if (h) await h(message, args.slice(1));
@@ -423,6 +475,14 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
 
       case "wallet": {
         const sub = args[0]?.toLowerCase();
+        if (sub === "gamble" || sub === "bet") {
+          const cd = checkCooldown(message.author.id, "wallet_gamble", 5);
+          if (cd !== false) { await cooldownReply(message, cd); break; }
+        }
+        if (sub === "daily") {
+          const cd = checkCooldown(message.author.id, "wallet_daily", 3);
+          if (cd !== false) { await cooldownReply(message, cd); break; }
+        }
         if (!sub) { await cmdWallet(message, []); break; }
         const h = WALLET_CMDS[sub];
         if (h) await h(message, args.slice(1));

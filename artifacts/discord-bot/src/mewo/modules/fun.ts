@@ -1,5 +1,6 @@
 import type { Message } from "discord.js";
 import { EmbedBuilder } from "discord.js";
+import { evaluate } from "mathjs";
 
 type Handler = (msg: Message, args: string[]) => Promise<void>;
 
@@ -147,7 +148,11 @@ export const cmdSay: Handler = async (msg, args) => {
       .replace(/ove/g, "uv");
   }
   if (flags.has("reverse")) text = text.split("").reverse().join("");
-  await (msg.channel as import("discord.js").TextChannel).send({ content: text.slice(0, 2000) });
+  if (!msg.channel.isSendable()) {
+    await msg.reply({ embeds: [err("I can't send messages in this channel type.")] });
+    return;
+  }
+  await msg.channel.send({ content: text.slice(0, 2000) });
   await msg.delete().catch(() => {});
 };
 
@@ -216,14 +221,11 @@ export const cmdMath: Handler = async (msg, args) => {
     return;
   }
   const rawExpr = args.join(" ");
-  const expr = rawExpr.replace(/[^0-9+\-*/().%\s^]/g, "").replace(/\^/g, "**").trim();
-  if (!expr) {
-    await msg.reply({ embeds: [err("Expression contains invalid characters.")] });
-    return;
-  }
   try {
-    const result = new Function("Math", `"use strict"; return (${expr});`)(Math) as unknown;
-    if (typeof result !== "number" || !isFinite(result)) throw new Error("Not a number");
+    const result = evaluate(rawExpr) as unknown;
+    if (typeof result !== "number" || !isFinite(result as number)) {
+      throw new Error("Not a finite number");
+    }
     await msg.reply({
       embeds: [new EmbedBuilder()
         .setColor(0x5865F2)
@@ -236,7 +238,7 @@ export const cmdMath: Handler = async (msg, args) => {
       ],
     });
   } catch {
-    await msg.reply({ embeds: [err("Invalid or unsafe expression.")] });
+    await msg.reply({ embeds: [err("Invalid expression. Supports `+` `-` `*` `/` `^` `sqrt()` `sin()` etc.")] });
   }
 };
 
@@ -380,6 +382,26 @@ function emojiToHex(emoji: string): string | null {
   return codePoints.join("-").replace(/-fe0f/g, "");
 }
 
+const EMOJI_KITCHEN_DATES = [
+  "20230803", "20230301", "20220815", "20220406", "20210831", "20210521",
+];
+
+async function findEmojiKitchenUrl(hex1: string, hex2: string): Promise<string | null> {
+  for (const date of EMOJI_KITCHEN_DATES) {
+    const urlA = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${hex1}/u${hex1}_u${hex2}.png`;
+    try {
+      const r = await fetch(urlA, { method: "HEAD" });
+      if (r.ok) return urlA;
+    } catch { /* continue */ }
+    const urlB = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${hex2}/u${hex2}_u${hex1}.png`;
+    try {
+      const r = await fetch(urlB, { method: "HEAD" });
+      if (r.ok) return urlB;
+    } catch { /* continue */ }
+  }
+  return null;
+}
+
 export const cmdEmojimix: Handler = async (msg, args) => {
   if (args.length < 2) {
     await msg.reply({ embeds: [err("Provide two emojis. Usage: `mewo emojimix <emoji1> <emoji2>`")] });
@@ -393,20 +415,7 @@ export const cmdEmojimix: Handler = async (msg, args) => {
     await msg.reply({ embeds: [err("Could not parse one or both emojis. Use standard Unicode emojis.")] });
     return;
   }
-  const dates = ["20230301", "20220815", "20220406", "20210831", "20210521"];
-  let imageUrl: string | null = null;
-  for (const date of dates) {
-    const url = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${hex1}/u${hex1}_u${hex2}.png`;
-    try {
-      const res = await fetch(url, { method: "HEAD" });
-      if (res.ok) { imageUrl = url; break; }
-    } catch { continue; }
-    const urlAlt = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${hex2}/u${hex2}_u${hex1}.png`;
-    try {
-      const res2 = await fetch(urlAlt, { method: "HEAD" });
-      if (res2.ok) { imageUrl = urlAlt; break; }
-    } catch { continue; }
-  }
+  const imageUrl = await findEmojiKitchenUrl(hex1, hex2);
   if (!imageUrl) {
     await msg.reply({
       embeds: [new EmbedBuilder()

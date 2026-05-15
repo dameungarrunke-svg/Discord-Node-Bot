@@ -35,19 +35,23 @@ export const cmdChatgpt: Handler = async (msg, args) => {
   let apiUrl: string;
   let model: string;
   let authKey: string;
+  let modelLabel: string;
 
   if (openaiKey) {
-    apiUrl  = "https://api.openai.com/v1/chat/completions";
-    model   = "gpt-4o-mini";
-    authKey = openaiKey;
+    apiUrl     = "https://api.openai.com/v1/chat/completions";
+    model      = "gpt-4o-mini";
+    authKey    = openaiKey;
+    modelLabel = "GPT-4o Mini";
   } else if (sambaKey) {
-    apiUrl  = "https://api.sambanova.ai/v1/chat/completions";
-    model   = "Meta-Llama-3.3-70B-Instruct";
-    authKey = sambaKey;
+    apiUrl     = "https://api.sambanova.ai/v1/chat/completions";
+    model      = "Meta-Llama-3.3-70B-Instruct";
+    authKey    = sambaKey;
+    modelLabel = "LLaMA 3.3 70B";
   } else {
-    apiUrl  = "https://api.groq.com/openai/v1/chat/completions";
-    model   = "llama-3.1-8b-instant";
-    authKey = groqKey!;
+    apiUrl     = "https://api.groq.com/openai/v1/chat/completions";
+    model      = "llama-3.1-8b-instant";
+    authKey    = groqKey!;
+    modelLabel = "LLaMA 3.1 8B";
   }
 
   const prompt = args.join(" ");
@@ -58,7 +62,14 @@ export const cmdChatgpt: Handler = async (msg, args) => {
     const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authKey}` },
-      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], max_tokens: 1000 }),
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: "You are mewo, a helpful and friendly Discord bot assistant. Keep responses concise and suitable for Discord." },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: 1000,
+      }),
     });
     const data = await res.json() as {
       choices?: Array<{ message: { content: string } }>;
@@ -78,7 +89,7 @@ export const cmdChatgpt: Handler = async (msg, args) => {
           { name: "Question", value: prompt.slice(0, 1024), inline: false },
           { name: "Answer",   value: reply.slice(0, 1024),  inline: false }
         )
-        .setFooter({ text: `mewo • ai • ${usage.chatgpt + 1}/${AI_DAILY_LIMIT} daily` })
+        .setFooter({ text: `mewo • ai • ${modelLabel} • ${usage.chatgpt + 1}/${AI_DAILY_LIMIT} today` })
       ],
     });
   } catch (e) {
@@ -107,15 +118,18 @@ export const cmdLlama: Handler = async (msg, args) => {
   let apiUrl: string;
   let model: string;
   let authKey: string;
+  let modelLabel: string;
 
   if (sambaKey) {
-    apiUrl  = "https://api.sambanova.ai/v1/chat/completions";
-    model   = "Meta-Llama-3.3-70B-Instruct";
-    authKey = sambaKey;
+    apiUrl     = "https://api.sambanova.ai/v1/chat/completions";
+    model      = "Meta-Llama-3.3-70B-Instruct";
+    authKey    = sambaKey;
+    modelLabel = "LLaMA 3.3 70B (SambaNova)";
   } else {
-    apiUrl  = "https://api.groq.com/openai/v1/chat/completions";
-    model   = "llama-3.1-8b-instant";
-    authKey = groqKey!;
+    apiUrl     = "https://api.groq.com/openai/v1/chat/completions";
+    model      = "llama-3.1-8b-instant";
+    authKey    = groqKey!;
+    modelLabel = "LLaMA 3.1 8B (Groq)";
   }
 
   const prompt = args.join(" ");
@@ -126,7 +140,14 @@ export const cmdLlama: Handler = async (msg, args) => {
     const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authKey}` },
-      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], max_tokens: 1000 }),
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: "You are mewo, a helpful and friendly Discord bot assistant. Keep responses concise and suitable for Discord." },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: 1000,
+      }),
     });
     const data = await res.json() as {
       choices?: Array<{ message: { content: string } }>;
@@ -141,12 +162,12 @@ export const cmdLlama: Handler = async (msg, args) => {
     await typing.edit({
       embeds: [new EmbedBuilder()
         .setColor(0x00B4FF)
-        .setTitle("AI Chat")
+        .setTitle("LLaMA")
         .addFields(
           { name: "Question", value: prompt.slice(0, 1024), inline: false },
           { name: "Answer",   value: reply.slice(0, 1024),  inline: false }
         )
-        .setFooter({ text: `mewo • ai • ${usage.llama + 1}/${AI_DAILY_LIMIT} daily` })
+        .setFooter({ text: `mewo • ai • ${modelLabel} • ${usage.llama + 1}/${AI_DAILY_LIMIT} today` })
       ],
     });
   } catch (e) {
@@ -199,7 +220,14 @@ export const cmdDeepseek: Handler = async (msg, args) => {
     const res = await fetch("https://api.sambanova.ai/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sambaKey}` },
-      body: JSON.stringify({ model: "DeepSeek-V3-0324", messages: [{ role: "user", content: prompt }], max_tokens: 1500 }),
+      body: JSON.stringify({
+        model: "DeepSeek-V3-0324",
+        messages: [
+          { role: "system", content: "You are mewo, a helpful and friendly Discord bot assistant. Keep responses concise and suitable for Discord." },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: 1500,
+      }),
     });
     const data = await res.json() as {
       choices?: Array<{ message: { content: string } }>;
@@ -219,7 +247,7 @@ export const cmdDeepseek: Handler = async (msg, args) => {
           { name: "Prompt", value: prompt.slice(0, 1024), inline: false },
           { name: "Answer", value: reply.slice(0, 1024),  inline: false }
         )
-        .setFooter({ text: `mewo • ai • ${usage.deepseek + 1}/${AI_DAILY_LIMIT} daily` })
+        .setFooter({ text: `mewo • ai • DeepSeek-V3 • ${usage.deepseek + 1}/${AI_DAILY_LIMIT} today` })
       ],
     });
   } catch (e) {
@@ -263,7 +291,7 @@ export const cmdOcr: Handler = async (msg) => {
         .setTitle("OCR — Extracted Text")
         .setThumbnail(attachment.url)
         .setDescription(`\`\`\`\n${text.slice(0, 2000)}\n\`\`\``)
-        .setFooter({ text: "mewo • ai" })
+        .setFooter({ text: "mewo • ai • OCR.space" })
       ],
     });
   } catch (e) {
@@ -293,7 +321,7 @@ export const cmdScreenshot: Handler = async (msg, args) => {
         .setURL(url)
         .setDescription(`📸 **[${url}](${url})**`)
         .setImage(screenshotUrl)
-        .setFooter({ text: "mewo • ai" })
+        .setFooter({ text: "mewo • ai • thum.io" })
       ],
     });
   } catch (e) {
@@ -335,7 +363,7 @@ export const cmdDownload: Handler = async (msg, args) => {
           .setColor(0x00B4FF)
           .setTitle("Media Download — Multiple Files")
           .setDescription(`**${url}**\n\n${links}\n\n> Right-click → Save as to download`)
-          .setFooter({ text: "mewo • ai" })
+          .setFooter({ text: "mewo • ai • cobalt.tools" })
         ],
       });
       return;
@@ -346,7 +374,7 @@ export const cmdDownload: Handler = async (msg, args) => {
           .setColor(0x57F287)
           .setTitle("Media Download — Ready")
           .setDescription(`**[Click here to download](${data.url})**\n\n\`${url}\`\n\n> Link expires in a few minutes. Download quickly!`)
-          .setFooter({ text: "mewo • ai" })
+          .setFooter({ text: "mewo • ai • cobalt.tools" })
         ],
       });
       return;
@@ -379,7 +407,7 @@ export const cmdGrokImagine: Handler = async (msg, args) => {
         .setTitle("AI Image Generation")
         .setDescription(`> ${prompt}`)
         .setImage(imageUrl)
-        .setFooter({ text: "mewo • ai" })
+        .setFooter({ text: "mewo • ai • Pollinations.ai (free)" })
       ],
     });
   } catch (e) {
@@ -424,7 +452,7 @@ export const cmdPerplexity: Handler = async (msg, args) => {
       .setTitle("Web Search")
       .addFields({ name: "Query", value: query.slice(0, 256), inline: false })
       .setDescription(answer.slice(0, 2000))
-      .setFooter({ text: "mewo • ai" });
+      .setFooter({ text: "mewo • ai • Perplexity Sonar" });
     if (citations.length) {
       embed.addFields({ name: "Sources", value: citations.map((c, i) => `[${i + 1}] ${c}`).join("\n").slice(0, 1024), inline: false });
     }
@@ -466,7 +494,7 @@ export const cmdTtsOpenai: Handler = async (msg, args) => {
         .setColor(0x00B4FF)
         .setTitle("Text to Speech")
         .setDescription(`> ${text.slice(0, 300)}`)
-        .setFooter({ text: "mewo • ai • tts" })
+        .setFooter({ text: "mewo • ai • OpenAI TTS (alloy)" })
       ],
       files: [{ attachment: buffer, name: "speech.mp3" }],
     });
@@ -508,7 +536,7 @@ export const cmdTtsElevenlabs: Handler = async (msg, args) => {
         .setColor(0x9B59B6)
         .setTitle("Text to Speech")
         .setDescription(`> ${text.slice(0, 300)}`)
-        .setFooter({ text: "mewo • ai • tts" })
+        .setFooter({ text: "mewo • ai • ElevenLabs" })
       ],
       files: [{ attachment: buffer, name: "speech.mp3" }],
     });
@@ -575,7 +603,7 @@ export const cmdDeepGeolocate: Handler = async (msg, args) => {
           { name: "Proxy/VPN",   value: String(proxy),   inline: true },
           { name: "Hosting/DC",  value: String(hosting), inline: true },
         )
-        .setFooter({ text: "mewo • ai" })
+        .setFooter({ text: "mewo • ai • ipapi.co + ip-api.com + ipinfo.io" })
       ],
     });
   } catch (e) {

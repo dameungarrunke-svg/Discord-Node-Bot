@@ -15,6 +15,10 @@ export const cmdWallet: Handler = async (msg) => {
   const w = getWallet(target.id);
   const today = new Date().toISOString().slice(0, 10);
   const canClaim = w.dailyDate !== today;
+  const streak = w.streak ?? 0;
+  const streakText = streak > 0
+    ? `🔥 **${streak} day streak!**${streak >= 7 ? " (bonus active)" : ""}`
+    : "No active streak";
   await msg.reply({
     embeds: [new EmbedBuilder()
       .setColor(0xFEE75C)
@@ -22,6 +26,7 @@ export const cmdWallet: Handler = async (msg) => {
       .setThumbnail(target.displayAvatarURL())
       .addFields(
         { name: "Balance", value: `**${w.balance.toLocaleString()} ${COIN}**`, inline: true },
+        { name: "Streak", value: streakText, inline: true },
         { name: "Daily Reward", value: canClaim ? "✅ Available! Use `mewo wallet daily`" : "⏳ Already claimed today", inline: false }
       )
       .setFooter({ text: "mewo • wallet • earn coins with mewo wallet daily" })
@@ -43,13 +48,28 @@ export const cmdWalletDaily: Handler = async (msg) => {
     });
     return;
   }
+
+  const streakBonus = result.bonus > 0
+    ? `\n+**${result.bonus.toLocaleString()} ${COIN}** streak bonus!`
+    : "";
+  const streakLabel = result.streak >= 30
+    ? "🏆 30-day streak! (5x bonus)"
+    : result.streak >= 7
+    ? "🔥 7-day streak! (2x bonus)"
+    : result.streak >= 3
+    ? "⚡ 3-day streak! (+50% bonus)"
+    : `🔥 Day ${result.streak} streak`;
+
   await msg.reply({
     embeds: [new EmbedBuilder()
       .setColor(0x57F287)
       .setTitle(`${COIN} Daily Reward Claimed!`)
-      .setDescription(`You received **${result.amount.toLocaleString()} ${COIN}**!`)
-      .addFields({ name: "New Balance", value: `**${result.balance.toLocaleString()} ${COIN}**`, inline: true })
-      .setFooter({ text: "mewo • wallet • come back tomorrow!" })
+      .setDescription(`You received **${(result.amount - result.bonus).toLocaleString()} ${COIN}**!${streakBonus}`)
+      .addFields(
+        { name: "New Balance", value: `**${result.balance.toLocaleString()} ${COIN}**`, inline: true },
+        { name: "Streak", value: streakLabel, inline: true }
+      )
+      .setFooter({ text: "mewo • wallet • come back tomorrow to keep your streak!" })
     ],
   });
 };
