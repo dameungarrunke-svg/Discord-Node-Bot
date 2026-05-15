@@ -60,6 +60,10 @@ Same design, layout, and styling as the PC leaderboard. Data is fully separate �
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
+## User Preferences
+
+- **Never expose confidential information in user-facing content.** This includes: environment variable names (e.g. `OPENAI_API_KEY`), API key variable names, internal service names used for routing, deployment platform details, or any other developer-only implementation details. All Discord embeds, help text, error messages, and command descriptions shown to bot users must use plain, friendly language only. If a feature requires a certain configuration to work, say it is "unavailable" — never mention the missing key name or variable.
+
 ## CRITICAL DEPLOYMENT RULE — Discord Bot
 **The Discord bot is deployed exclusively to Railway and uses the same `DISCORD_BOT_TOKEN`.**
 - NEVER configure a workflow that runs the Discord bot in Replit.
