@@ -492,6 +492,66 @@ export async function handleMewoCommand(message: Message): Promise<boolean> {
 
       case "settings": await cmdAbout(message, args); break;
 
+      // ── AI direct shortcuts (no need for `mewo ai` prefix) ───────────────
+      case "imagine":
+      case "generate": {
+        const cd = checkCooldown(message.author.id, "ai_imagine", 15);
+        if (cd !== false) { await cooldownReply(message, cd); break; }
+        await cmdGrokImagine(message, args);
+        break;
+      }
+      case "chatgpt": {
+        const cd = checkCooldown(message.author.id, "ai_chatgpt", 8);
+        if (cd !== false) { await cooldownReply(message, cd); break; }
+        await cmdChatgpt(message, args);
+        break;
+      }
+      case "deepseek": {
+        const cd = checkCooldown(message.author.id, "ai_deepseek", 8);
+        if (cd !== false) { await cooldownReply(message, cd); break; }
+        await cmdDeepseek(message, args);
+        break;
+      }
+      case "llama": {
+        const cd = checkCooldown(message.author.id, "ai_llama", 8);
+        if (cd !== false) { await cooldownReply(message, cd); break; }
+        await cmdLlama(message, args);
+        break;
+      }
+      case "perplexity": {
+        const cd = checkCooldown(message.author.id, "ai_perplexity", 8);
+        if (cd !== false) { await cooldownReply(message, cd); break; }
+        await cmdPerplexity(message, args);
+        break;
+      }
+      case "ocr":
+        await cmdOcr(message, args);
+        break;
+      case "screenshot": {
+        const cd = checkCooldown(message.author.id, "ai_screenshot", 15);
+        if (cd !== false) { await cooldownReply(message, cd); break; }
+        await cmdScreenshot(message, args);
+        break;
+      }
+      case "download": {
+        const cd = checkCooldown(message.author.id, "ai_download", 15);
+        if (cd !== false) { await cooldownReply(message, cd); break; }
+        await cmdDownload(message, args);
+        break;
+      }
+      case "tts": {
+        const sub = args[0]?.toLowerCase();
+        const h = sub ? AI_TTS_CMDS[sub] : null;
+        if (h) await h(message, args.slice(1));
+        else {
+          await message.reply({
+            embeds: [new EmbedBuilder().setColor(0xED4245)
+              .setDescription("❌ Usage: `mewo tts openai <text>` or `mewo tts elevenlabs <text>`")]
+          });
+        }
+        break;
+      }
+
       default:
         await message.reply({
           embeds: [new EmbedBuilder()

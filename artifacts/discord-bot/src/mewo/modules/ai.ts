@@ -393,22 +393,27 @@ export const cmdGrokImagine: Handler = async (msg, args) => {
   }
   const prompt = args.join(" ");
   const thinking = await msg.reply({
-    embeds: [new EmbedBuilder().setColor(0x00B4FF).setDescription("🎨 Generating image...")]
+    embeds: [new EmbedBuilder().setColor(0x00B4FF).setDescription("🎨 Generating image... (this may take a few seconds)")]
   });
   try {
     const encoded = encodeURIComponent(prompt);
     const seed = Math.floor(Math.random() * 999999);
     const imageUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&seed=${seed}&nologo=true&enhance=true`;
-    const check = await fetch(imageUrl, { method: "HEAD" });
-    if (!check.ok) throw new Error(`HEAD ${check.status}`);
-    await thinking.edit({
+    const res = await fetch(imageUrl);
+    if (!res.ok) throw new Error(`fetch ${res.status}`);
+    const contentType = res.headers.get("content-type") ?? "image/jpeg";
+    const ext = contentType.includes("png") ? "png" : "jpg";
+    const buffer = Buffer.from(await res.arrayBuffer());
+    await thinking.delete().catch(() => {});
+    await msg.reply({
       embeds: [new EmbedBuilder()
         .setColor(0x00B4FF)
         .setTitle("AI Image Generation")
-        .setDescription(`> ${prompt}`)
-        .setImage(imageUrl)
-        .setFooter({ text: "mewo • ai • Pollinations.ai (free)" })
+        .setDescription(`> ${prompt.slice(0, 200)}`)
+        .setImage(`attachment://image.${ext}`)
+        .setFooter({ text: "mewo • ai • Pollinations.ai" })
       ],
+      files: [{ attachment: buffer, name: `image.${ext}` }],
     });
   } catch (e) {
     console.error("[MEWO AI] imagine error:", e);
